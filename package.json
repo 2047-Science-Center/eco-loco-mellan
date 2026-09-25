@@ -1,0 +1,7 @@
+{
+  "name": "eco-loco-mellan",
+  "private": true,
+  "type": "module",
+  "scripts": { "server": "node server/server.js" },
+  "dependencies": { "ws": "^8.18.0" }
+}

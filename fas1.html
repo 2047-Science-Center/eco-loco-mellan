@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eco Loco — Fas 1: Ön & lagen</title>
+<style>
+  :root {
+    --panel: #2A2721; --panel2: #353128; --edge: #4A443A;
+    --text: #E9E2D2; --dim: #A79F8C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: #1D1B16; color: var(--text);
+    font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 22px; letter-spacing: 3px; margin: 0 0 4px; text-transform: uppercase; }
+  .sub { color: var(--dim); margin: 0 0 20px; font-size: 14px; }
+  .wrap { max-width: 1150px; margin: 0 auto; }
+  .panel {
+    background: var(--panel); border: 2px solid var(--edge); border-radius: 10px;
+    padding: 18px; margin-bottom: 20px;
+  }
+  .map-holder svg { display: block; width: 100%; height: auto; border-radius: 6px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  .controls .label { color: var(--dim); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-right: 4px; }
+  button {
+    background: var(--panel2); color: var(--text); border: 2px solid var(--edge);
+    border-radius: 8px; padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  button:hover { border-color: #6b6353; }
+  button.active { border-color: #D8CDA8; background: #3f3a2f; }
+  .spacer { flex: 1; }
+  .logos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .logo-card {
+    background: var(--panel2); border: 2px solid var(--edge); border-radius: 10px;
+    padding: 16px; text-align: center;
+  }
+  .logo-card .namn { font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 10px; }
+  .logo-card .djur { color: var(--dim); font-size: 13px; }
+  .logo-card .chip { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+  h2 { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); margin: 0 0 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Eco Loco — Mellan</h1>
+  <p class="sub">Fas 1: stiliserad ö med fyra områden, 10 byggplatser per område (koordinater i <code>spec/assets.json</code>), lagloggor i områdesfärg. Kartan är också öhälso-visningen — testa de fem lägena.</p>
+
+  <div class="panel">
+    <div class="map-holder" id="map"></div>
+    <div class="controls">
+      <span class="label">Öhälsa:</span>
+      <button data-mode="superdaligt">Superdåligt</button>
+      <button data-mode="daligt">Dåligt</button>
+      <button data-mode="neutralt" class="active">Neutralt</button>
+      <button data-mode="bra">Bra</button>
+      <button data-mode="mycketbra">Mycket bra</button>
+      <span class="spacer"></span>
+      <button id="toggleSlots" class="active">Visa slots</button>
+      <button id="demoBuild">Demo: bygg exempel</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Lagen — logga = områdesfärg</h2>
+    <div class="logos" id="logos"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { renderMap } from './src/map.js';
+  import { TEAM_LOGOS, logoSVG } from './src/logos.js';
+
+  const manifest = await (await fetch('./spec/assets.json')).json();
+  const slots = Object.fromEntries(
+    Object.entries(manifest.slots).filter(([k]) => k !== '_readme')
+  );
+
+  const map = renderMap(document.getElementById('map'), { slots, mode: 'neutralt' });
+
+  // Öhälso-lägen
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-mode]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    map.setOhalsaMode(b.dataset.mode);
+  }));
+
+  // Slots av/på
+  let slotsOn = true;
+  document.getElementById('toggleSlots').addEventListener('click', (e) => {
+    slotsOn = !slotsOn;
+    map.showSlots(slotsOn);
+    e.target.classList.toggle('active', slotsOn);
+  });
+
+  // Demo: droppa ett exempel per nivå i varje område (visar skala + assets på slots)
+  let built = false;
+  document.getElementById('demoBuild').addEventListener('click', (e) => {
+    if (built) { map.clearBuildings(); built = false; e.target.classList.remove('active'); return; }
+    for (const area of ['aker', 'skog', 'tundra', 'stad']) {
+      ['smutsig', 'standard', 'gron'].forEach((tier, i) => {
+        map.placeBuilding(area, i, manifest.buildings[`${area}_${tier}`].file);
+      });
+    }
+    built = true; e.target.classList.add('active');
+  });
+
+  // Loggor
+  const namn = { aker: 'Åkermark', skog: 'Skog', tundra: 'Tundra', stad: 'Stad' };
+  document.getElementById('logos').innerHTML = Object.entries(TEAM_LOGOS).map(([id, t]) => `
+    <div class="logo-card">
+      ${logoSVG(id, 110)}
+      <div class="namn"><span class="chip" style="background:${t.farg}"></span>${namn[id]}</div>
+      <div class="djur">${t.djur}</div>
+    </div>`).join('');
+</script>
+</body>
+</html>

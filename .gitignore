@@ -1,0 +1,9 @@
+# Referensmaterial (foton/skärmbilder, ~127 MB) behövs inte i drift — finns lokalt hos Josef
+Referens spelrigg/
+Referens UI/
+
+.DS_Store
+*.log
+
+# OBS: node_modules/ checkas medvetet IN (endast ws, ~200 KB) så att
+# `git clone` räcker för drift även på LAN utan internet.

@@ -1,0 +1,355 @@
+{
+  "_readme": "Manifest som spelet läser LIVE. Byggnads-nycklar = <område>_<nivå> och matchar engine.js card.asset samt filnamnen i assets/. Alla 12 byggnader finns. Ljudfiler ej på plats än (se design/AUDIO.md). Fable: skriv in slots-koordinaterna i Fas 1 när kartan ritats.",
+  "config": {
+    "_readme": "Overrides av DEFAULT_CONFIG i spec/engine.js - las live av spel.html. Tomt objekt = motorns standardvarden (rounds 8, timerSec 90, startPengar 40, startMaterial 30, ohStart 50, threshold 60, humanTeam aker m.fl.)."
+  },
+  "areas": [
+    {
+      "id": "aker",
+      "namn": "Åkermark",
+      "farg": "#E7C24C",
+      "sektor": "material"
+    },
+    {
+      "id": "skog",
+      "namn": "Skog",
+      "farg": "#3F8F4A",
+      "sektor": "material"
+    },
+    {
+      "id": "tundra",
+      "namn": "Tundra",
+      "farg": "#D98A3C",
+      "sektor": "pengar"
+    },
+    {
+      "id": "stad",
+      "namn": "Stad",
+      "farg": "#8A8F96",
+      "sektor": "pengar"
+    }
+  ],
+  "buildings": {
+    "aker_smutsig": {
+      "namn": "Industrijordbruk",
+      "file": "assets/aker_smutsig.png"
+    },
+    "aker_standard": {
+      "namn": "Jordbruk",
+      "file": "assets/aker_standard.png"
+    },
+    "aker_gron": {
+      "namn": "Ekologiskt jordbruk",
+      "file": "assets/aker_gron.png"
+    },
+    "skog_smutsig": {
+      "namn": "Sågverk",
+      "file": "assets/skog_smutsig.png"
+    },
+    "skog_standard": {
+      "namn": "Skogsbruk",
+      "file": "assets/skog_standard.png"
+    },
+    "skog_gron": {
+      "namn": "Skogsjordbruk",
+      "file": "assets/skog_gron.png"
+    },
+    "tundra_smutsig": {
+      "namn": "Oljeplattform",
+      "file": "assets/tundra_smutsig.png"
+    },
+    "tundra_standard": {
+      "namn": "Fabrik",
+      "file": "assets/tundra_standard.png"
+    },
+    "tundra_gron": {
+      "namn": "Vindkraft",
+      "file": "assets/tundra_gron.png"
+    },
+    "stad_smutsig": {
+      "namn": "Kolkraftverk",
+      "file": "assets/stad_smutsig.png"
+    },
+    "stad_standard": {
+      "namn": "Kontor & hotell",
+      "file": "assets/stad_standard.png"
+    },
+    "stad_gron": {
+      "namn": "Solceller",
+      "file": "assets/stad_gron.png"
+    }
+  },
+  "slots": {
+    "_readme": "10 fasta byggplatser per omrade, i kartbildens pixlar 0-1536 x 0-1024 (assets/karta.png; se src/map.js). Byggnader placeras i index-ordning (0 forst).",
+    "aker": [
+      {
+        "area": "aker",
+        "index": 0,
+        "x": 762,
+        "y": 108
+      },
+      {
+        "area": "aker",
+        "index": 1,
+        "x": 564,
+        "y": 144
+      },
+      {
+        "area": "aker",
+        "index": 2,
+        "x": 690,
+        "y": 162
+      },
+      {
+        "area": "aker",
+        "index": 3,
+        "x": 636,
+        "y": 216
+      },
+      {
+        "area": "aker",
+        "index": 4,
+        "x": 330,
+        "y": 234
+      },
+      {
+        "area": "aker",
+        "index": 5,
+        "x": 492,
+        "y": 252
+      },
+      {
+        "area": "aker",
+        "index": 6,
+        "x": 222,
+        "y": 288
+      },
+      {
+        "area": "aker",
+        "index": 7,
+        "x": 564,
+        "y": 324
+      },
+      {
+        "area": "aker",
+        "index": 8,
+        "x": 402,
+        "y": 342
+      },
+      {
+        "area": "aker",
+        "index": 9,
+        "x": 618,
+        "y": 396
+      }
+    ],
+    "skog": [
+      {
+        "area": "skog",
+        "index": 0,
+        "x": 924,
+        "y": 108
+      },
+      {
+        "area": "skog",
+        "index": 1,
+        "x": 1194,
+        "y": 162
+      },
+      {
+        "area": "skog",
+        "index": 2,
+        "x": 906,
+        "y": 216
+      },
+      {
+        "area": "skog",
+        "index": 3,
+        "x": 726,
+        "y": 252
+      },
+      {
+        "area": "skog",
+        "index": 4,
+        "x": 1050,
+        "y": 288
+      },
+      {
+        "area": "skog",
+        "index": 5,
+        "x": 1302,
+        "y": 306
+      },
+      {
+        "area": "skog",
+        "index": 6,
+        "x": 870,
+        "y": 324
+      },
+      {
+        "area": "skog",
+        "index": 7,
+        "x": 1122,
+        "y": 396
+      },
+      {
+        "area": "skog",
+        "index": 8,
+        "x": 780,
+        "y": 414
+      },
+      {
+        "area": "skog",
+        "index": 9,
+        "x": 1338,
+        "y": 432
+      }
+    ],
+    "stad": [
+      {
+        "area": "stad",
+        "index": 0,
+        "x": 942,
+        "y": 432
+      },
+      {
+        "area": "stad",
+        "index": 1,
+        "x": 1086,
+        "y": 504
+      },
+      {
+        "area": "stad",
+        "index": 2,
+        "x": 906,
+        "y": 522
+      },
+      {
+        "area": "stad",
+        "index": 3,
+        "x": 1230,
+        "y": 558
+      },
+      {
+        "area": "stad",
+        "index": 4,
+        "x": 762,
+        "y": 576
+      },
+      {
+        "area": "stad",
+        "index": 5,
+        "x": 1068,
+        "y": 594
+      },
+      {
+        "area": "stad",
+        "index": 6,
+        "x": 1374,
+        "y": 612
+      },
+      {
+        "area": "stad",
+        "index": 7,
+        "x": 1194,
+        "y": 666
+      },
+      {
+        "area": "stad",
+        "index": 8,
+        "x": 960,
+        "y": 720
+      },
+      {
+        "area": "stad",
+        "index": 9,
+        "x": 1212,
+        "y": 756
+      }
+    ],
+    "tundra": [
+      {
+        "area": "tundra",
+        "index": 0,
+        "x": 222,
+        "y": 342
+      },
+      {
+        "area": "tundra",
+        "index": 1,
+        "x": 420,
+        "y": 414
+      },
+      {
+        "area": "tundra",
+        "index": 2,
+        "x": 672,
+        "y": 432
+      },
+      {
+        "area": "tundra",
+        "index": 3,
+        "x": 258,
+        "y": 504
+      },
+      {
+        "area": "tundra",
+        "index": 4,
+        "x": 528,
+        "y": 522
+      },
+      {
+        "area": "tundra",
+        "index": 5,
+        "x": 474,
+        "y": 630
+      },
+      {
+        "area": "tundra",
+        "index": 6,
+        "x": 258,
+        "y": 648
+      },
+      {
+        "area": "tundra",
+        "index": 7,
+        "x": 762,
+        "y": 684
+      },
+      {
+        "area": "tundra",
+        "index": 8,
+        "x": 834,
+        "y": 828
+      },
+      {
+        "area": "tundra",
+        "index": 9,
+        "x": 384,
+        "y": 846
+      }
+    ]
+  },
+  "audio": {
+    "build_smutsig": "assets/audio/build_smutsig.mp3",
+    "build_standard": "assets/audio/build_standard.mp3",
+    "build_gron": "assets/audio/build_gron.mp3",
+    "ui_tap": "assets/audio/ui_tap.mp3",
+    "trade": "assets/audio/trade.mp3",
+    "vote": "assets/audio/vote.mp3",
+    "proposal_pass": "assets/audio/proposal_pass.mp3",
+    "proposal_fail": "assets/audio/proposal_fail.mp3",
+    "round_start": "assets/audio/round_start.mp3",
+    "event": "assets/audio/event.mp3",
+    "award_led": "assets/audio/award_led.mp3",
+    "award_eld": "assets/audio/award_eld.mp3",
+    "award_sab": "assets/audio/award_sab.mp3",
+    "win": "assets/audio/win.mp3",
+    "lose": "assets/audio/lose.mp3",
+    "amb_superdaligt": "assets/audio/amb_superdaligt.mp3",
+    "amb_daligt": "assets/audio/amb_daligt.mp3",
+    "amb_neutralt": "assets/audio/amb_neutralt.mp3",
+    "amb_bra": "assets/audio/amb_bra.mp3",
+    "amb_mycketbra": "assets/audio/amb_mycketbra.mp3"
+  }
+}

@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eco Loco</title>
+<style>
+  :root {
+    --bg: #14120E; --panel: #2A2721; --panel2: #353128; --panel3: #1F1D17;
+    --edge: #4A443A; --edge2: #5C5547; --gold: #C9A94F; --text: #E9E2D2; --dim: #A79F8C;
+    --led: #FFB35C; --led-red: #FF6B4A; --led-green: #7FE08A;
+    --oh-red: #E04438; --oh-yellow: #E8C33C; --oh-green: #35D97B;
+    --smutsig: #8A4A38; --standard: #7A7263; --gron: #4E9C58;
+  }
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  html, body { margin: 0; height: 100%; background: #0E0D0A; color: var(--text); font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+
+  #stagewrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #stage { width: 1920px; height: 1080px; transform-origin: center center; position: relative; background: var(--bg); display: flex; flex-direction: column; }
+
+  /* ——— Toppbar ——— */
+  .topbar { height: 92px; display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--panel3); border-bottom: 3px solid var(--edge); }
+  .chip { background: var(--panel2); border: 2px solid var(--edge); border-radius: 10px; padding: 10px 18px; font-weight: 800; letter-spacing: 1px; font-size: 22px; white-space: nowrap; }
+  .chip small { display: block; font-size: 12px; color: var(--dim); letter-spacing: 2px; font-weight: 600; }
+  .ohwrap { flex: 1; display: flex; align-items: center; gap: 14px; }
+  .ohwrap .endicon { font-size: 30px; }
+  .ohbar { flex: 1; position: relative; height: 46px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 12px; }
+  .ohzones { position: absolute; inset: 3px; border-radius: 8px; overflow: hidden; display: flex; }
+  .ohzones i { height: 100%; opacity: .28; }
+  .ohzones .z1 { background: var(--oh-red); }
+  .ohzones .z2 { background: var(--oh-yellow); }
+  .ohzones .z3 { background: var(--oh-green); }
+  .ohfill { position: absolute; left: 3px; top: 3px; bottom: 3px; border-radius: 8px 0 0 8px; background: var(--oh-yellow); opacity: .85; transition: width 1s ease, background 1s; }
+  .ohneedle { position: absolute; top: -10px; bottom: -10px; width: 5px; background: #fff; border-radius: 3px; box-shadow: 0 0 8px #000; transition: left 1s ease; }
+  .ohgoal { position: absolute; top: -26px; bottom: -6px; width: 0; border-left: 3px dashed var(--gold); }
+  .ohgoal em { position: absolute; top: -4px; left: 6px; font-style: normal; font-size: 14px; font-weight: 800; color: var(--gold); letter-spacing: 1px; }
+  .ohval { font-size: 40px; font-weight: 800; min-width: 76px; text-align: center; }
+  .ohdelta { font-size: 20px; font-weight: 800; padding: 6px 12px; border-radius: 8px; border: 2px solid var(--edge2); background: var(--panel2); min-width: 64px; text-align: center; transition: all .4s; }
+  .ohdelta.neg { background: #3d2320; color: var(--led-red); border-color: #5e332c; }
+  .ohdelta.pos { background: #20372a; color: var(--led-green); border-color: #2c5e3d; }
+  .modechip { font-size: 20px; }
+
+  /* ——— Kolumner ——— */
+  .cols { flex: 1; display: flex; gap: 16px; padding: 16px 24px 8px; min-height: 0; }
+  .col-me { width: 360px; display: flex; flex-direction: column; gap: 14px; }
+  .col-island { flex: 1; position: relative; border: 3px solid var(--edge); border-radius: 14px; overflow: hidden; background: #1C4E60; }
+  .col-island svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .col-others { width: 380px; display: flex; flex-direction: column; gap: 12px; }
+  .panel { background: var(--panel); border: 3px solid var(--edge); border-radius: 14px; padding: 14px 16px; }
+  .panel h3 { margin: 0 0 10px; font-size: 14px; letter-spacing: 2.5px; color: var(--dim); text-transform: uppercase; }
+
+  .melogo { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .melogo .nm { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+  .melogo .du { font-size: 13px; color: var(--gold); letter-spacing: 2px; font-weight: 800; }
+  .res { display: flex; gap: 10px; }
+  .resbox { flex: 1; background: var(--panel3); border: 2px solid var(--edge2); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; position: relative; }
+  .resbox .ic { font-size: 26px; }
+  .resbox .v { font-family: "Menlo", monospace; font-size: 32px; font-weight: 700; color: var(--led); text-shadow: 0 0 10px rgba(255,179,92,.5); }
+  .resbox .lbl { font-size: 11px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; display: block; }
+  .resbox.flash-up .v { color: var(--led-green); }
+  .resbox.flash-down .v { color: var(--led-red); }
+  .floatchip { position: absolute; right: 8px; top: -14px; font-size: 19px; font-weight: 800; pointer-events: none; animation: floatup 1.4s ease forwards; }
+  @keyframes floatup { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-34px); } }
+  .inc { margin-top: 8px; font-size: 16px; color: var(--led-green); font-weight: 700; min-height: 22px; }
+  .sektor { margin-top: 10px; background: #23301F; border: 2px solid #3C5535; border-radius: 10px; padding: 10px 12px; font-size: 16px; line-height: 1.45; }
+  .sektor b { color: #BFE3A9; }
+  .bigbtn { display: block; width: 100%; margin-top: 12px; background: var(--panel2); color: var(--text); border: 3px solid var(--edge2); border-radius: 12px; padding: 14px; font: inherit; font-size: 19px; font-weight: 800; letter-spacing: 1px; cursor: pointer; }
+  .bigbtn.gold { border-color: var(--gold); color: var(--gold); }
+  .bigbtn:disabled { opacity: .4; cursor: default; }
+  .linklike { margin-top: 10px; text-align: center; color: var(--dim); font-size: 15px; text-decoration: underline; cursor: pointer; }
+
+  .team { display: flex; align-items: center; gap: 10px; background: var(--panel3); border: 2px solid var(--edge2); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
+  .team:last-child { margin-bottom: 0; }
+  .team .nm { font-weight: 800; font-size: 17px; flex: 1; }
+  .team .nm small { display: block; font-weight: 600; font-size: 12px; color: var(--dim); }
+  .team .tr { font-family: Menlo, monospace; font-size: 19px; color: var(--led); white-space: nowrap; }
+  .team .tag { font-size: 20px; width: 28px; text-align: center; }
+  .team .byt { background: var(--panel2); border: 2px solid var(--edge2); color: var(--text); border-radius: 8px; font: inherit; font-size: 13px; font-weight: 800; padding: 8px 10px; cursor: pointer; }
+  .regs { display: flex; gap: 10px; }
+  .reg { flex: 1; background: var(--panel3); border: 2px solid var(--edge2); border-radius: 10px; padding: 10px; }
+  .reg h4 { margin: 0 0 8px; font-size: 13px; letter-spacing: 1.5px; color: var(--dim); }
+  .reg ol { margin: 0; padding: 0 0 0 20px; font-size: 15px; line-height: 1.7; }
+  .reg .me-row { color: var(--gold); font-weight: 800; }
+
+  /* ——— Handen ——— */
+  .handbar { height: 300px; display: flex; align-items: stretch; gap: 16px; padding: 8px 24px 20px; }
+  .handlabel { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 15px; letter-spacing: 4px; color: var(--dim); font-weight: 800; }
+  .cards { flex: 1; display: flex; gap: 16px; }
+  .card { flex: 1; background: var(--panel); border: 3px solid var(--edge); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; position: relative; transition: border-color .2s, transform .15s; }
+  .card .band { padding: 7px 12px; font-size: 15px; font-weight: 800; letter-spacing: 2.5px; text-align: center; color: #fff; }
+  .card.smutsig .band { background: var(--smutsig); }
+  .card.standard .band { background: var(--standard); }
+  .card.gron .band { background: var(--gron); }
+  .card .inner { flex: 1; display: flex; gap: 12px; padding: 10px 14px; align-items: center; }
+  .card img { width: 128px; height: 128px; object-fit: contain; }
+  .card .info { flex: 1; }
+  .card .nm { font-size: 20px; font-weight: 800; margin-bottom: 8px; line-height: 1.2; }
+  .card .row { display: flex; align-items: center; gap: 8px; font-size: 17px; margin: 5px 0; }
+  .card .row .k { color: var(--dim); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; width: 62px; }
+  .ohplus { color: var(--led-green); font-weight: 800; }
+  .ohminus { color: var(--led-red); font-weight: 800; }
+  .card .kop { margin: 0 14px 12px; background: var(--gold); color: #241E0F; border: 0; border-radius: 10px; font: inherit; font-size: 20px; font-weight: 800; letter-spacing: 2px; padding: 12px; cursor: pointer; display: none; }
+  .card.expanded { border-color: var(--gold); transform: translateY(-6px); }
+  .card.expanded .kop { display: block; }
+  .card .saknas { position: absolute; top: 44px; right: 10px; background: #3d2320; border: 2px solid #5e332c; color: var(--led-red); font-size: 14px; font-weight: 800; border-radius: 8px; padding: 5px 9px; display: none; }
+  .card.poor .saknas { display: block; }
+  .card.banned::after { content: "🚫 FÖRBJUDEN DENNA RUNDA"; position: absolute; inset: 0; background: rgba(20,18,14,.78); display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; }
+  .hand-locked .card { opacity: .45; pointer-events: none; }
+  .hand-locked .card.picked { opacity: 1; border-color: var(--led-green); }
+  .card.picked::after { content: "BYGGT ✓"; position: absolute; top: 46%; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 800; color: var(--led-green); text-shadow: 0 2px 8px #000; }
+
+  .endwrap { width: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--panel); border: 3px solid var(--edge); border-radius: 16px; }
+  .endring { position: relative; width: 150px; height: 150px; }
+  .endring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .endring .btn { position: absolute; inset: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #8f3d2f, #5e2318); border: 4px solid #3c1710; color: #F5E8D8; font: inherit; font-weight: 800; font-size: 17px; letter-spacing: 1px; cursor: pointer; line-height: 1.25; }
+  .endwrap.pulse .btn { animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 26px rgba(201,169,79,.85); } }
+  .endtime { font-family: Menlo, monospace; font-size: 26px; color: var(--led); font-weight: 700; }
+  .endlbl { font-size: 12px; letter-spacing: 2px; color: var(--dim); font-weight: 800; }
+
+  /* ——— Overlays ——— */
+  .overlay { position: absolute; inset: 0; background: rgba(10,9,7,.78); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 4px solid var(--edge2); border-radius: 20px; padding: 28px 34px; max-width: 900px; }
+  .modal h2 { margin: 0 0 4px; font-size: 30px; letter-spacing: 2px; text-align: center; }
+  .modal .sub { text-align: center; color: var(--dim); font-size: 17px; margin-bottom: 20px; }
+
+  .propcard { display: flex; gap: 18px; align-items: center; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 18px 20px; margin-bottom: 18px; }
+  .propcard .pic { font-size: 64px; }
+  .propcard .tx { font-size: 24px; line-height: 1.45; }
+  .propcard .tx b { color: var(--led-green); }
+  .propchoice { cursor: pointer; transition: border-color .15s; }
+  .propchoice:hover { border-color: var(--gold); }
+  .votebtns { display: flex; gap: 18px; }
+  .votebtns button { flex: 1; font: inherit; font-size: 28px; font-weight: 800; letter-spacing: 2px; padding: 20px; border-radius: 14px; cursor: pointer; border: 4px solid; }
+  .votebtns .ja { background: #1E4A2C; border-color: #35D97B; color: #C9F5D8; }
+  .votebtns .nej { background: #40231E; border-color: #8a4a38; color: #F0CFC5; }
+  .votestat { display: flex; justify-content: center; gap: 14px; margin-top: 18px; }
+  .votestat .v { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--dim); }
+  .votestat .d { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--edge2); background: var(--panel3); }
+  .votestat .d.ja { background: #35D97B; border-color: #1E4A2C; }
+  .votestat .d.nej { background: #E04438; border-color: #6e2a24; }
+
+  .tradegrid { display: flex; align-items: center; gap: 22px; margin: 8px 0 20px; }
+  .tradebox { flex: 1; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 18px; text-align: center; }
+  .tradebox .who { font-size: 15px; color: var(--dim); letter-spacing: 1px; margin-bottom: 10px; }
+  .stepper { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .stepper button { width: 58px; height: 58px; border-radius: 12px; background: var(--panel2); color: var(--text); border: 3px solid var(--edge2); font-size: 30px; font-weight: 800; cursor: pointer; }
+  .stepper .amt { font-family: Menlo, monospace; font-size: 40px; color: var(--led); min-width: 100px; }
+  .tradearrow { font-size: 44px; }
+  .partnerrow { display: flex; gap: 12px; margin-bottom: 18px; }
+  .partnerrow button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 14px; font: inherit; color: var(--text); font-weight: 800; font-size: 17px; cursor: pointer; }
+  .partnerrow button.sel { border-color: var(--gold); }
+  .partnerrow small { font-family: Menlo, monospace; color: var(--led); font-weight: 400; }
+
+  .award { width: 280px; background: var(--panel3); border: 3px solid var(--gold); border-radius: 16px; padding: 24px 18px; text-align: center; }
+  .award .em { font-size: 60px; }
+  .award h4 { margin: 10px 0 12px; font-size: 17px; letter-spacing: 1px; line-height: 1.35; color: var(--dim); text-transform: uppercase; }
+  .award .who { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 22px; font-weight: 800; }
+  .award .val { font-family: Menlo, monospace; font-size: 22px; }
+  .award .fortsatt { margin-top: 16px; font-size: 13px; color: var(--dim); letter-spacing: 1px; animation: fortsattpuls 1.6s ease-in-out infinite; }
+  @keyframes fortsattpuls { 50% { opacity: .4; } }
+
+  .slideover { position: absolute; top: 0; right: 0; bottom: 0; width: 640px; background: var(--panel); border-left: 4px solid var(--edge2); padding: 26px 30px; overflow: auto; box-shadow: -20px 0 60px rgba(0,0,0,.6); z-index: 11; display: none; }
+  .slideover.open { display: block; }
+  .slideover h2 { margin: 0 0 18px; font-size: 26px; letter-spacing: 2px; }
+  .slideover h3 { font-size: 15px; letter-spacing: 2px; color: var(--dim); margin: 22px 0 10px; text-transform: uppercase; }
+  .ranktable, .logtable { width: 100%; border-collapse: collapse; font-size: 18px; }
+  .ranktable td { padding: 8px 6px; border-bottom: 1px solid var(--edge); }
+  .ranktable .n { font-family: Menlo, monospace; color: var(--led); text-align: right; }
+  .ranktable .me-row td { color: var(--gold); font-weight: 800; }
+  .logtable { font-size: 16px; }
+  .logtable th { text-align: left; color: var(--dim); font-size: 12px; letter-spacing: 1px; padding: 4px 6px; }
+  .logtable td { padding: 6px; border-bottom: 1px solid var(--edge); }
+  .closebar { position: absolute; top: 18px; right: 24px; font-size: 30px; color: var(--dim); cursor: pointer; }
+
+  .slutmodal { text-align: center; max-width: 1000px; }
+  .slutmodal .big { font-size: 52px; font-weight: 800; letter-spacing: 2px; margin-bottom: 6px; }
+  .slutmodal .big.win { color: var(--led-green); }
+  .slutmodal .big.lose { color: var(--led-red); }
+  .slutmodal .why { color: var(--dim); font-size: 20px; margin-bottom: 26px; }
+  .slutcards { display: flex; gap: 20px; justify-content: center; margin-bottom: 24px; }
+  .efter { background: var(--panel3); border: 2px solid var(--edge2); border-radius: 12px; padding: 16px 20px; font-size: 19px; line-height: 1.5; }
+
+  /* Toasts + rundbanner + katastrof */
+  #toasts { position: absolute; left: 400px; bottom: 330px; z-index: 8; display: flex; flex-direction: column-reverse; gap: 8px; }
+  .toast { background: rgba(31,29,23,.94); border: 2px solid var(--edge2); border-radius: 10px; padding: 10px 16px; font-size: 17px; font-weight: 700; animation: toastin .25s ease; max-width: 520px; }
+  .toast.warn { border-color: var(--led-red); }
+  @keyframes toastin { from { opacity: 0; transform: translateY(12px); } }
+  #banner { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 9; pointer-events: none; }
+  #banner .bt { font-size: 76px; font-weight: 800; letter-spacing: 6px; text-shadow: 0 4px 30px #000; background: rgba(20,18,14,.8); border: 3px solid var(--edge2); border-radius: 20px; padding: 24px 60px; }
+  #banner .bt.varn { color: var(--led-red); border-color: var(--led-red); }
+
+  /* Startskärm */
+  #ov-start .modal { text-align: center; max-width: 900px; }
+  #ov-start h1 { font-size: 58px; margin: 0 0 6px; letter-spacing: 4px; }
+  #ov-start .tag { color: var(--dim); font-size: 21px; margin-bottom: 26px; }
+  .howto { display: flex; gap: 16px; text-align: center; margin-bottom: 26px; }
+  .howto div { flex: 1; background: var(--panel3); border: 2px solid var(--edge2); border-radius: 14px; padding: 18px 14px; font-size: 18px; line-height: 1.5; }
+  .howto .n { font-size: 40px; display: block; margin-bottom: 8px; }
+  #lobby { grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .lobbyteam { display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--panel3);
+    border: 3px solid var(--edge2); border-radius: 14px; padding: 16px 10px; font: inherit; color: var(--text);
+    font-size: 18px; cursor: pointer; }
+  .lobbyteam small { color: var(--dim); font-size: 13px; }
+  .lobbyteam.sel { border-color: var(--gold); }
+  .lobbyteam.sel small { color: var(--gold); font-weight: 800; }
+  .lobbyteam.taken { opacity: .55; cursor: default; }
+  #connstatus { margin-bottom: 14px; font-size: 15px; font-weight: 700; }
+  #connstatus.ok { color: var(--led-green); }
+  #connstatus.bad { color: var(--led-red); }
+</style>
+</head>
+<body>
+<div id="stagewrap"><div id="stage">
+
+  <div class="topbar">
+    <div class="chip"><small>RUNDA</small><span id="roundnum">–</span> / <span id="roundmax">8</span></div>
+    <div class="ohwrap">
+      <span class="endicon">💀</span>
+      <div class="ohbar">
+        <div class="ohzones" id="ohzones"></div>
+        <div class="ohfill" id="ohfill"></div>
+        <div class="ohgoal" id="ohgoal"><em id="ohgoal-lbl">MÅL 60</em></div>
+        <div class="ohneedle" id="ohneedle"></div>
+      </div>
+      <span class="endicon">🌱</span>
+      <div class="ohval" id="ohval">50</div>
+      <div class="ohdelta" id="ohdelta">—</div>
+    </div>
+    <div class="chip modechip"><small>ÖNS LÄGE</small><span id="ohmode">😐 Neutralt</span></div>
+  </div>
+
+  <div class="cols">
+    <aside class="col-me">
+      <div class="panel">
+        <div class="melogo"><span id="melogo"></span><div><div class="nm" id="mename">—</div><div class="du">DITT LAG</div></div></div>
+        <div class="res">
+          <div class="resbox" id="box-pengar"><span class="ic">🪙</span><div><span class="lbl">Pengar</span><span class="v" id="me-pengar">0</span></div></div>
+          <div class="resbox" id="box-material"><span class="ic">🧱</span><div><span class="lbl">Material</span><span class="v" id="me-material">0</span></div></div>
+        </div>
+        <div class="inc" id="me-inc"></div>
+        <div class="sektor" id="me-sektor"></div>
+        <button class="bigbtn gold" id="btn-trade">🔁 BYT VALUTOR</button>
+        <div class="linklike" id="btn-log">📖 Din årsberättelse</div>
+      </div>
+    </aside>
+
+    <main class="col-island"><div id="map" style="position:absolute;inset:0"></div></main>
+
+    <aside class="col-others">
+      <div class="panel"><h3>De andra lagen</h3><div id="teams"></div></div>
+      <div class="panel"><div class="regs">
+        <div class="reg"><h4>💰 BÖRSEN</h4><ol id="reg-bors"></ol></div>
+        <div class="reg"><h4>🏭 KLIMAT&shy;REGISTRET</h4><ol id="reg-klimat"></ol></div>
+      </div></div>
+      <div class="panel"><button class="bigbtn" id="btn-prop">🗳 LÄGG FÖRSLAG</button></div>
+    </aside>
+  </div>
+
+  <div class="handbar">
+    <div class="handlabel">DIN HAND — VÄLJ 1</div>
+    <div class="cards" id="cards"></div>
+    <div class="endwrap" id="endwrap">
+      <div class="endring">
+        <svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="66" fill="none" stroke="#3a352c" stroke-width="9"/><circle id="timerring" cx="75" cy="75" r="66" fill="none" stroke="#C9A94F" stroke-width="9" stroke-dasharray="414.7" stroke-dashoffset="0" stroke-linecap="round"/></svg>
+        <button class="btn" id="btn-end">AVSLUTA<br>OMGÅNG</button>
+      </div>
+      <div class="endtime" id="timertxt">1:30</div>
+      <div class="endlbl">SEN: BOKSLUT</div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+  <div id="banner"><div class="bt" id="bannertxt"></div></div>
+
+  <!-- Startskärm / lobby -->
+  <div class="overlay open" id="ov-start"><div class="modal">
+    <h1>🏝 ECO LOCO</h1>
+    <div class="tag" id="lobbytag">Bli rikast — utan att sänka ön ni delar.</div>
+    <div id="connstatus" style="display:none"></div>
+    <div id="lobby" style="display:none"></div>
+    <div class="howto" id="howto">
+      <div><span class="n">🃏</span><b>Bygg</b><br>Välj 1 kort per runda.<br>Smutsigt är billigt — men skadar ön.</div>
+      <div><span class="n">🔁</span><b>Byt</b><br>Du tjänar bara en valuta.<br>Den andra får du byta till dig.</div>
+      <div><span class="n">🗳</span><b>Rösta</b><br>Ett förslag per runda.<br>3 av 4 JA krävs.</div>
+    </div>
+    <div class="sub" style="font-size:18px">Håller ön <b style="color:var(--led-green)">över 60</b> efter 8 rundor vinner det rikaste laget. Faller den under — <b style="color:var(--led-red)">förlorar alla.</b></div>
+    <button class="bigbtn gold" id="btn-start" style="font-size:26px">STARTA SPELET</button>
+  </div></div>
+
+  <!-- Byteshandel -->
+  <div class="overlay" id="ov-trade"><div class="modal" style="width:820px">
+    <h2>🔁 BYT VALUTOR</h2>
+    <div class="sub">Du ger <span id="trade-give-lbl"></span> och får <span id="trade-get-lbl"></span> — välj lag och mängd</div>
+    <div class="partnerrow" id="partners"></div>
+    <div class="tradegrid">
+      <div class="tradebox"><div class="who" id="tb-give">DU GER</div>
+        <div class="stepper"><button id="give-minus">−</button><span class="amt" id="give-amt">10</span><button id="give-plus">＋</button></div></div>
+      <div class="tradearrow">⇄</div>
+      <div class="tradebox"><div class="who" id="tb-get">DU FÅR</div>
+        <div class="stepper"><button id="get-minus">−</button><span class="amt" id="get-amt">10</span><button id="get-plus">＋</button></div></div>
+    </div>
+    <div class="votebtns"><button class="ja" id="btn-trade-go">FÖRESLÅ BYTET</button><button class="nej" id="btn-trade-cancel">AVBRYT</button></div>
+  </div></div>
+
+  <!-- Välj förslag -->
+  <div class="overlay" id="ov-choose"><div class="modal" style="width:840px">
+    <h2>🗳 LÄGG ETT FÖRSLAG</h2>
+    <div class="sub">Ett förslag per runda — alla lag röstar, 3 av 4 JA krävs</div>
+    <div id="proplist"></div>
+    <div class="votebtns"><button class="nej" id="btn-choose-cancel">AVBRYT</button></div>
+  </div></div>
+
+  <!-- Röstning -->
+  <div class="overlay" id="ov-vote"><div class="modal" style="width:840px">
+    <h2>🗳 OMRÖSTNING</h2>
+    <div class="sub" id="vote-sub"></div>
+    <div class="propcard"><div class="pic" id="vote-pic"></div><div class="tx" id="vote-tx"></div></div>
+    <div class="votebtns" id="vote-btns"><button class="ja" id="btn-ja"></button><button class="nej" id="btn-nej">NEJ</button></div>
+    <div class="votestat" id="votestat"></div>
+  </div></div>
+
+  <!-- Award-popup -->
+  <div class="overlay" id="ov-award"><div class="award" id="awardcard"></div></div>
+
+  <!-- Inkommande bytesförfrågan (online) -->
+  <div class="overlay" id="ov-tradein"><div class="modal" style="width:680px">
+    <h2>🔁 BYTESFÖRFRÅGAN</h2>
+    <div class="propcard"><div class="pic">🤝</div><div class="tx" id="tradein-tx"></div></div>
+    <div class="votebtns"><button class="ja" id="btn-tradein-ja">ACCEPTERA</button><button class="nej" id="btn-tradein-nej">TACKA NEJ</button></div>
+  </div></div>
+
+  <!-- Register -->
+  <div class="slideover" id="ov-register">
+    <div class="closebar" id="btn-reg-close">✕</div>
+    <h2>📖 Register</h2>
+    <h3>💰 Börsen — rikast (pengar + material)</h3>
+    <table class="ranktable" id="tbl-bors"></table>
+    <h3>🏭 Klimatregistret — störst skada på ön</h3>
+    <table class="ranktable" id="tbl-klimat"></table>
+    <h3>📖 Din årsberättelse</h3>
+    <div id="me-contrib" style="font-size:17px;margin-bottom:10px"></div>
+    <table class="logtable" id="tbl-log"></table>
+  </div>
+
+  <!-- Slutskärm -->
+  <div class="overlay" id="ov-slut"><div class="modal slutmodal">
+    <div class="big" id="slut-title"></div>
+    <div class="why" id="slut-why"></div>
+    <div class="slutcards" id="slut-cards"></div>
+    <div class="efter" id="slut-efter"></div>
+    <button class="bigbtn gold" id="btn-again" style="margin-top:22px">SPELA IGEN</button>
+  </div></div>
+
+</div></div>
+
+<script type="module" src="./src/ui.js"></script>
+</body>
+</html>
