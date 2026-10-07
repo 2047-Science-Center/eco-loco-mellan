@@ -7,7 +7,7 @@
 # Noll pip-beroenden: mosquitto_sub/pub (installerat) + afplay (macOS).
 #   BROKER=localhost ./tools/hjarna-stubb.py
 
-import subprocess, json, os, threading, time
+import subprocess, json, os, threading, time, sys, shutil
 
 BROKER = os.environ.get("BROKER", "localhost")
 PORT   = os.environ.get("PORT", "1883")
@@ -71,13 +71,32 @@ def resolve(fname):
     for ext in (".wav", ".mp3", ".m4a", ".aiff", ".aif"):
         if os.path.exists(stem + ext): return stem + ext
     return None
+# Ljudspelare: afplay på macOS (dev), mpg123/ffplay på Linux (pilot på Mint).
+IS_MAC = sys.platform == "darwin"
+def _oneshot_cmd(path):
+    if IS_MAC: return ["afplay", path]
+    if shutil.which("mpg123"): return ["mpg123", "-q", path]
+    if shutil.which("ffplay"): return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path]
+    return None
+
 def play(fname):
     p = resolve(fname)
-    if p: subprocess.Popen(["afplay", p])
-    elif fname: print(f"[hjarna]   (ljud saknas: {fname})")
+    if not p:
+        if fname: print(f"[hjarna]   (ljud saknas: {fname})")
+        return
+    cmd = _oneshot_cmd(p)
+    if cmd: subprocess.Popen(cmd)
+    else: print("[hjarna]   (ingen ljudspelare — på Linux: sudo apt install mpg123)")
 
 # ---- ambience: kontinuerlig soundscape-loop (halv volym), mixas med stingarna ----
 AMB_VOL = os.environ.get("AMB_VOL", "0.5")
+def _amb_cmd(path):   # kontinuerlig loop + volym, per plattform
+    if IS_MAC: return ["afplay", "-v", AMB_VOL, path]                 # loopas av worker (wait→restart)
+    if shutil.which("mpg123"):
+        return ["mpg123", "-q", "-f", str(int(float(AMB_VOL) * 32768)), "--loop", "-1", path]
+    if shutil.which("ffplay"):
+        return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", str(int(float(AMB_VOL) * 100)), "-loop", "0", path]
+    return None
 AMB_FILE = {
     "superdaligt": "soundscape_1.mp3",   # upprorsstämning (öhälsa ≤20)
     "daligt":      "soundscape_2.mp3",
@@ -92,9 +111,12 @@ def _amb_worker():
     while True:
         target = _amb_target
         if target:
+            cmd = _amb_cmd(target)
+            if not cmd:
+                time.sleep(1); continue
             try:
-                _amb_proc = subprocess.Popen(["afplay", "-v", AMB_VOL, target])
-                _amb_proc.wait()          # spela klart → loopa om (eller byt/stoppa)
+                _amb_proc = subprocess.Popen(cmd)
+                _amb_proc.wait()          # loopa om (macOS) / tills kill (Linux native loop)
             except Exception:
                 time.sleep(0.3)
             _amb_proc = None
