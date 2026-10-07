@@ -18,8 +18,15 @@ import { WebSocketServer } from 'ws';
 import { EcoLoco, AREAS } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { attachMqtt } from '../src/mqtt.js';
+import { attachRigg } from '../src/rigg.js';
+import { execFile } from 'node:child_process';
 
 const PORT = parseInt(process.env.PORT) || 8765;
+// Förstärkningsriggen: publicera semantiska cues (ecoloco/rigg/*) till riggens broker.
+// Hjärnan (hjarna-stubb.py → Blocks) översätter till ljus/ljud. Default = lokal broker.
+const RIGG_BROKER = process.env.RIGG_BROKER || 'localhost';
+const RIGG_PORT   = process.env.RIGG_PORT   || '1883';
+const riggPublish = (t, m) => execFile('mosquitto_pub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-t', t, '-m', String(m)], () => {});
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'spec', 'assets.json')));
 
@@ -40,7 +47,7 @@ const httpServer = http.createServer((req, res) => {
 // ——— Spelvärd ———
 const TEAMS = ['aker', 'skog', 'tundra', 'stad'];
 const NAMN = Object.fromEntries(AREAS.map(a => [a.id, a.namn]));
-let engine = null;
+let engine = null, rigg = null;
 let started = false;
 const claims = { aker: null, skog: null, tundra: null, stad: null };  // teamId → ws | 'bot' | null
 let klar = new Set();          // mänskliga lag som tryckt AVSLUTA
@@ -61,6 +68,7 @@ function lobbyMsg() {
 function newEngine() {
   engine = new EcoLoco(manifest.config || {});
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
+  rigg = attachRigg(engine, { publish: riggPublish });  // förstärkningsriggen: semantiska cues
   const relay = ev => payload => broadcast({ type: 'event', event: ev, payload });
   for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'award', 'event', 'roundEnd', 'gameEnd'])
     engine.on(ev, relay(ev));
@@ -81,6 +89,7 @@ function startTimer() {
   timerInt = setInterval(() => {
     timerLeft--;
     broadcast({ type: 'timer', left: timerLeft });
+    rigg?.tick(timerLeft);                    // countdown-cue vid 10 s kvar
     if (timerLeft <= 0) { stopTimer(); forceResolve(); }
   }, 1000);
 }

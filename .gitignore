@@ -7,3 +7,8 @@ Referens UI/
 
 # OBS: node_modules/ checkas medvetet IN (endast ws, ~200 KB) så att
 # `git clone` räcker för drift även på LAN utan internet.
+
+# rigg-firmware: hemligheter + build
+firmware/rigg-esp/src/config.h
+firmware/rigg-esp/.pio/
+firmware/rigg_arduino/config.h
