@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Starta om spelet
+Comment=Nollställ Eco Loco — starta om server + ladda om skärmar
+# @EXEC@ ersätts av installera-knappar.sh med rätt sökväg till starta-om.sh.
+Exec=@EXEC@
+Icon=view-refresh
+Terminal=false
+Categories=Game;
+StartupNotify=false

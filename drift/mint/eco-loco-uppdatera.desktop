@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Uppdatera spelet
+Comment=Hämta senaste versionen (git pull) och starta om stationen
+# @EXEC@ ersätts av installera-knappar.sh med rätt sökväg till uppdatera.sh.
+Exec=@EXEC@
+Icon=system-software-update
+Terminal=true
+Categories=Game;
+StartupNotify=false
