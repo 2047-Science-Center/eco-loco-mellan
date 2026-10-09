@@ -74,16 +74,20 @@ Cinnamon kan fråga *Trust & Launch* — svara ja en gång.
 
 ## 5. Touch (om bänkarna är touchskärmar)
 
-Touch hanteras av det delade paketet **`mint-touchstation-bas/`** (self-healing mappning +
-"Reset touch"-knapp). Kopiera mappen till NUC:en och:
+Touch hanteras av touch-paketet (self-healing mappning + **"Reset touch"-knapp**). Det
+följer med repot i **`drift/mint/touch/`** (kopia av det delade `mint-touchstation-bas`):
 
 ```bash
-cd ~/mint-touchstation-bas
-bash install-base.sh
+cd drift/mint/touch
+bash install-base.sh     # paket + autostart (self-healing) + "Reset touch"-knapp på skrivbordet
 ./find-touch.sh          # skriver ut panel-ID + skärmar
-nano touch.env           # klistra in raderna find-touch.sh gav
-./reset-touch.sh
+nano touch.env           # klistra in raderna find-touch.sh gav (per maskin, git-ignoreras)
+./reset-touch.sh         # applicera nu (eller dubbelklicka "Reset touch")
 ```
+
+> **En skärm** = en rad i `TOUCH_PAIRS` (se `touch.env.example`). Mappas ofta rätt ändå —
+> paketet behövs främst när touch hamnar på fel skärm. Logga ut/in en gång så startar
+> den självläkande mappningen automatiskt.
 
 ## 6. Autologin (valfritt)
 

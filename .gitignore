@@ -12,3 +12,6 @@ Referens UI/
 firmware/rigg-esp/src/config.h
 firmware/rigg-esp/.pio/
 firmware/rigg_arduino/config.h
+
+# touch-paketet: per-maskin-konfig (varje NUC har sina egna USB-portar) checkas aldrig in
+drift/mint/touch/touch.env

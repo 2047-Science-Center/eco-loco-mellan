@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Touch-mappning (självläkande)
+Comment=Håller touchpanelerna mappade till rätt skärm
+# @EXEC@ ersätts av install-base.sh med rätt sökväg till touch-watch.sh.
+Exec=@EXEC@
+Icon=input-tablet
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
