@@ -58,7 +58,9 @@ bash drift/mint/installera-mint.sh kiosk http://<server-ip>:8765 aker
 ```
 
 Lag-id: `aker` | `skog` | `tundra` | `stad` — utelämna för lobbyn (välj lag på skärmen).
-Installerar Chromium (apt) + unclutter, kiosk-skript med watchdog, autostart, skärmsläckare av.
+Installerar Chromium (apt) + unclutter, skärmsläckare av, och lägger en **skrivbordsikon
+"Starta Eco Loco"**. **Ingen autostart** — du bootar till skrivbordet och öppnar spelet
+själv via ikonen. Stänger du fönstret (Alt+F4) är du tillbaka på skrivbordet.
 
 ## 4. Skrivbordsknappar (skötsel utan terminal)
 
@@ -83,10 +85,11 @@ nano touch.env           # klistra in raderna find-touch.sh gav
 ./reset-touch.sh
 ```
 
-## 6. Autologin + omstart
+## 6. Autologin (valfritt)
 
-**Meny → Inloggningsfönster → Användare → Automatisk inloggning PÅ**, starta om.
-Då bootar NUC:en rakt in i spelet (och riggen, om steg 2 kördes).
+Vill du att NUC:en bootar obevakad **till skrivbordet**: **Meny → Inloggningsfönster →
+Användare → Automatisk inloggning PÅ**. Servern + riggen (steg 1–2) startar ändå automatiskt
+vid inloggning — bara själva spelfönstret öppnar du via **ikonen "Starta Eco Loco"**.
 
 ---
 
@@ -99,8 +102,8 @@ Då bootar NUC:en rakt in i spelet (och riggen, om steg 2 kördes).
 | Serverlogg | `journalctl --user -u eco-loco-server -f` |
 | Hjärn-/rigglogg | `journalctl --user -u eco-loco-hjarna -f` |
 | Broker-logg | `journalctl -u mosquitto -f` |
-| Testa kiosk utan omstart | `~/.local/bin/eco-loco-kiosk.sh` |
-| Ur kioskläget | `Alt+F4` (watchdog startar om) · döda: `pkill -f eco-loco-kiosk` |
+| Öppna spelet | Skrivbordsikonen **Starta Eco Loco** (eller `~/.local/bin/eco-loco-kiosk.sh`) |
+| Stäng spelet | `Alt+F4` → tillbaka på skrivbordet |
 
 ---
 

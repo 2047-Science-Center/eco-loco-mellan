@@ -75,41 +75,53 @@ elif [ "$ROLL" = "kiosk" ]; then
   sudo apt-get install -y chromium 2>/dev/null || sudo apt-get install -y chromium-browser
   CHROMIUM="$(command -v chromium || command -v chromium-browser)"
 
-  echo "▸ Skriver kiosk-skript med watchdog (startar om webbläsaren om den dör)…"
-  mkdir -p "$HOME/.local/bin" "$HOME/.config/autostart"
+  echo "▸ Skriver kiosk-skript (startas MANUELLT från skrivbordsikon — INGEN autostart)…"
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   cat > "$HOME/.local/bin/eco-loco-kiosk.sh" <<EOF
 #!/usr/bin/env bash
-# Eco Loco kiosk — genererad av installera-mint.sh
+# Eco Loco kiosk — genererad av installera-mint.sh. Startas från skrivbordsikonen.
 # Skärmsläckare/strömsparläge av (X11, robust på Mint/Cinnamon):
 xset s off     2>/dev/null || true
 xset -dpms     2>/dev/null || true
 xset s noblank 2>/dev/null || true
-unclutter -idle 1 &
-sleep 3   # låt nätet/servern hinna upp vid boot
-while true; do
-  ${CHROMIUM} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
-    --autoplay-policy=no-user-gesture-required --check-for-update-interval=31536000 \\
-    --app="${SPEL_URL}"
-  sleep 2   # kraschade/stängdes → starta om
-done
+unclutter -idle 1 & UNC=\$!
+${CHROMIUM} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
+  --autoplay-policy=no-user-gesture-required --check-for-update-interval=31536000 \\
+  --app="${SPEL_URL}"
+kill \$UNC 2>/dev/null || true
+# Körs EN gång. Stänger du fönstret (Alt+F4) är du tillbaka på skrivbordet. Ingen watchdog-loop.
 EOF
   chmod +x "$HOME/.local/bin/eco-loco-kiosk.sh"
 
-  cat > "$HOME/.config/autostart/eco-loco-kiosk.desktop" <<EOF
+  # Skrivbordsikon "Starta Eco Loco" (ingen autostart — du öppnar själv från skrivbordet).
+  apps="$HOME/.local/share/applications"
+  desktop_dir="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+  tmp="$(mktemp)"
+  cat > "$tmp" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Eco Loco Kiosk
-Exec=$HOME/.local/bin/eco-loco-kiosk.sh
-X-GNOME-Autostart-enabled=true
+Name=Starta Eco Loco${LAG:+ (${LAG})}
+Comment=Öppna spelet i helskärm
+Exec=bash "$HOME/.local/bin/eco-loco-kiosk.sh"
+Icon=input-gaming
 Terminal=false
+Categories=Game;
+StartupNotify=false
 EOF
+  install -m 0755 "$tmp" "$apps/eco-loco-starta.desktop"
+  if [ -d "$desktop_dir" ]; then
+    install -m 0755 "$tmp" "$desktop_dir/eco-loco-starta.desktop"
+    gio set "$desktop_dir/eco-loco-starta.desktop" metadata::trusted true 2>/dev/null || true
+  fi
+  rm -f "$tmp"
+  update-desktop-database "$apps" 2>/dev/null || true
 
   echo
   echo "✔ Kiosk mot: ${SPEL_URL}"
-  echo "  Startar automatiskt vid inloggning. Slå på AUTOLOGIN för ${USER}:"
+  echo "  INGEN autostart. Du bootar till skrivbordet och öppnar via ikonen 'Starta Eco Loco'."
+  echo "  Stänger du fönstret (Alt+F4) → tillbaka på skrivbordet."
+  echo "  (Valfritt) autologin TILL SKRIVBORDET för obevakad boot:"
   echo "  Meny → Inloggningsfönster → fliken Användare → Automatisk inloggning PÅ."
-  echo "  Testa direkt utan omstart:  ~/.local/bin/eco-loco-kiosk.sh"
-  echo "  Ur kioskläget:  Alt+F4 (watchdogen startar om) · döda helt: pkill -f eco-loco-kiosk"
 
 else
   echo "Användning:"
