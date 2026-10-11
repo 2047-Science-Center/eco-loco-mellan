@@ -72,10 +72,17 @@ def resolve(fname):
         if os.path.exists(stem + ext): return stem + ext
     return None
 # Ljudspelare: afplay på macOS (dev), mpg123/ffplay på Linux (pilot på Mint).
+# AUDIO_SINK (Linux): pinna RIGG-ljudet till en viss PulseAudio-sink, t.ex. Anker-högtalaren
+# på NUC 1 — spelets webbläsar-klick ligger kvar på standard-sinken (skärm/annan högtalare).
 IS_MAC = sys.platform == "darwin"
+AUDIO_SINK = os.environ.get("AUDIO_SINK", "")
+def _mpg123_base():
+    cmd = ["mpg123", "-q"]
+    if AUDIO_SINK: cmd += ["-o", "pulse", "-a", AUDIO_SINK]   # rikta till vald sink
+    return cmd
 def _oneshot_cmd(path):
     if IS_MAC: return ["afplay", path]
-    if shutil.which("mpg123"): return ["mpg123", "-q", path]
+    if shutil.which("mpg123"): return _mpg123_base() + [path]
     if shutil.which("ffplay"): return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path]
     return None
 
@@ -93,7 +100,7 @@ AMB_VOL = os.environ.get("AMB_VOL", "0.5")
 def _amb_cmd(path):   # kontinuerlig loop + volym, per plattform
     if IS_MAC: return ["afplay", "-v", AMB_VOL, path]                 # loopas av worker (wait→restart)
     if shutil.which("mpg123"):
-        return ["mpg123", "-q", "-f", str(int(float(AMB_VOL) * 32768)), "--loop", "-1", path]
+        return _mpg123_base() + ["-f", str(int(float(AMB_VOL) * 32768)), "--loop", "-1", path]
     if shutil.which("ffplay"):
         return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", str(int(float(AMB_VOL) * 100)), "-loop", "0", path]
     return None
