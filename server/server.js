@@ -15,7 +15,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { EcoLoco, AREAS } from '../spec/engine.js';
+import { EcoLoco, AREAS, timerSecFor } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { attachMqtt } from '../src/mqtt.js';
 import { attachRigg } from '../src/rigg.js';
@@ -26,7 +26,16 @@ const PORT = parseInt(process.env.PORT) || 8765;
 // Hjärnan (hjarna-stubb.py → Blocks) översätter till ljus/ljud. Default = lokal broker.
 const RIGG_BROKER = process.env.RIGG_BROKER || 'localhost';
 const RIGG_PORT   = process.env.RIGG_PORT   || '1883';
-const riggPublish = (t, m) => execFile('mosquitto_pub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-t', t, '-m', String(m)], () => {});
+let riggWarned = false;
+const riggPublish = (t, m) => {
+  console.log(`[rigg→] ${t} ${m}`);
+  execFile('mosquitto_pub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-t', t, '-m', String(m)], (err) => {
+    if (err && !riggWarned) {
+      riggWarned = true;
+      console.warn(`[rigg] VARNING: mosquitto_pub misslyckades (${err.code || err.message}). Rigg-cues når inte brokern ${RIGG_BROKER}:${RIGG_PORT} — kolla att mosquitto-clients finns och att RIGG_BROKER stämmer.`);
+    }
+  });
+};
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'spec', 'assets.json')));
 
@@ -52,6 +61,9 @@ let started = false;
 const claims = { aker: null, skog: null, tundra: null, stad: null };  // teamId → ws | 'bot' | null
 let klar = new Set();          // mänskliga lag som tryckt AVSLUTA
 let timerLeft = 0, timerInt = null;
+let tutBeats = {};             // tutorial-barriären: beat → Set av lag som är klara
+let awardsVantar = new Set();  // mänskliga lag som inte klickat klart prisutdelningen än
+let awardsFailsafe = null;     // timeout som startar timern även om någon klient tappas
 let resolvingNow = false;
 let offerSeq = 0;
 const offers = new Map();      // offerId → { from, to, give, giveCur, get, getCur }
@@ -75,25 +87,48 @@ function newEngine() {
   engine.on('roundStart', p => {
     resolvingNow = false; klar = new Set();
     broadcast({ type: 'event', event: 'roundStart', payload: p });
-    startTimer();
+    if (p.round > 1) pauseForAwards(); else startTimer();   // runda 2+: timern väntar tills prisutdelningen klickats igenom
     maybeBotProposal(p.round);
   });
   engine.on('gameEnd', () => stopTimer());
   engine.on('proposalOpened', () => { checkBotVotes(); });
 }
 
+function roundFull() { return timerSecFor(engine.cfg, engine.getState().round); }
+
 function startTimer() {
   stopTimer();
-  timerLeft = engine.cfg.timerSec;
-  broadcast({ type: 'timer', left: timerLeft });
+  const full = roundFull();
+  timerLeft = full;
+  broadcast({ type: 'timer', left: timerLeft, full });
   timerInt = setInterval(() => {
     timerLeft--;
-    broadcast({ type: 'timer', left: timerLeft });
+    broadcast({ type: 'timer', left: timerLeft, full });
     rigg?.tick(timerLeft);                    // countdown-cue vid 10 s kvar
     if (timerLeft <= 0) { stopTimer(); forceResolve(); }
   }, 1000);
 }
-function stopTimer() { clearInterval(timerInt); timerInt = null; }
+function stopTimer() {
+  clearInterval(timerInt); timerInt = null;
+  clearTimeout(awardsFailsafe); awardsFailsafe = null; awardsVantar = new Set();
+}
+
+// Prisutdelning: visa full rundtid men låt den stå stilla tills alla levande människor
+// klickat igenom award-korten (eller failsafen slår till — tappad klient ska inte frysa spelet).
+function pauseForAwards() {
+  stopTimer();
+  const full = roundFull();
+  timerLeft = full;
+  broadcast({ type: 'timer', left: timerLeft, full, paused: true });
+  awardsVantar = new Set(liveHumanIds());
+  if (awardsVantar.size === 0) return startTimer();
+  awardsFailsafe = setTimeout(() => { awardsVantar = new Set(); startTimer(); }, 40000);
+}
+function awardsKlar(lag) {
+  if (!awardsVantar.has(lag)) return;
+  awardsVantar.delete(lag);
+  if (awardsVantar.size === 0 && !timerInt && started && !engine.getState().over) startTimer();
+}
 
 // Röstlogik: botar röstar när alla (levande) människor röstat; döda/mänskliga eftersläntrare tvingas vid timeout.
 function checkBotVotes() {
@@ -188,10 +223,19 @@ wss.on('connection', ws => {
         broadcast(lobbyMsg());
         break;
       }
+      case 'tutBeat': {
+        // Tutorial-barriär: ren relä — klienterna äger tutorialen, servern säger bara vilka som är klara med ett beat.
+        if (!lag || started) break;
+        (tutBeats[m.beat] ||= new Set()).add(lag);
+        broadcast({ type: 'tutUpdate', beat: m.beat, klara: [...tutBeats[m.beat]], humans: liveHumanIds().length });
+        break;
+      }
       case 'startGame': {
+        console.log(`[spel] startGame från ${lag || 'bänk utan lag'}${started && !engine.getState().over ? ' — ignorerad (pågår)' : ''}`);
         if (started && !engine.getState().over) break;
         for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
         started = true;
+        tutBeats = {};
         newEngine();
         broadcast(lobbyMsg());
         engine.start();
@@ -209,6 +253,10 @@ wss.on('connection', ws => {
           broadcast({ type: 'klarUpdate', klar: [...klar], senast: lag, humans: liveHumanIds().length });
           maybeResolve();   // alla mänskliga lag klara → bokslutet körs direkt, timern väntas inte ut
         }
+        break;
+      }
+      case 'awardsKlara': {
+        if (lag) awardsKlar(lag);   // klickat igenom prisutdelningen → timern startar när alla är klara
         break;
       }
       case 'openProposal': {
@@ -261,7 +309,7 @@ wss.on('connection', ws => {
       claims[lag] = started ? 'bot' : null;   // mitt i spel → boten tar över; i lobby → platsen släpps
       if (started && !engine.getState().over) broadcast({ type: 'notis', text: `🤖 ${NAMN[lag]} tappade kontakten — styrs nu av datorn` });
       broadcast(lobbyMsg());
-      if (started) { klar.delete(lag); checkBotVotes(); maybeResolve(); }
+      if (started) { klar.delete(lag); awardsKlar(lag); checkBotVotes(); maybeResolve(); }
     }
   });
 });
