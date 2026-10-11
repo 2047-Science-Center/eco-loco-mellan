@@ -76,9 +76,11 @@ def resolve(fname):
 # på NUC 1 — spelets webbläsar-klick ligger kvar på standard-sinken (skärm/annan högtalare).
 IS_MAC = sys.platform == "darwin"
 AUDIO_SINK = os.environ.get("AUDIO_SINK", "")
+if AUDIO_SINK and not IS_MAC:
+    os.environ["PULSE_SINK"] = AUDIO_SINK     # libpulse-klienter (mpg123/ffplay) ärver detta → rätt sink
 def _mpg123_base():
     cmd = ["mpg123", "-q"]
-    if AUDIO_SINK: cmd += ["-o", "pulse", "-a", AUDIO_SINK]   # rikta till vald sink
+    if AUDIO_SINK: cmd += ["-o", "pulse"]     # tvinga pulse-utgången så PULSE_SINK gäller
     return cmd
 def _oneshot_cmd(path):
     if IS_MAC: return ["afplay", path]
