@@ -12,6 +12,8 @@
 export const DEFAULT_CONFIG = {
   rounds: 8,
   timerSec: 90,
+  timerSecEarly: 120, // rundtid för de första rundorna (inlärning)
+  earlyRounds: 3,     // så många rundor körs med timerSecEarly
   startPengar: 40,
   startMaterial: 30,
   ohStart: 50,
@@ -28,12 +30,17 @@ export const DEFAULT_CONFIG = {
 };
 
 // Ett område = ett lag. Områdesfärg = lagfärg. sektor styr valuta-beroendet.
+// id = internt områdesnamn (används i MQTT/rigg — ändra ALDRIG). namn = lagets visningsnamn (djuret).
 export const AREAS = [
-  { id: 'aker',   namn: 'Åkermark', farg: '#E7C24C', sektor: 'material' },
-  { id: 'skog',   namn: 'Skog',     farg: '#3F8F4A', sektor: 'material' },
-  { id: 'tundra', namn: 'Tundra',   farg: '#D98A3C', sektor: 'pengar'   },
-  { id: 'stad',   namn: 'Stad',     farg: '#8A8F96', sektor: 'pengar'   },
+  { id: 'aker',   namn: 'Oxen',    farg: '#E7C24C', sektor: 'material' },
+  { id: 'skog',   namn: 'Björnen', farg: '#3F8F4A', sektor: 'material' },
+  { id: 'tundra', namn: 'Räven',   farg: '#D98A3C', sektor: 'pengar'   },
+  { id: 'stad',   namn: 'Örnen',   farg: '#8A8F96', sektor: 'pengar'   },
 ];
+
+// Rundtid: de första earlyRounds rundorna är längre (inlärning), resten timerSec.
+export const timerSecFor = (cfg, round) =>
+  round <= (cfg.earlyRounds ?? 0) ? (cfg.timerSecEarly ?? cfg.timerSec) : cfg.timerSec;
 
 // Händer per område. Samma balans-siffror per sektor; bara namn/asset skiljer.
 // kp/km = engångskostnad (pengar/material). gp/gm = passiv inkomst/runda. oh = engångseffekt på öhälsa.
