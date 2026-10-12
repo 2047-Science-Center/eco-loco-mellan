@@ -24,6 +24,16 @@ sudo systemctl enable --now mosquitto
 sudo systemctl restart mosquitto
 
 echo "▸ --user-tjänst för hjärnan (hjarna-stubb.py, BROKER=localhost)…"
+# AUDIO_SINK = rigg-ljudets utgång (t.ex. Anker). Sätts vid körning:
+#   AUDIO_SINK=<sink-namn> bash drift/mint/installera-rigg.sh     (hitta med: pactl list short sinks)
+AUDIO_SINK="${AUDIO_SINK:-}"
+SINK_LINE=""
+if [ -n "$AUDIO_SINK" ]; then
+  SINK_LINE="Environment=AUDIO_SINK=${AUDIO_SINK}"
+  echo "   rigg-ljud → $AUDIO_SINK"
+else
+  echo "   (ingen AUDIO_SINK satt → rigg-ljud går till standard-utgången. Sätt AUDIO_SINK för t.ex. Anker.)"
+fi
 mkdir -p "$HOME/.config/systemd/user"
 cat > "$HOME/.config/systemd/user/eco-loco-hjarna.service" <<EOF
 [Unit]
@@ -33,6 +43,7 @@ After=network-online.target
 [Service]
 WorkingDirectory=${REPO_DIR}
 Environment=BROKER=localhost
+${SINK_LINE}
 ExecStart=$(command -v python3) ${REPO_DIR}/tools/hjarna-stubb.py
 Restart=always
 RestartSec=3
