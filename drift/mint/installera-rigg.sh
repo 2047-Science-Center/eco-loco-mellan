@@ -52,7 +52,8 @@ RestartSec=3
 WantedBy=default.target
 EOF
 systemctl --user daemon-reload
-systemctl --user enable --now eco-loco-hjarna
+systemctl --user enable eco-loco-hjarna
+systemctl --user restart eco-loco-hjarna   # restart (ej bara start) så ändrad AUDIO_SINK slår igenom
 sudo loginctl enable-linger "$USER" 2>/dev/null || true
 
 sleep 1
