@@ -1,39 +1,52 @@
 #!/usr/bin/env bash
-# installera-rigg.sh — gör att SPELET triggar förstärkningsriggen från server-NUC:en.
-# Kör på SAMMA NUC som kör spelservern (efter installera-mint.sh server).
+# installera-rigg.sh — kopplar förstärkningsriggen till spelet via en MQTT-broker.
+# Kör på SAMMA NUC som spelservern (efter installera-mint.sh server).
 #
 # Kedjan den sätter upp:
-#   spel (server.js -> src/rigg.js, semantiska cues) -> mosquitto (localhost)
-#     -> hjarna-stubb.py (översätter semantik -> granulärt + ljud) -> ESP32 renderar
+#   spel (server.js -> src/rigg.js, semantik) -> BROKER -> hjarna-stubb.py (semantik -> granulärt + ljud) -> ESP32
 #
-# ESP32:ns firmware ska då ha  MQTT_BROKER = <denna NUC:s IP>.
+# Riktar BÅDE spelservern (RIGG_BROKER) OCH hjärnan (BROKER) mot samma broker, så de aldrig
+# hamnar på olika brokers (then renderas inget).
 #
-#   bash drift/mint/installera-rigg.sh
+#   bash drift/mint/installera-rigg.sh 192.168.0.23   # EXTERN broker (t.ex. 2047-brokern) — INGEN lokal broker
+#   bash drift/mint/installera-rigg.sh                # lokal, självständig broker på denna NUC (localhost)
+#
+# ESP32:ns firmware (MQTT_BROKER) och Blocks-enheterna ska peka på SAMMA broker.
+# AUDIO_SINK=<sink> framför kommandot → rigg-ljudet på en viss utgång (pactl list short sinks).
 
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BROKER="${1:-localhost}"
 
-echo "▸ Installerar mosquitto (broker) + klienter + mpg123 (riggljud)…"
+echo "▸ Installerar mosquitto-clients + mpg123 (hjärnan triggar via mosquitto_pub/sub; mpg123 = riggljud)…"
 sudo apt-get update -qq
-sudo apt-get install -y mosquitto mosquitto-clients mpg123
+sudo apt-get install -y mosquitto-clients mpg123
 
-echo "▸ Broker lyssnar på hela LAN:et (så ESP32:n kan ansluta över wifi/kabel)…"
-# Återbruk av repots prototyp-config: listener 0.0.0.0:1883, anonymt (prototyp).
-sudo cp "${REPO_DIR}/tools/mosquitto-rigg.conf" /etc/mosquitto/conf.d/eco-loco-rigg.conf
-sudo systemctl enable --now mosquitto
-sudo systemctl restart mosquitto
+if [ "$BROKER" = "localhost" ] || [ "$BROKER" = "127.0.0.1" ]; then
+  echo "▸ LOKAL broker: installerar mosquitto på denna NUC (lyssnar på hela LAN:et)…"
+  sudo apt-get install -y mosquitto
+  sudo cp "${REPO_DIR}/tools/mosquitto-rigg.conf" /etc/mosquitto/conf.d/eco-loco-rigg.conf
+  sudo systemctl enable --now mosquitto
+  sudo systemctl restart mosquitto
+  ESP_BROKER="$(hostname -I | awk '{print $1}')"   # ESP/Blocks pekar på denna NUC:s LAN-IP
+else
+  echo "▸ EXTERN broker: $BROKER — installerar INGEN lokal broker."
+  if timeout 4 mosquitto_sub -h "$BROKER" -t '$SYS/broker/version' -C 1 >/dev/null 2>&1; then
+    echo "   ✓ brokern $BROKER svarar på 1883"
+  else
+    echo "   ⚠ fick inget svar från $BROKER:1883 — kontrollera att brokern kör och är nåbar (forts. ändå)."
+  fi
+  ESP_BROKER="$BROKER"
+fi
 
-echo "▸ --user-tjänst för hjärnan (hjarna-stubb.py, BROKER=localhost)…"
-# AUDIO_SINK = rigg-ljudets utgång (t.ex. Anker). Sätts vid körning:
-#   AUDIO_SINK=<sink-namn> bash drift/mint/installera-rigg.sh     (hitta med: pactl list short sinks)
+echo "▸ Riktar SPELSERVERN mot brokern (RIGG_BROKER=$BROKER) via drop-in…"
+mkdir -p "$HOME/.config/systemd/user/eco-loco-server.service.d"
+printf '[Service]\nEnvironment=RIGG_BROKER=%s\n' "$BROKER" > "$HOME/.config/systemd/user/eco-loco-server.service.d/broker.conf"
+
+echo "▸ --user-tjänst för hjärnan (hjarna-stubb.py, BROKER=$BROKER)…"
 AUDIO_SINK="${AUDIO_SINK:-}"
 SINK_LINE=""
-if [ -n "$AUDIO_SINK" ]; then
-  SINK_LINE="Environment=AUDIO_SINK=${AUDIO_SINK}"
-  echo "   rigg-ljud → $AUDIO_SINK"
-else
-  echo "   (ingen AUDIO_SINK satt → rigg-ljud går till standard-utgången. Sätt AUDIO_SINK för t.ex. Anker.)"
-fi
+[ -n "$AUDIO_SINK" ] && { SINK_LINE="Environment=AUDIO_SINK=${AUDIO_SINK}"; echo "   rigg-ljud → $AUDIO_SINK"; }
 mkdir -p "$HOME/.config/systemd/user"
 cat > "$HOME/.config/systemd/user/eco-loco-hjarna.service" <<EOF
 [Unit]
@@ -42,7 +55,7 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=${REPO_DIR}
-Environment=BROKER=localhost
+Environment=BROKER=${BROKER}
 ${SINK_LINE}
 ExecStart=$(command -v python3) ${REPO_DIR}/tools/hjarna-stubb.py
 Restart=always
@@ -51,16 +64,21 @@ RestartSec=3
 [Install]
 WantedBy=default.target
 EOF
+# Städa ev. gammal manuell drop-in som annars överrider BROKER i huvudfilen.
+rm -f "$HOME/.config/systemd/user/eco-loco-hjarna.service.d/broker.conf" 2>/dev/null || true
+
 systemctl --user daemon-reload
 systemctl --user enable eco-loco-hjarna
-systemctl --user restart eco-loco-hjarna   # restart (ej bara start) så ändrad AUDIO_SINK slår igenom
+systemctl --user restart eco-loco-hjarna
+systemctl --user restart eco-loco-server 2>/dev/null || true   # så RIGG_BROKER-drop-in slår igenom
 sudo loginctl enable-linger "$USER" 2>/dev/null || true
 
 sleep 1
 echo
-echo "✔ Broker + hjärna kör. Spelet (RIGG_BROKER=localhost) triggar nu riggen."
-echo "  Broker-logg:  journalctl -u mosquitto -f"
+echo "✔ Spelserver + hjärna pekar nu på brokern: $BROKER"
 echo "  Hjärn-logg:   journalctl --user -u eco-loco-hjarna -f"
+[ "$BROKER" = "localhost" ] || [ "$BROKER" = "127.0.0.1" ] && echo "  Broker-logg:  journalctl -u mosquitto -f"
 echo
-echo "  → Sätt ESP32:ns  MQTT_BROKER = $(hostname -I | awk '{print $1}')  och flasha om."
-echo "  → Testa utan spel:  BROKER=localhost bash tools/mock-rigg-semantisk.sh kris"
+echo "  → ESP32:ns  MQTT_BROKER = $ESP_BROKER   (firmware/rigg_arduino/config.h) → flasha om."
+echo "  → Blocks-enheterna (EcolocoRigg/EcolocoSpel) ska peka på samma broker: $ESP_BROKER"
+echo "  → Testa utan spel:  BROKER=$BROKER bash tools/mock-rigg-semantisk.sh kris"

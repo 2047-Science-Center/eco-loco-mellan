@@ -32,22 +32,28 @@ bash drift/mint/installera-mint.sh server
   vid inloggning, omstart vid krasch), skriver ut NUC:ens IP. **Anteckna IP:t** — kiosk­skärmarna pekar hit.
 - `--user`-tjänst = skrivbordsknapparna kan starta om spelet **utan lösenord**.
 
-## 2. Låt spelet TRIGGA riggen (på server-NUC:en)
+## 2. Koppla riggen till spelet (på server-NUC:en)
 
+Mot **2047-brokern** (rekommenderat — allt på en gemensam broker, ingen lokal):
+```bash
+bash drift/mint/installera-rigg.sh 192.168.0.23
+```
+…eller en **lokal, självständig broker** på denna NUC (utelämna IP:t):
 ```bash
 bash drift/mint/installera-rigg.sh
 ```
 
-Sätter upp hela kedjan **spel → broker → hjärna → ESP32**:
-- `mosquitto` (broker, lyssnar på hela LAN:et) + `mpg123` (riggljud).
-- **--user-tjänsten `eco-loco-hjarna`** (översätter semantiska cues → granulärt + ljud).
-- Spelservern har redan `RIGG_BROKER=localhost` → publicerar hit automatiskt.
+Sätter upp kedjan **spel → broker → hjärna → ESP32** och riktar **både spelservern (`RIGG_BROKER`)
+och hjärnan (`BROKER`) mot samma broker** (så de aldrig hamnar på olika → då renderas inget):
+- `mosquitto-clients` + `mpg123` (riggljud) alltid; en lokal `mosquitto`-broker **bara** i localhost-läget.
+- **--user-tjänsten `eco-loco-hjarna`** översätter semantiska cues → granulärt + ljud.
 
-👉 **Sätt sedan ESP32:ns `MQTT_BROKER` = den här NUC:ens IP** (i firmware `config.h`) och flasha om.
-Då följer riggen spelet live. Testa utan spel: `BROKER=localhost bash tools/mock-rigg-semantisk.sh kris`.
+👉 **Sätt ESP32:ns `MQTT_BROKER` och Blocks-enheterna (EcolocoRigg/EcolocoSpel) till samma broker**
+(IP:t skriptet skriver ut) och flasha om. Testa utan spel:
+`BROKER=192.168.0.23 bash tools/mock-rigg-semantisk.sh kris`.
 
-> Hoppar du över steg 2 funkar spelet ändå — riggen styrs bara inte härifrån.
-> I final kan brokern i stället bo på Blocks-servern; peka då `RIGG_BROKER` + ESP dit.
+> Hoppar du över steg 2 funkar spelet ändå — riggen styrs bara inte.
+> **Viktigt:** server, hjärna, ESP och Blocks måste alla peka på **samma** broker, annars renderas inget.
 
 ## 3. Varje kioskskärm (en per bänk)
 
