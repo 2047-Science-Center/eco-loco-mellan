@@ -195,6 +195,10 @@ function initIcons() {
   set('#btn-prop', `${ico('rosta', 22)} LÄGG FÖRSLAG`);
   set('#toplist-h', `${ico('borsen', 18)} TOPPLISTA`);
   set('#ov-start h1', `${ico('on', 46)} ECO LOCO`);
+  set('#ov-trade h2', `${ico('byt', 24)} BYT VALUTOR`);
+  set('#ov-choose h2', `${ico('rosta', 24)} LÄGG ETT FÖRSLAG`);
+  set('#ov-vote h2', `${ico('rosta', 24)} OMRÖSTNING`);
+  set('#ov-tradein h2', `${ico('byt', 24)} BYTESFÖRFRÅGAN`);
 }
 initIcons();
 function fit() {
@@ -628,21 +632,29 @@ function initSector() {
   $('mename').textContent = teamName(game.me);
 }
 
+function tradePartnersByNeed() {
+  // Rangordna efter vem som har MEST av valutan du behöver (getCur) — störst överst.
+  return E().getState().teams.filter(t => t.id !== game.me)
+    .sort((a, b) => b[getCur] - a[getCur]);
+}
 function openTrade(partnerId = null) {
-  const partners = E().getState().teams.filter(t => t.id !== game.me);
-  tradePartner = partnerId || partners.find(t => t.sektor !== mySector)?.id || partners[0].id;
+  const partners = tradePartnersByNeed();
+  tradePartner = partnerId || partners[0].id;
   giveAmt = 10; getAmt = 10;
-  $('trade-give-lbl').textContent = `${giveCur} ${CUR_ICON[giveCur]}`;
-  $('trade-get-lbl').textContent = `${getCur} ${CUR_ICON[getCur]}`;
-  $('tb-give').textContent = `DU GER (${giveCur} ${CUR_ICON[giveCur]})`;
-  $('tb-get').textContent = `DU FÅR (${getCur} ${CUR_ICON[getCur]})`;
+  $('trade-give-lbl').innerHTML = `${giveCur} ${curIco(giveCur, 16)}`;
+  $('trade-get-lbl').innerHTML = `${getCur} ${curIco(getCur, 16)}`;
+  $('tb-give').innerHTML = `DU GER (${giveCur} ${curIco(giveCur, 14)})`;
+  $('tb-get').innerHTML = `DU FÅR (${getCur} ${curIco(getCur, 14)})`;
   renderTradeModal();
   $('ov-trade').classList.add('open');
 }
 function renderTradeModal() {
-  $('partners').innerHTML = E().getState().teams.filter(t => t.id !== game.me).map(t => `
-    <button class="${t.id === tradePartner ? 'sel' : ''}" data-p="${t.id}">
-      ${logoSVG(t.id, 46)}${t.namn}<small>🪙${t.pengar} 🧱${t.material}</small>
+  $('partners').innerHTML = tradePartnersByNeed().map((t, i) => `
+    <button class="${t.id === tradePartner ? 'sel' : ''} ${i === 0 ? 'top' : ''}" data-p="${t.id}">
+      ${i === 0 ? `<span class="most">MEST ${curIco(getCur, 13)}</span>` : ''}
+      ${logoSVG(t.id, i === 0 ? 54 : 40)}
+      <span class="pn">${t.namn}</span>
+      <small><span class="hot">${t[getCur]}${curIco(getCur, 13)}</span> · ${t[giveCur]}${curIco(giveCur, 13)}</small>
     </button>`).join('');
   document.querySelectorAll('#partners [data-p]').forEach(b =>
     b.addEventListener('click', () => { tradePartner = b.dataset.p; renderTradeModal(); }));

@@ -183,10 +183,14 @@
   .stepper button { width: 58px; height: 58px; border-radius: 12px; background: var(--panel2); color: var(--text); border: 3px solid var(--edge2); font-size: 30px; font-weight: 800; cursor: pointer; }
   .stepper .amt { font-family: Menlo, monospace; font-size: 40px; color: var(--led); min-width: 100px; }
   .tradearrow { font-size: 44px; }
-  .partnerrow { display: flex; gap: 12px; margin-bottom: 18px; }
-  .partnerrow button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 14px; font: inherit; color: var(--text); font-weight: 800; font-size: 17px; cursor: pointer; }
+  .partnerrow { display: flex; gap: 12px; margin: 10px 0 18px; align-items: stretch; }
+  .partnerrow button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 14px; font: inherit; color: var(--text); font-weight: 800; font-size: 17px; cursor: pointer; }
   .partnerrow button.sel { border-color: var(--gold); }
-  .partnerrow small { font-family: Menlo, monospace; color: var(--led); font-weight: 400; }
+  .partnerrow button.top { transform: scale(1.05); background: linear-gradient(180deg, rgba(201,169,79,.14), var(--panel3)); }
+  .partnerrow .most { position: absolute; top: -11px; right: 8px; background: var(--gold); color: #241E0F; font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 3px 7px; border-radius: 8px; display: inline-flex; align-items: center; gap: 3px; }
+  .partnerrow .pn { font-weight: 800; }
+  .partnerrow small { font-family: var(--font-num); color: var(--led); font-weight: 400; display: inline-flex; align-items: center; gap: 4px; }
+  .partnerrow small .hot { font-weight: 800; font-size: 1.18em; color: var(--text); }
 
   .award { width: 280px; background: var(--panel3); border: 3px solid var(--gold); border-radius: 16px; padding: 24px 18px; text-align: center; }
   .award .em { font-size: 60px; }
