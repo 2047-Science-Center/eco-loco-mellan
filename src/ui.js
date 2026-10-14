@@ -436,12 +436,26 @@ if (ONLINE) {
 }
 
 // ═══════════════ Rendering ═══════════════
+// Räknar upp/ner en siffra (ease-out) — känns som en reaktion på handlingen.
+const _reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function animateCount(el, to, ms = 650) {
+  const from = parseInt(el.textContent, 10) || 0;
+  if (from === to || _reduceMotion()) { el.textContent = to; return; }
+  const t0 = performance.now();
+  const step = now => {
+    const p = Math.min(1, (now - t0) / ms);
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 function updateOh({ value, mode, delta }) {
   const c = E().cfg;
   $('ohfill').style.width = `calc(${value}% - 6px)`;
   $('ohfill').style.background = value < c.redZone ? 'var(--oh-red)' : value > c.greenZone ? 'var(--oh-green)' : 'var(--oh-yellow)';
   $('ohneedle').style.left = `${value}%`;
-  $('ohval').textContent = value;
+  animateCount($('ohval'), value);
   $('ohval').style.color = value < c.redZone ? 'var(--oh-red)' : value > c.greenZone ? 'var(--oh-green)' : 'var(--oh-yellow)';
   const d = $('ohdelta');
   d.textContent = delta === 0 ? '—' : (delta > 0 ? `▲ ${delta}` : `▼ ${-delta}`);

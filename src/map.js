@@ -162,6 +162,8 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     st.textContent = `
       @keyframes ecoloco-drift { from { transform: translateX(-220px); } to { transform: translateX(1760px); } }
       @keyframes ecoloco-twinkle { 0%,100% { opacity: 0; } 50% { opacity: 0.9; } }
+      @keyframes ecoloco-drop { from { transform: translateY(-42px) scale(0.9); opacity: 0; } 60% { opacity: 1; } to { transform: translateY(0) scale(1); opacity: 1; } }
+      .ecoloco-drop { animation: ecoloco-drop 340ms cubic-bezier(.22,1,.36,1) both; transform-box: fill-box; transform-origin: 50% 88%; }
       .ecoloco-map g { transition: filter 1.2s; }`;
     document.head.appendChild(st);
   }
@@ -184,6 +186,7 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     if (!s) return null;
     const img = el('image', {
       href, x: s.x - size / 2, y: s.y - size * 0.82, width: size, height: size,
+      class: 'ecoloco-drop',
       'data-building': `${area}-${slotIndex}`,
     });
     // måla i y-ordning så främre byggnader hamnar över bakre
