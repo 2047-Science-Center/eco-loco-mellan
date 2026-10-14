@@ -165,7 +165,18 @@ function makeProxy() {
   };
 }
 
+// Om servern inte svarar inom 5 s: visa "Ingen kontakt" i stället för att fastna tyst här.
+// (await makeOnline() nedan resolvar först vid hello-ack; utan detta får btn-attract aldrig
+//  sin klick-hanterare → "STARTA SPELET" blir en död knapp utan felmeddelande.)
+let _noContact = null;
+if (ONLINE) {
+  const host = document.getElementById('nocontact-host');
+  if (host) host.textContent = location.host;
+  _noContact = setTimeout(() => document.getElementById('ov-nocontact')?.classList.add('open'), 5000);
+}
 const realGame = ONLINE ? await makeOnline() : makeLocal();
+if (_noContact) clearTimeout(_noContact);
+document.getElementById('ov-nocontact')?.classList.remove('open');
 const game = makeProxy();
 game.attach(realGame);
 const E = game.E;
