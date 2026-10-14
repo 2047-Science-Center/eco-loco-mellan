@@ -193,9 +193,7 @@ function initIcons() {
   set('#box-material .ic', ico('material', 26));
   set('#btn-trade', `${ico('byt', 22)} BYT VALUTOR`);
   set('#btn-prop', `${ico('rosta', 22)} LÄGG FÖRSLAG`);
-  const regH = document.querySelectorAll('.reg h4');
-  if (regH[0]) regH[0].innerHTML = `${ico('borsen', 18)} BÖRSEN`;
-  if (regH[1]) regH[1].innerHTML = `${ico('industri', 18)} KLIMAT&shy;REGISTRET`;
+  set('#toplist-h', `${ico('borsen', 18)} TOPPLISTA`);
   set('#ov-start h1', `${ico('on', 46)} ECO LOCO`);
 }
 initIcons();
@@ -472,29 +470,50 @@ function flashRes(cur, amount) {
   setTimeout(() => { box.classList.remove('flash-up', 'flash-down'); chip.remove(); }, 1400);
 }
 
+// Topplistan: alla fyra lag rankade på förmögenhet (= Börsen), ledaren i egen tier,
+// BYT per motståndarrad, ditt eget lag markerat DU. Ersätter både "de andra lagen" + Börsen.
 function renderTeams() {
   if (!E()?.getState()) return;
   const lb = E().leaderboards();
   const rich = lb.bors[0], bov = lb.klimat[0];
-  $('teams').innerHTML = E().getState().teams.filter(t => t.id !== game.me).map(t => `
-    <div class="team">
-      <span style="display:inline-flex">${logoSVG(t.id, 44)}</span>
-      <div class="nm">${t.namn}<small>gör ${t.sektor} ${CUR_ICON[t.sektor]}</small></div>
-      <span class="tr">🪙${t.pengar} 🧱${t.material}</span>
-      <span class="tag">${klarLag.has(t.id) ? '✅' : ''}${t.id === rich.id && rich.varde > 0 ? '👑' : ''}${t.id === bov.id && bov.skada < 0 ? '⚠️' : ''}</span>
-      <button class="byt" data-partner="${t.id}">BYT</button>
-    </div>`).join('');
-  document.querySelectorAll('[data-partner]').forEach(b =>
+  const byId = Object.fromEntries(E().getState().teams.map(t => [t.id, t]));
+  const ranked = lb.bors.map(r => byId[r.id]).filter(Boolean);
+  $('toplist').innerHTML = ranked.map((t, i) => {
+    const me = t.id === game.me;
+    const style = `--spine:var(--team-${t.id})`;
+    const isBov = bov && t.id === bov.id && bov.skada < 0;
+    const bytBtn = me ? `<span class="du-tag">DU</span>`
+                      : `<button class="byt" data-partner="${t.id}">${ico('byt', 16)} BYT</button>`;
+    if (i === 0) {
+      const crown = rich.varde > 0 ? ' ' + ico('krona', 24, { badge: false }) : '';
+      return `<div class="tl-row lead ${me ? 'me' : ''}" style="${style}">
+        <span class="rank">1</span>
+        <span class="tl-badge">${logoSVG(t.id, 46)}</span>
+        <div class="tl-id"><div class="nm">${t.namn}${crown}</div><div class="tl-sub">LEDARE${me ? ' · DU' : ''}</div></div>
+        <div class="tl-cap"><span class="c-p">${ico('pengar', 20)}${t.pengar}</span><span class="c-m">${ico('material', 20)}${t.material}</span></div>
+        ${me ? '' : `<button class="byt" data-partner="${t.id}">${ico('byt', 16)} BYT</button>`}
+      </div>`;
+    }
+    return `<div class="tl-row ${me ? 'me' : ''}" style="${style}">
+      <span class="rank">${i + 1}</span>
+      <span class="tl-badge sm">${logoSVG(t.id, 30)}</span>
+      <div class="tl-id"><div class="nm sm">${t.namn}${isBov ? ' ' + ico('varning', 16, { badge: false }) : ''}</div></div>
+      <div class="tl-cap sm"><span class="c-p">${ico('pengar', 14)}${t.pengar}</span><span class="c-m">${ico('material', 14)}${t.material}</span></div>
+      ${bytBtn}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#toplist [data-partner]').forEach(b =>
     b.addEventListener('click', () => { audio.play('ui_tap'); openTrade(b.dataset.partner); }));
 }
 
+// Liten nedtonad spegel: vem skadar ön mest (fulla listan finns i registret-slideovern).
 function renderRegs() {
   if (!E()?.getState()) return;
-  const lb = E().leaderboards();
-  $('reg-bors').innerHTML = lb.bors.map(r =>
-    `<li class="${r.id === game.me ? 'me-row' : ''}">${r.namn} ${r.varde}</li>`).join('');
-  $('reg-klimat').innerHTML = lb.klimat.map(r =>
-    `<li class="${r.id === game.me ? 'me-row' : ''}">${r.namn} ${r.skada}</li>`).join('');
+  const bov = E().leaderboards().klimat[0];
+  const body = bov && bov.skada < 0
+    ? `${ico('varning', 16, { badge: false })} <b>${bov.namn}</b> sänker ön mest <span class="n">${bov.skada}</span>`
+    : 'Ingen bov — ön andas ut';
+  $('reg-klimat-mirror').innerHTML = `<div class="km-head">${ico('industri', 15)} KLIMATREGISTRET</div><div class="km-body">${body}</div>`;
 }
 
 function renderHand() {

@@ -81,18 +81,31 @@
   .bigbtn:disabled { opacity: .4; cursor: default; }
   .linklike { margin-top: 10px; text-align: center; color: var(--dim); font-size: 15px; text-decoration: underline; cursor: pointer; }
 
-  .team { display: flex; align-items: center; gap: 10px; background: var(--panel3); border: 2px solid var(--edge2); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
-  .team:last-child { margin-bottom: 0; }
-  .team .nm { font-weight: 800; font-size: 17px; flex: 1; }
-  .team .nm small { display: block; font-weight: 600; font-size: 12px; color: var(--dim); }
-  .team .tr { font-family: Menlo, monospace; font-size: 19px; color: var(--led); white-space: nowrap; }
-  .team .tag { font-size: 20px; width: 28px; text-align: center; }
-  .team .byt { background: var(--panel2); border: 2px solid var(--edge2); color: var(--text); border-radius: 8px; font: inherit; font-size: 13px; font-weight: 800; padding: 8px 10px; cursor: pointer; }
-  .regs { display: flex; gap: 10px; }
-  .reg { flex: 1; background: var(--panel3); border: 2px solid var(--edge2); border-radius: 10px; padding: 10px; }
-  .reg h4 { margin: 0 0 8px; font-size: 13px; letter-spacing: 1.5px; color: var(--dim); }
-  .reg ol { margin: 0; padding: 0 0 0 20px; font-size: 15px; line-height: 1.7; }
-  .reg .me-row { color: var(--gold); font-weight: 800; }
+  /* ——— Topplista (de andra lagen + rank i en lista) ——— */
+  #toplist { display: flex; flex-direction: column; }
+  .tl-row { display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 12px; border-bottom: 1px solid var(--edge); position: relative; }
+  .tl-row:last-child { border-bottom: 0; }
+  .tl-row::before { content: ''; position: absolute; left: 2px; top: 6px; bottom: 6px; width: 4px; border-radius: 3px; background: var(--spine, transparent); }
+  .tl-row .rank { font-family: var(--font-num); color: var(--dim); width: 16px; text-align: center; font-weight: 700; flex: none; }
+  .tl-row.lead { background: linear-gradient(90deg, rgba(201,169,79,.16), transparent); border: 2px solid var(--gold); border-radius: 12px; padding: 12px 12px 12px 14px; margin-bottom: 10px; }
+  .tl-row.lead .rank { color: var(--gold); font-size: 22px; }
+  .tl-badge { display: inline-flex; flex: none; }
+  .tl-id { flex: 1; min-width: 0; }
+  .tl-id .nm { font-weight: 800; font-size: 20px; display: flex; align-items: center; gap: 6px; }
+  .tl-id .nm.sm { font-size: 16px; }
+  .tl-sub { font-size: 11px; letter-spacing: 2px; color: var(--gold); font-weight: 800; }
+  .tl-cap { display: flex; gap: 12px; font-family: var(--font-num); font-weight: 700; font-size: 16px; flex: none; }
+  .tl-cap.sm { font-size: 14px; }
+  .tl-row.lead .tl-cap { font-size: 26px; gap: 16px; }
+  .tl-cap .c-p { color: var(--pengar); } .tl-cap .c-m { color: var(--material); }
+  .tl-cap span { display: inline-flex; align-items: center; gap: 4px; }
+  .du-tag { font-size: 12px; letter-spacing: 2px; color: var(--gold); font-weight: 800; padding: 6px 8px; flex: none; }
+  .tl-row .byt { background: var(--panel2); border: 2px solid var(--edge2); color: var(--text); border-radius: 8px; font: inherit; font-size: 12px; font-weight: 800; padding: 7px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex: none; }
+  .klimat-mirror { padding: 10px 14px; }
+  .klimat-mirror .km-head { font-size: 11px; letter-spacing: 2px; color: var(--dim); font-weight: 800; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .klimat-mirror .km-body { font-size: 15px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .klimat-mirror .km-body .n { font-family: var(--font-num); color: var(--led-red); font-weight: 700; margin-left: auto; }
+  .politik .politik-sub { font-size: 12px; color: var(--dim); text-align: center; margin-top: 8px; }
 
   /* ——— Handen ——— */
   .handbar { height: 300px; display: flex; align-items: stretch; gap: 16px; padding: 8px 24px 20px; }
@@ -334,12 +347,9 @@
     <main class="col-island"><div id="map" style="position:absolute;inset:0"></div></main>
 
     <aside class="col-others">
-      <div class="panel"><h3>De andra lagen</h3><div id="teams"></div></div>
-      <div class="panel"><div class="regs">
-        <div class="reg"><h4>💰 BÖRSEN</h4><ol id="reg-bors"></ol></div>
-        <div class="reg"><h4>🏭 KLIMAT&shy;REGISTRET</h4><ol id="reg-klimat"></ol></div>
-      </div></div>
-      <div class="panel"><button class="bigbtn" id="btn-prop">🗳 LÄGG FÖRSLAG</button></div>
+      <div class="panel toplist"><h3 id="toplist-h">TOPPLISTA</h3><div id="toplist"></div></div>
+      <div class="panel klimat-mirror"><div id="reg-klimat-mirror"></div></div>
+      <div class="panel politik"><button class="bigbtn" id="btn-prop">LÄGG FÖRSLAG</button><div class="politik-sub">Ett förslag per runda · 3 av 4 JA avgör</div></div>
     </aside>
   </div>
 
