@@ -132,7 +132,7 @@ WS2812 drar ~60 mA/diod på full vit (360 dioder ≈ 20 A). Final:
 |---|---|
 | Skärm: "Ingen kontakt med servern" | Servern nere/fel IP i kiosk-URL. `systemctl --user status eco-loco-server`, `ping <server-ip>`. |
 | Riggen rör sig inte med spelet | Kör `eco-loco-hjarna`? (`journalctl --user -u eco-loco-hjarna -f`). ESP:ns `MQTT_BROKER` = NUC:ens IP? Broker uppe? |
-| Knappen "untrusted" på Cinnamon | Högerklicka → *Allow Launching* (eller kör `installera-knappar.sh` igen). |
+| Skrivbordsikon grå/inaktiv (Cinnamon) | Högerklicka → *Tillåt start* / *Allow Launching*. Eller starta från **Menyn** (sök namnet) — menyposten är alltid betrodd. Orsak: `.desktop` på skrivbordet är "untrusted" tills den godkänns, och `gio set metadata::trusted` fäster bara om det körs i den grafiska sessionen (ej över SSH). |
 | Touch på fel skärm | Byt skärmnamn i `mint-touchstation-bas/touch.env`, `./reset-touch.sh`. |
 | Inget ljud från riggen | `sudo apt install mpg123`; ljudfiler i `assets/audio/rigg/`. |
 | Node för gammal | Installeraren hämtar Node 22 från NodeSource automatiskt. |

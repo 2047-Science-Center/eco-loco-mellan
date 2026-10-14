@@ -108,10 +108,14 @@ Terminal=false
 Categories=Game;
 StartupNotify=false
 EOF
-  install -m 0755 "$tmp" "$apps/eco-loco-starta.desktop"
+  install -m 0755 "$tmp" "$apps/eco-loco-starta.desktop"   # appmenyn (betrodd → funkar alltid)
   if [ -d "$desktop_dir" ]; then
     install -m 0755 "$tmp" "$desktop_dir/eco-loco-starta.desktop"
-    gio set "$desktop_dir/eco-loco-starta.desktop" metadata::trusted true 2>/dev/null || true
+    chmod +x "$desktop_dir/eco-loco-starta.desktop"
+    # Betrodd launcher: Nemo (Cinnamon) vill ha "yes", Nautilus "true". gio måste köras i
+    # grafiska sessionen — annars förblir ikonen grå (högerklick → Tillåt start, eller starta från Menyn).
+    gio set -t string "$desktop_dir/eco-loco-starta.desktop" metadata::trusted yes  2>/dev/null || true
+    gio set -t string "$desktop_dir/eco-loco-starta.desktop" metadata::trusted true 2>/dev/null || true
   fi
   rm -f "$tmp"
   update-desktop-database "$apps" 2>/dev/null || true
@@ -119,6 +123,7 @@ EOF
   echo
   echo "✔ Kiosk mot: ${SPEL_URL}"
   echo "  INGEN autostart. Du bootar till skrivbordet och öppnar via ikonen 'Starta Eco Loco'."
+  echo "  Grå/inaktiv ikon? → HÖGERKLICKA → 'Tillåt start' (Allow Launching), eller starta från MENYN."
   echo "  Stänger du fönstret (Alt+F4) → tillbaka på skrivbordet."
   echo "  (Valfritt) autologin TILL SKRIVBORDET för obevakad boot:"
   echo "  Meny → Inloggningsfönster → fliken Användare → Automatisk inloggning PÅ."

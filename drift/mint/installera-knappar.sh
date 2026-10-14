@@ -17,10 +17,15 @@ lagg_knapp() {  # <desktop-mall> <målskript>
   local mall="$HERE/$1" skript="$HERE/$2" namn="$1"
   local tmp; tmp="$(mktemp)"
   sed "s|@EXEC@|bash \"$skript\"|g" "$mall" > "$tmp"
-  install -m 0755 "$tmp" "$apps/$namn"                       # appmenyn
+  install -m 0755 "$tmp" "$apps/$namn"                       # appmenyn (betrodd → funkar alltid)
   if [ -d "$desktop_dir" ]; then
     install -m 0755 "$tmp" "$desktop_dir/$namn"              # skrivbordet
-    gio set "$desktop_dir/$namn" metadata::trusted true 2>/dev/null || true  # Cinnamon: tillåt dubbelklick
+    chmod +x "$desktop_dir/$namn"
+    # Markera som betrodd launcher. Nemo (Cinnamon) vill ha "yes", Nautilus (GNOME) "true".
+    # OBS: gio måste köras i den grafiska sessionen — annars förblir ikonen grå
+    # (då: högerklick → Tillåt start, eller starta från Menyn).
+    gio set -t string "$desktop_dir/$namn" metadata::trusted yes  2>/dev/null || true
+    gio set -t string "$desktop_dir/$namn" metadata::trusted true 2>/dev/null || true
   fi
   rm -f "$tmp"
   echo "  ✓ $namn"
@@ -33,5 +38,6 @@ update-desktop-database "$apps" 2>/dev/null || true
 
 echo
 echo "✔ Klart. Knapparna 'Starta om spelet' och 'Uppdatera spelet' finns på skrivbordet + i appmenyn."
-echo "  Första dubbelklicket på Cinnamon kan fråga 'Trust & Launch' — svara ja en gång."
+echo "  Grå/inaktiv ikon på skrivbordet? → HÖGERKLICKA den → 'Tillåt start' (Allow Launching),"
+echo "  ELLER starta från MENYN (sök namnet) — menyposten är alltid betrodd."
 echo "  Touch-station? Kör även mint-touchstation-bas/install-base.sh för 'Reset touch'-knappen."
