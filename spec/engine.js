@@ -329,7 +329,10 @@ export class EcoLoco {
       this.S.lastDelta = this.S.oh - before;
       this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: this.S.lastDelta });
     }
-    this._emit('event', { id: ev.id, rubrik: ev.rubrik, text: ev.text, ljud: ev.ljud, bild: 'assets/event_' + ev.id + '.png', traffade: targets.map(t => t.id) });
+    this._emit('event', { id: ev.id, rubrik: ev.rubrik, text: ev.text, ljud: ev.ljud,
+      bild: 'assets/event_' + ev.id + '.png', traffade: targets.map(t => t.id), oh: ev.oh || 0,
+      effekter: targets.map(t => ({ teamId: t.id, namn: t.namn, sektor: t.sektor,
+        pengar: ev.pengar || 0, material: ev.material || 0, egen: ev.egenValuta || 0 })) });
     this.S.pendingEvent = null;
   }
 

@@ -236,7 +236,22 @@ game.on('ohalsa', p => run(async () => {
   if (resolving) await delay(1300);
 }));
 
-// Händelse (EVENT-systemet). Ljudet spelas centralt (rigg); skärmen visar bild + rubrik + text.
+// Konsekvens-chips under event-bilden: vilka lag drabbas och hur + öns hälsa.
+function eventKonsHTML(p) {
+  const chip = (v, ic) => `<span class="${v > 0 ? 'plus' : 'minus'}">${v > 0 ? '+' : ''}${v} ${ic}</span>`;
+  const chips = [];
+  (p.effekter || []).forEach(e => {
+    const parts = [];
+    if (e.egen)     parts.push(chip(e.egen, e.sektor === 'pengar' ? '🪙' : '🧱'));
+    if (e.pengar)   parts.push(chip(e.pengar, '🪙'));
+    if (e.material) parts.push(chip(e.material, '🧱'));
+    if (parts.length) chips.push(`<div class="kons">${logoSVG(e.teamId, 26)} ${teamName(e.teamId)} ${parts.join(' ')}</div>`);
+  });
+  if (p.oh) chips.push(`<div class="kons oh">🏝 öns hälsa ${chip(p.oh, p.oh > 0 ? '🌱' : '🏭')}</div>`);
+  return chips.join('');
+}
+
+// Händelse (EVENT-systemet). Ljudet spelas centralt (rigg); skärmen visar bild + rubrik + text + konsekvenser.
 game.on('event', p => run(async () => {
   const warn = p.id !== 'godskord' && p.id !== 'gronafonden' && p.id !== 'pengaslapp';
   renderMe(); renderTeams(); renderRegs();
@@ -244,6 +259,7 @@ game.on('event', p => run(async () => {
     $('event-img').src = p.bild;
     $('event-rubrik').textContent = p.rubrik || '';
     $('event-text').textContent = p.text || '';
+    $('event-kons').innerHTML = eventKonsHTML(p);
     $('ov-event').classList.toggle('warn', warn);
     $('ov-event').classList.add('open');
     await delay(500);                               // hinner läsas innan tryck registreras
