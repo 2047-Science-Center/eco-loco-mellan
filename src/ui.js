@@ -236,13 +236,25 @@ game.on('ohalsa', p => run(async () => {
   if (resolving) await delay(1300);
 }));
 
-// Händelse (EVENT-systemet). Ljudet spelas centralt (rigg) — skärmen visar bara rubrik + text.
+// Händelse (EVENT-systemet). Ljudet spelas centralt (rigg); skärmen visar bild + rubrik + text.
 game.on('event', p => run(async () => {
   const warn = p.id !== 'godskord' && p.id !== 'gronafonden' && p.id !== 'pengaslapp';
-  await banner(`${warn ? '⚠ ' : '🎉 '}${(p.rubrik || '').toUpperCase()}`, warn, 1900);
-  if (p.text) toast(`${warn ? '⚠' : '🎉'} ${p.text}`, warn);
   renderMe(); renderTeams(); renderRegs();
-  if (resolving) await delay(600);
+  if (p.bild) {
+    $('event-img').src = p.bild;
+    $('event-rubrik').textContent = p.rubrik || '';
+    $('event-text').textContent = p.text || '';
+    $('ov-event').classList.toggle('warn', warn);
+    $('ov-event').classList.add('open');
+    await delay(500);                               // hinner läsas innan tryck registreras
+    await clickOrTimeout($('ov-event'), resolving ? 6000 : 8000);
+    $('ov-event').classList.remove('open');
+    await delay(200);
+  } else {                                          // t.ex. pengasläpp (ingen bild) → banner + toast
+    await banner(`${warn ? '⚠ ' : '🎉 '}${(p.rubrik || '').toUpperCase()}`, warn, 1900);
+    if (p.text) toast(`${warn ? '⚠' : '🎉'} ${p.text}`, warn);
+    if (resolving) await delay(600);
+  }
 }));
 
 // Award-popup: tryck går vidare; auto-fortsätter efter 8 s så självspelande läge aldrig fastnar.
@@ -598,8 +610,10 @@ function openVoteModal(p) {
   // Händelse-frestelse (typ:'event', t.ex. sponsrat): varje lag väljer själv, ingen 3/4-grind.
   if (p.type === 'event') {
     const ev = p.event || E().getState().proposal?.event || {};
+    const bild = ev.bild || (ev.id ? `assets/event_${ev.id}.png` : null);
     $('vote-sub').textContent = 'Centralmakten erbjuder — varje lag väljer själv';
-    $('vote-pic').textContent = '🤝';
+    if (bild) $('vote-pic').innerHTML = `<img src="${bild}" alt="" style="width:200px;height:120px;object-fit:cover;border-radius:12px;display:block">`;
+    else $('vote-pic').textContent = '🤝';
     $('vote-tx').innerHTML = `<b style="color:var(--text)">${ev.rubrik || ''}</b><br>${ev.rostFraga || ev.text || ''}`;
     $('btn-ja').textContent = `JA — ta ${ev.ja ?? ''} 🪙`;
     $('vote-btns').style.display = p.by === game.me ? 'none' : 'flex';

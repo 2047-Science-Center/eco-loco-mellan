@@ -314,7 +314,7 @@ export class EcoLoco {
     if (ev.typ === 'rost') {
       this.S.proposal = { type: 'event', event: ev, by: null, votes: {}, resolved: false, passed: false };
       this._emit('proposalOpened', { type: 'event', by: null,
-        event: { id: ev.id, rubrik: ev.rubrik, text: ev.text, rostFraga: ev.rostFraga, ja: ev.pengarTillJa, ljud: ev.ljud } });
+        event: { id: ev.id, rubrik: ev.rubrik, text: ev.text, rostFraga: ev.rostFraga, ja: ev.pengarTillJa, ljud: ev.ljud, bild: 'assets/event_' + ev.id + '.png' } });
       return;   // pendingEvent ligger kvar tills omröstningen upplöses
     }
     const targets = this._eventTargets(ev.traffar);
@@ -329,7 +329,7 @@ export class EcoLoco {
       this.S.lastDelta = this.S.oh - before;
       this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: this.S.lastDelta });
     }
-    this._emit('event', { id: ev.id, rubrik: ev.rubrik, text: ev.text, ljud: ev.ljud, traffade: targets.map(t => t.id) });
+    this._emit('event', { id: ev.id, rubrik: ev.rubrik, text: ev.text, ljud: ev.ljud, bild: 'assets/event_' + ev.id + '.png', traffade: targets.map(t => t.id) });
     this.S.pendingEvent = null;
   }
 
