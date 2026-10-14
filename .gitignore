@@ -5,6 +5,9 @@ Referens UI/
 .DS_Store
 *.log
 
+# Session-loggar (persistens, fas 4-grund) — genereras i drift, checkas aldrig in
+data/
+
 # OBS: node_modules/ checkas medvetet IN (endast ws, ~200 KB) så att
 # `git clone` räcker för drift även på LAN utan internet.
 

@@ -93,5 +93,9 @@ export function attachRigg(engine, opts = {}) {
       if (left <= 10 && left > 0 && !countdownFired) { countdownFired = true; P('ecoloco/rigg/countdown', 1); }
       if (left <= 0) P('ecoloco/rigg/countdown', 0);
     },
+    // ——— Slutdelen (servern dirigerar): håll scenen i 'slut', spela ev. reveal-ljud centralt ———
+    beginSlutdel() { P('ecoloco/rigg/scen', 'slut'); },
+    slutdelReveal(kort) { if (kort && kort.ljud) cue(kort.ljud); },   // Institutets röst / klipp-cue (om satt)
+    endSlutdel() { P('ecoloco/rigg/scen', 'slut'); },                  // stannar i slut-scenen efter slutdelen
   };
 }

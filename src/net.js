@@ -69,4 +69,5 @@ export class ServerNet {
   klar() { this._send({ type: 'klar' }); }
   awardsKlara() { this._send({ type: 'awardsKlara' }); }
   tutBeat(beat) { this._send({ type: 'tutBeat', beat }); }
+  podiumAnswer(questionId, option) { this._send({ type: 'podiumAnswer', questionId, option }); }   // slutdelen
 }
