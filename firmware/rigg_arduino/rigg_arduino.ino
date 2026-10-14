@@ -193,6 +193,14 @@ void setup() {
   }
 
   WiFi.mode(WIFI_STA);
+  // Stäng av wifi-strömsparläget (modem-sleep). Default somnar radion mellan beacons →
+  // inkommande MQTT får ~100–200 ms latens i skurar → ryckig/"sporadisk" rendering.
+  // Avstängt = radion vaken → render-kommandon når listen direkt (~2–5 ms).
+#if defined(ESP8266)
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+#else
+  WiFi.setSleep(false);
+#endif
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   unsigned long t0 = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - t0 < 20000) { delay(200); }
