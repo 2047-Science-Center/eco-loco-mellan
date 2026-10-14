@@ -521,8 +521,9 @@ function renderHand() {
   const hand = handFor(game.me);
   const banned = E().getState().banDirtyThisRound;
   $('cards').innerHTML = hand.map(c => {
-    const kost = [c.kp ? `${c.kp} 🪙` : '', c.km ? `${c.km} 🧱` : ''].filter(Boolean).join(' + ');
-    const ger = c.gp ? `+${c.gp} 🪙/runda` : `+${c.gm} 🧱/runda`;
+    const kostHtml = [c.kp ? `${c.kp}${ico('pengar', 14)}` : '', c.km ? `${c.km}${ico('material', 14)}` : ''].filter(Boolean).join(' + ');
+    const gerHtml = c.gp ? `+${c.gp}${ico('pengar', 14)} /runda` : `+${c.gm}${ico('material', 14)} /runda`;
+    const pos = c.oh > 0;
     return `
     <div class="card ${c.tier} ${banned && c.tier === 'smutsig' ? 'banned' : ''}" data-tier="${c.tier}">
       <div class="band">${TIER_LABEL[c.tier]}</div>
@@ -530,9 +531,9 @@ function renderHand() {
         <img src="${manifest.buildings[c.asset].file}" alt="">
         <div class="info">
           <div class="nm">${c.namn}</div>
-          <div class="row"><span class="k">Kostar</span> ${kost}</div>
-          <div class="row"><span class="k">Ger</span> ${ger}</div>
-          <div class="row"><span class="k">Ön</span> <span class="${c.oh > 0 ? 'ohplus' : 'ohminus'}">${fmtOh(c.oh)}</span></div>
+          <div class="oh-badge ${pos ? 'pos' : 'neg'}">${pos ? ico('tillvaxt', 30) : ico('industri', 30)}<span class="oh-num">${pos ? '+' + c.oh : c.oh}</span><span class="oh-lbl">öhälsa / runda</span></div>
+          <div class="stat"><span class="k">Kostar</span> <span class="v">${kostHtml}</span></div>
+          <div class="stat"><span class="k">Ger</span> <span class="v">${gerHtml}</span></div>
         </div>
       </div>
       <button class="kop">KÖP — BYGG PÅ ÖN</button>
@@ -557,15 +558,20 @@ function renderHand() {
 function renderHandAfford() {
   if (!game.me) return;
   const t = E().team(game.me);
+  const otherCur = t.sektor === 'pengar' ? 'material' : 'pengar';
+  let needOther = false;
   handFor(game.me).forEach(c => {
     const el = document.querySelector(`#cards .card[data-tier="${c.tier}"]`);
     if (!el) return;
     const brist = [];
-    if (t.pengar < c.kp) brist.push(`${c.kp - t.pengar} 🪙`);
-    if (t.material < c.km) brist.push(`${c.km - t.material} 🧱`);
+    if (t.pengar < c.kp) brist.push(`${c.kp - t.pengar}${ico('pengar', 13)}`);
+    if (t.material < c.km) brist.push(`${c.km - t.material}${ico('material', 13)}`);
     el.classList.toggle('poor', brist.length > 0 && !picked);
-    el.querySelector('.saknas').textContent = brist.length ? `saknar ${brist.join(' + ')} → BYT` : '';
+    el.querySelector('.saknas').innerHTML = brist.length ? `saknar ${brist.join(' + ')} → BYT` : '';
+    if (!picked && ((otherCur === 'pengar' && t.pengar < c.kp) || (otherCur === 'material' && t.material < c.km))) needOther = true;
   });
+  const tb = $('btn-trade');
+  if (tb) tb.classList.toggle('need-trade', needOther);
 }
 
 async function buyCard(tier) {
@@ -616,8 +622,8 @@ function initSector() {
   mySector = AREAS.find(a => a.id === game.me).sektor;
   giveCur = mySector; getCur = mySector === 'material' ? 'pengar' : 'material';
   $('me-sektor').innerHTML = mySector === 'material'
-    ? `Du producerar <b>material 🧱</b>.<br>Pengar 🪙 måste du <b>byta till dig</b> från Räven eller Örnen.`
-    : `Du producerar <b>pengar 🪙</b>.<br>Material 🧱 måste du <b>byta till dig</b> från Oxen eller Björnen.`;
+    ? `Du producerar <b>material ${ico('material', 16)}</b>.<br>Pengar ${ico('pengar', 16)} måste du <b>byta till dig</b> från Räven eller Örnen.`
+    : `Du producerar <b>pengar ${ico('pengar', 16)}</b>.<br>Material ${ico('material', 16)} måste du <b>byta till dig</b> från Oxen eller Björnen.`;
   $('melogo').innerHTML = logoSVG(game.me, 64);
   $('mename').textContent = teamName(game.me);
 }
