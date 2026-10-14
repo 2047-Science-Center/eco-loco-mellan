@@ -440,6 +440,7 @@ function updateOh({ value, mode, delta }) {
   $('ohfill').style.background = value < c.redZone ? 'var(--oh-red)' : value > c.greenZone ? 'var(--oh-green)' : 'var(--oh-yellow)';
   $('ohneedle').style.left = `${value}%`;
   $('ohval').textContent = value;
+  $('ohval').style.color = value < c.redZone ? 'var(--oh-red)' : value > c.greenZone ? 'var(--oh-green)' : 'var(--oh-yellow)';
   const d = $('ohdelta');
   d.textContent = delta === 0 ? '—' : (delta > 0 ? `▲ ${delta}` : `▼ ${-delta}`);
   d.className = 'ohdelta' + (delta > 0 ? ' pos' : delta < 0 ? ' neg' : '');
