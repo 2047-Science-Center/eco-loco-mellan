@@ -53,6 +53,7 @@ EOF
 
 elif [ "$ROLL" = "kiosk" ]; then
   SERVER_URL="${2:?Ange serverns URL, t.ex. http://172.20.1.10:8765}"
+  while [ "${SERVER_URL%/}" != "$SERVER_URL" ]; do SERVER_URL="${SERVER_URL%/}"; done  # strip avslutande slash → annars //spel.html (bryter relativa asset-sökvägar → 404 → spelet laddar inte)
   LAG="${3:-}"
   SPEL_URL="${SERVER_URL}/spel.html?online=1${LAG:+&lag=${LAG}}"
 
