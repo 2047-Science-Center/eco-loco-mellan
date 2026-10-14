@@ -32,6 +32,8 @@ run() {
     gm-master) P ecoloco/rigg/gm/master   "$([ "$2" = off ] && echo 0 || echo 1)" ;;
     gm-grona)  P ecoloco/rigg/gm/alla_grona "$([ "$2" = off ] && echo 0 || echo 1)" ;;
     gm-spot)   P "ecoloco/rigg/gm/spot/${2:-1}" "$([ "$3" = off ] && echo 0 || echo 1)" ;;
+    gm-blandare) P ecoloco/rigg/gm/blandare "$([ "$2" = off ] && echo 0 || echo 1)" ;;
+    blandare)    P ecoloco/rigg/blandare    "$([ "$2" = off ] && echo 0 || echo 1)" ;;
     gm-ljud)   P ecoloco/rigg/gm/ljud "${2:-ding}" ;;
     spel)      for v in 90 70 50 30 10 45; do echo "== öhälsa $v =="; P ecoloco/rigg/ohalsa $v; sleep 2; done ;;
     ceremoni)

@@ -9,7 +9,7 @@
 // Events spelas alltid genom en seriell kö — under bokslutet ('resolveStart') tar
 // stegen sina scenpauser, annars kör de direkt.
 
-import { EcoLoco, AREAS, handFor, ohMode } from '../spec/engine.js';
+import { EcoLoco, AREAS, handFor, ohMode, timerSecFor } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { renderMap } from './map.js';
 import { logoSVG } from './logos.js';
@@ -50,10 +50,11 @@ function makeLocal() {
 
   let left = 0, tid = null, votingOpen = false;
   const stopT = () => { clearInterval(tid); tid = null; };
+  const fullT = () => timerSecFor(engine.cfg, engine.getState().round);
   const startT = () => {
-    stopT(); left = engine.cfg.timerSec;
-    em.emit('timer', { left });
-    tid = setInterval(() => { left--; em.emit('timer', { left }); if (left <= 0) { stopT(); doResolve(); } }, 1000);
+    stopT(); const full = fullT(); left = full;
+    em.emit('timer', { left, full });
+    tid = setInterval(() => { left--; em.emit('timer', { left, full }); if (left <= 0) { stopT(); doResolve(); } }, 1000);
   };
   function doResolve() {
     if (engine.getState().over || votingOpen) return;
@@ -63,7 +64,8 @@ function makeLocal() {
     engine.endRound();
   }
   engine.on('roundStart', p => {
-    startT();
+    if (p.round > 1) { stopT(); const full = fullT(); left = full; em.emit('timer', { left, full, paused: true }); }
+    else startT();   // runda 2+: timern står stilla tills prisutdelningen klickats igenom (awardsKlara)
     if (p.round >= 2 && Math.random() < 0.35) setTimeout(() => {
       const S = engine.getState();
       if (S.over || S.proposal) return;
@@ -101,6 +103,7 @@ function makeLocal() {
     },
     vote: yes => { engine.vote(me, yes); setTimeout(() => mockOpponentsVote(engine, me), 900); },
     klar: () => doResolve(),
+    awardsKlara: () => { if (!tid && !engine.getState().over) startT(); },
     playAgain: () => location.reload(),
   };
 }
@@ -119,6 +122,7 @@ async function makeOnline() {
     openProposal: t => net.openProposal(t),
     vote: y => net.vote(y),
     klar: () => net.klar(),
+    awardsKlara: () => net.awardsKlara(),
     playAgain: () => net.startGame(),
     claim: lag => net.claim(lag),
     tradeAnswer: (id, a) => net.tradeAnswer(id, a),
@@ -126,7 +130,43 @@ async function makeOnline() {
   };
 }
 
-const game = ONLINE ? await makeOnline() : makeLocal();
+// Proxy-fasad: UI:t pratar alltid med `game`; bakom den kan backend bytas
+// (riktiga spelet ↔ tutorialens skriptade övningsmotor) utan att UI:t märker det.
+function makeProxy() {
+  const em = makeEmitter();
+  let cur = null;
+  const seen = new Set();
+  const FWD = ['start', 'roundStart', 'build', 'trade', 'proposalOpened', 'proposalResolved',
+               'income', 'ohalsa', 'award', 'event', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
+               'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
+               'disconnected', 'reconnected'];
+  return {
+    attach(b) {
+      cur = b;
+      if (!seen.has(b)) { seen.add(b); FWD.forEach(ev => b.on(ev, p => { if (cur === b) em.emit(ev, p); })); }
+    },
+    on: em.on,
+    get backend() { return cur; },
+    get online() { return cur.online; },
+    get me() { return cur.me; },
+    get _first() { return cur._first; },
+    E: () => cur.E(),
+    startGame: (...a) => cur.startGame(...a),
+    selectCard: (...a) => cur.selectCard(...a),
+    trade: (...a) => cur.trade(...a),
+    openProposal: (...a) => cur.openProposal(...a),
+    vote: (...a) => cur.vote(...a),
+    klar: (...a) => cur.klar(...a),
+    awardsKlara: (...a) => cur.awardsKlara?.(...a),
+    playAgain: (...a) => cur.playAgain(...a),
+    claim: (...a) => cur.claim?.(...a),
+    tradeAnswer: (...a) => cur.tradeAnswer?.(...a),
+  };
+}
+
+const realGame = ONLINE ? await makeOnline() : makeLocal();
+const game = makeProxy();
+game.attach(realGame);
 const E = game.E;
 
 // ═══════════════ Karta + skala ═══════════════
@@ -196,11 +236,12 @@ game.on('ohalsa', p => run(async () => {
   if (resolving) await delay(1300);
 }));
 
+// Händelse (EVENT-systemet). Ljudet spelas centralt (rigg) — skärmen visar bara rubrik + text.
 game.on('event', p => run(async () => {
-  audio.play('event');
-  await banner(`⚠ ${p.namn.toUpperCase()}!`, true, 1700);
-  toast(`⚠ Krisen slog till: alla lag förlorar ${p.loss} 🪙 och ${p.loss} 🧱`, true);
-  renderMe(); renderTeams();
+  const warn = p.id !== 'godskord' && p.id !== 'gronafonden' && p.id !== 'pengaslapp';
+  await banner(`${warn ? '⚠ ' : '🎉 '}${(p.rubrik || '').toUpperCase()}`, warn, 1900);
+  if (p.text) toast(`${warn ? '⚠' : '🎉'} ${p.text}`, warn);
+  renderMe(); renderTeams(); renderRegs();
   if (resolving) await delay(600);
 }));
 
@@ -215,7 +256,7 @@ function clickOrTimeout(el, ms) {
 
 game.on('award', p => run(async () => {
   const show = async (em2, rubrik, w, val, snd, cls) => {
-    audio.play(snd);
+    // Award-ljud spelas centralt (rigg/hjärna) — popupen visas tyst på skärmen.
     $('awardcard').innerHTML = `<div class="em">${em2}</div><h4>${rubrik}</h4>` +
       (w ? `<div class="who">${logoSVG(w.teamId, 64)}${w.namn}<span class="val ${cls}">${val}</span></div>`
          : `<div class="who" style="font-size:19px;color:var(--dim)">Ön andas ut 😮‍💨</div>`) +
@@ -229,6 +270,7 @@ game.on('award', p => run(async () => {
   if (p.led) await show('🏆', 'Årets ledande företag', p.led, `+${p.led.varde} kapital`, 'award_led', 'ohplus');
   if (p.eld) await show('🌱', 'Årets eldsjäl', p.eld, `+${p.eld.varde} öhälsa`, 'award_eld', 'ohplus');
   await show('💀', 'Årets sabotör', p.sab, p.sab ? `${p.sab.varde} öhälsa` : '', 'award_sab', 'ohminus');
+  game.awardsKlara?.();   // prisutdelningen genomklickad → rundtimern får börja ticka
   renderRegs();
 }));
 
@@ -236,14 +278,16 @@ game.on('roundEnd', () => run(async () => renderRegs()));
 
 game.on('start', () => run(async () => {
   if (game.me) initSector();
-  $('ov-start').classList.remove('open');
+  // Bänk utan lag (åskådare): behåll lobbyn öppen så man kan ta över en dator när som helst.
+  if (!(ONLINE && !game.me)) $('ov-start').classList.remove('open');
   $('ov-slut').classList.remove('open');
   map.clearBuildings();
 }));
 
 game.on('roundStart', p => run(async () => {
   $('roundnum').textContent = p.round;
-  if (p.round > 1) { audio.play('round_start'); await banner(`RUNDA ${p.round}`, false, 1300); }
+  if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
+  if (p.round > 1) { await banner(`RUNDA ${p.round}`, false, 1300); }   // round_start-ljud spelas centralt (rigg)
   picked = null; expanded = null; resolving = false; klarLag = new Set();
   renderHand(); renderMe(); renderTeams(); renderRegs();
   $('btn-prop').disabled = false;
@@ -252,12 +296,12 @@ game.on('roundStart', p => run(async () => {
 }));
 
 game.on('gameEnd', p => run(async () => {
-  audio.play(p.won ? 'win' : 'lose');
+  // win/lose-ljud spelas centralt (rigg) — skärmen är tyst.
   showSlut(p);
 }));
 
 game.on('proposalOpened', p => run(async () => {
-  audio.play('vote');
+  // proposal_open-ljud spelas centralt (rigg); 'vote' stannar som torr feedback när DU trycker JA/NEJ.
   $('btn-prop').disabled = true;
   openVoteModal(p);
 }));
@@ -266,16 +310,25 @@ game.on('proposalResolved', p => run(async () => {
   audio.play(p.passed ? 'proposal_pass' : 'proposal_fail');
   renderVoteState();
   $('vote-btns').style.display = 'none';
-  $('vote-sub').innerHTML = p.passed
-    ? `<b style="color:var(--led-green)">✅ Förslaget gick igenom (${p.yesCount} av 4 röstade ja)</b>`
-    : `<b style="color:var(--led-red)">❌ Förslaget föll (${p.yesCount} av 4 röstade ja)</b>`;
+  if (p.type === 'event') {
+    $('vote-sub').innerHTML = p.passed
+      ? `<b style="color:var(--led-green)">${p.yesCount} av 4 lag tog erbjudandet — ön tar smällen</b>`
+      : `<b style="color:var(--dim)">Inget lag nappade — ön slapp undan</b>`;
+  } else {
+    $('vote-sub').innerHTML = p.passed
+      ? `<b style="color:var(--led-green)">✅ Förslaget gick igenom (${p.yesCount} av 4 röstade ja)</b>`
+      : `<b style="color:var(--led-red)">❌ Förslaget föll (${p.yesCount} av 4 röstade ja)</b>`;
+  }
   setTimeout(() => { $('ov-vote').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, 1900);
 }));
 
-game.on('timer', ({ left }) => {
+game.on('voteUpdate', () => renderVoteState());   // online: serverns röst-tally; tutorial: skriptade bot-röster
+
+game.on('timer', ({ left, full }) => {
   const m = Math.floor(Math.max(0, left) / 60), s = Math.max(0, left) % 60;
   $('timertxt').textContent = `${m}:${String(s).padStart(2, '0')}`;
-  $('timerring').style.strokeDashoffset = 414.7 * (1 - Math.max(0, left) / E().cfg.timerSec);
+  const skala = full || E().cfg.timerSec;
+  $('timerring').style.strokeDashoffset = 414.7 * (1 - Math.max(0, left) / skala);
 });
 
 // ——— Online-specifika events ———
@@ -294,7 +347,6 @@ if (ONLINE) {
     const S = E()?.getState();
     if (game.me && S && S.round >= 1 && !S.over) rebuildFromState(S);
   });
-  game.on('voteUpdate', () => renderVoteState());
   game.on('tradeIncoming', m => openTradeIncoming(m));
   game.on('notis', m => toast(m.text));
   game.on('disconnected', () => setConn(false));
@@ -313,7 +365,7 @@ function updateOh({ value, mode, delta }) {
   d.className = 'ohdelta' + (delta > 0 ? ' pos' : delta < 0 ? ' neg' : '');
   $('ohmode').textContent = MODE_LABEL[mode];
   map.setOhalsaMode(mode);
-  audio.setAmbience(mode);
+  // Ambiens flyttad till centralhögtalaren (rigg/hjärna) — skärmen är tyst mellan interaktioner.
 }
 
 function renderMe() {
@@ -464,8 +516,8 @@ function initSector() {
   mySector = AREAS.find(a => a.id === game.me).sektor;
   giveCur = mySector; getCur = mySector === 'material' ? 'pengar' : 'material';
   $('me-sektor').innerHTML = mySector === 'material'
-    ? `Du producerar <b>material 🧱</b>.<br>Pengar 🪙 måste du <b>byta till dig</b> från Tundra eller Stad.`
-    : `Du producerar <b>pengar 🪙</b>.<br>Material 🧱 måste du <b>byta till dig</b> från Åkermark eller Skog.`;
+    ? `Du producerar <b>material 🧱</b>.<br>Pengar 🪙 måste du <b>byta till dig</b> från Räven eller Örnen.`
+    : `Du producerar <b>pengar 🪙</b>.<br>Material 🧱 måste du <b>byta till dig</b> från Oxen eller Björnen.`;
   $('melogo').innerHTML = logoSVG(game.me, 64);
   $('mename').textContent = teamName(game.me);
 }
@@ -543,6 +595,18 @@ $('btn-choose-cancel').addEventListener('click', () => $('ov-choose').classList.
 
 function openVoteModal(p) {
   voteOpenFor = p;
+  // Händelse-frestelse (typ:'event', t.ex. sponsrat): varje lag väljer själv, ingen 3/4-grind.
+  if (p.type === 'event') {
+    const ev = p.event || E().getState().proposal?.event || {};
+    $('vote-sub').textContent = 'Centralmakten erbjuder — varje lag väljer själv';
+    $('vote-pic').textContent = '🤝';
+    $('vote-tx').innerHTML = `<b style="color:var(--text)">${ev.rubrik || ''}</b><br>${ev.rostFraga || ev.text || ''}`;
+    $('btn-ja').textContent = `JA — ta ${ev.ja ?? ''} 🪙`;
+    $('vote-btns').style.display = p.by === game.me ? 'none' : 'flex';
+    renderVoteState();
+    $('ov-vote').classList.add('open');
+    return;
+  }
   const def = propDefs().find(d => d.type === p.type);
   $('vote-sub').textContent = `${teamName(p.by)} föreslår — det krävs 3 av 4 JA`;
   $('vote-pic').textContent = def.pic;
@@ -631,20 +695,28 @@ function renderLobby(m) {
   lastLobby = m;
   if (!ONLINE) return;
   const phase = gamePhase();
-  $('lobbytag').textContent =
-    phase === 'pagar' ? 'Spelet pågår — tryck på ett datorstyrt lag för att ta över det.'
-    : phase === 'slut' ? 'Spelet är slut — gå med och starta ett nytt!'
-    : game.me ? `Du har gått med som ${teamName(game.me)}. Tryck STARTA när alla är med!`
-    : 'Gå med i spelet: tryck på laget du vill spela.';
+  const LAGEN = ['aker', 'skog', 'tundra', 'stad'];
 
-  $('lobby').innerHTML = ['aker', 'skog', 'tundra', 'stad'].map(id => {
+  // Fyra prickar — en per lag, fylld = spelare ansluten (aldrig "x av 4" i text)
+  $('pdots').style.display = 'flex';
+  $('pdots').innerHTML = `<span class="lbl">SPELARE</span>` +
+    LAGEN.map(id => `<i class="${m.claims[id] === 'human' ? 'on' : ''}"></i>`).join('');
+
+  $('lobbytag').textContent =
+    phase === 'pagar' ? 'Spelet pågår. Tryck på en dator — ta över!'
+    : phase === 'slut' ? 'Spelet är slut. Starta ett nytt!'
+    : game.me ? 'Du är med! Starta när ni är redo.'
+    : 'Tryck på laget du vill spela.';
+
+  $('lobby').innerHTML = LAGEN.map(id => {
     const st = m.claims[id];
     const mine = game.me === id;
     const takbar = !mine && st !== 'human';
-    const status = mine ? '✓ DU'
-      : st === 'human' ? 'Spelare ansluten'
-      : st === 'bot' ? (phase === 'pagar' ? 'Dator — tryck för att ta över' : 'Dator')
-      : phase === 'pagar' ? '—' : 'Ledig — blir dator vid start';
+    const status = mine ? `<span class="st du"><i class="dot"></i>DU ✓</span>`
+      : st === 'human' ? `<span class="st human"><i class="dot"></i>SPELARE</span>`
+      : st === 'bot' ? `<span class="st"><i class="dot"></i>${phase === 'pagar' ? 'DATOR — TA ÖVER!' : 'DATOR 🤖'}</span>`
+      : phase === 'pagar' ? `<span class="st"><i class="dot"></i>—</span>`
+      : `<span class="st"><i class="dot"></i>DATOR 🤖</span>`;
     return `<button class="lobbyteam ${mine ? 'sel' : ''} ${!takbar && !mine ? 'taken' : ''}" data-lag="${id}" ${takbar ? '' : 'disabled'}>
       ${logoSVG(id, 54)}<b>${teamName(id)}</b>
       <small>${status}</small>
@@ -654,20 +726,21 @@ function renderLobby(m) {
     b.addEventListener('click', () => { audio.unlock(); game.claim(b.dataset.lag); }));
 
   const btn = $('btn-start');
-  if (phase === 'pagar') { btn.style.display = 'none'; }
+  if (phase === 'pagar') { btn.style.display = 'none'; $('startnote').style.display = 'none'; }
   else {
     btn.style.display = '';
-    btn.disabled = !game.me;
-    btn.textContent = !game.me ? 'VÄLJ ETT LAG FÖRST'
-      : phase === 'slut' ? 'STARTA NYTT SPEL — lag utan spelare styrs av datorn'
-      : 'STARTA SPELET — lag utan spelare styrs av datorn';
+    btn.disabled = false;   // startbar när som helst — tomma lag körs av bottar
+    btn.textContent = phase === 'slut' ? 'STARTA NYTT SPEL' : 'STARTA SPELET';
+    $('startnote').style.display = 'block';
+    $('startnote').textContent = game.me ? 'Lag utan spelare styrs av datorn 🤖'
+                                         : 'Inget lag valt — du tittar på. Datorn spelar alla 🤖';
   }
 }
 function setConn(ok) {
   const el = $('connstatus');
   el.style.display = '';
   el.className = ok ? 'ok' : 'bad';
-  el.textContent = ok ? '● Ansluten till servern' : '● Ingen kontakt med servern — försöker återansluta…';
+  el.textContent = ok ? '● Du är ansluten' : '● Ingen kontakt — försöker igen…';
 }
 
 function rebuildFromState(S) {
@@ -702,8 +775,6 @@ $('ohzones').innerHTML = `<i class="z1" style="width:${E().cfg.redZone}%"></i><i
 
 if (ONLINE) {
   $('lobby').style.display = 'grid';
-  $('btn-start').disabled = true;
-  $('btn-start').textContent = 'VÄLJ ETT LAG FÖRST';
   setConn(true);
   if (game._first.started && game._first.state) {
     audio.unlock();
@@ -714,16 +785,227 @@ if (ONLINE) {
   initSector();
 }
 
-$('btn-start').addEventListener('click', () => {
+// ═══════════════ Onboarding fas 1: attract → narrativ → lobby/start ═══════════════
+// Allt ska fungera UTAN videoklipp: saknas/felar filen visas placeholder-vyn i stället.
+const ONB = manifest.onboarding || {};
+const MODE = params.get('mode') || manifest.config?.mode || 'selfplay';   // 'tutorial' | 'selfplay' | 'gm'
+
+function videoEllerFallback(videoId, fallbackId, src) {
+  const v = $(videoId);
+  const visaFallback = () => { v.style.display = 'none'; $(fallbackId).style.display = ''; };
+  if (!src) { visaFallback(); return null; }
+  v.addEventListener('error', visaFallback, { once: true });
+  v.src = src;
+  return v;
+}
+
+const senJoin = ONLINE && game._first?.started;   // spel pågår redan → rakt till ta-över-lobbyn
+if (senJoin) $('ov-attract').classList.remove('open');
+else videoEllerFallback('attract-video', 'attract-fallback', ONB.attract)?.play().catch(() => {});
+
+$('btn-attract').addEventListener('click', () => {
+  audio.unlock();                 // första trycket låser upp ljudet (webbläsarpolicyn)
+  audio.play('ui_tap');
+  $('attract-video').pause?.();
+  $('ov-attract').classList.remove('open');
+  oppnaNarrativ();
+});
+
+function oppnaNarrativ() {
+  $('ov-narrativ').classList.add('open');
+  const skip = $('btn-narr-skip');
+  const klar = () => { $('narrativ-video').pause?.(); $('ov-narrativ').classList.remove('open'); };  // lobbyn ligger under
+  skip.addEventListener('click', klar, { once: true });
+  const nv = videoEllerFallback('narrativ-video', 'narrativ-fallback', ONB.narrativ);
+  if (nv) {
+    nv.addEventListener('ended', klar, { once: true });
+    nv.addEventListener('error', () => skip.classList.add('visas'), { once: true });
+    nv.play().catch(() => skip.classList.add('visas'));
+    // Mjuk skip efter en knuff — spelledare (mode=gm) får den direkt. Fånga aldrig användaren.
+    setTimeout(() => skip.classList.add('visas'), MODE === 'gm' ? 0 : 5000);
+  } else {
+    skip.classList.add('visas');  // placeholder med punktmanus → VIDARE direkt
+  }
+}
+
+// ═══════════════ Runda 0 — tutorial (mode='tutorial') ═══════════════
+// En skriptad övningsrunda på en EGEN kastmotor bakom samma UI: deterministiska botar,
+// ingen timer, varje beat gör-gated men hoppbar och auto-utförd vid timeout (fastnar aldrig).
+// Kastas när den är klar — det riktiga spelet startar orört på runda 1. Inga regler rörda.
+
+function makeTutorial(myLag) {
+  const em = makeEmitter();
+  const engine = new EcoLoco({ ...(manifest.config || {}), humanTeam: myLag, startPengar: 26, startMaterial: 26 });
+  engine.setGm(true);   // övningen ska aldrig slumpa in en händelse — gm-flaggan kväver auto-dragningen (motorn kastas direkt efteråt)
+  const bots = ['aker', 'skog', 'tundra', 'stad'].filter(id => id !== myLag);
+  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event'])
+    engine.on(ev, p => em.emit(ev, p));
+  engine.on('roundStart', p => { if (p.round === 1) em.emit('roundStart', { round: 0 }); });  // runda 2 skickas aldrig — övningen är slut
+  engine.on('roundEnd', () => em.emit('roundEnd', { round: 0 }));
+  engine.on('award', p => em.emit('award', { round: 0, led: null, eld: null, sab: p.sab }));  // exakt EN popup i övningen
+  return {
+    online: false, me: myLag, E: () => engine,
+    on: em.on,
+    startGame: () => engine.start(),
+    selectCard: async t => engine.selectCard(myLag, t),
+    trade: async (to, give, gc, get, gc2) => {     // botarna säger alltid ja i övningen
+      const r = engine.transfer(myLag, to, give, gc, get, gc2);
+      return r.ok ? { ok: true } : { ok: false, why: r.reason };
+    },
+    openProposal: () => {},
+    vote: yes => engine.vote(myLag, yes),
+    klar: () => { em.emit('resolveStart', {}); engine.endRound(); },
+    awardsKlara: () => {}, playAgain: () => {},
+    script: {
+      bots,
+      oppnaForslag: () => engine.openProposal('gron', bots[0]),
+      botRosta: id => { engine.vote(id, true); em.emit('voteUpdate', {}); },
+    },
+  };
+}
+
+const tutWaitP = (pred, ms = 150) => new Promise(res => {
+  const i = setInterval(() => { if (pred()) { clearInterval(i); res(); } }, ms);
+});
+function tutOnce(ev, pred) {
+  return new Promise(res => {
+    let done = false;
+    game.on(ev, p => { if (!done && (!pred || pred(p))) { done = true; res(p); } });
+  });
+}
+function tutFocus(sel) {
+  document.querySelectorAll('.tut-focus').forEach(e => e.classList.remove('tut-focus'));
+  if (sel) document.querySelector(sel)?.classList.add('tut-focus');
+}
+async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 12000 }) {
+  tutFocus(focus);
+  const b = $('tutbox');
+  b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.display = 'block';
+  $('tut-txt').textContent = txt;
+  [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
+  audio.play('ui_tap');
+  let tmo = null;
+  const skipP = new Promise(res => { $('tut-skip').onclick = () => res('skip'); });
+  const timeP = new Promise(res => { tmo = setTimeout(() => res('timeout'), autoMs); });
+  const r = await Promise.race([until, skipP, timeP]);
+  clearTimeout(tmo);
+  if (r === 'skip' || r === 'timeout') { await autoDo?.(); await Promise.race([until, delay(4000)]); }  // handlingen görs åt dig
+  b.style.display = 'none';
+  tutFocus(null);
+}
+async function tutBarrier(beat) {
+  if (!ONLINE || humanCount() <= 1) return;          // solo: passera direkt
+  realGame.net.tutBeat(beat);
+  const bar = $('tutbarrier');
+  let klart = false;
+  const allaP = new Promise(res => {
+    realGame.on('tutUpdate', m => {
+      if (klart || m.beat !== beat) return;
+      $('tutbarrier-dots').innerHTML = Array.from({ length: m.humans }, (_, i) =>
+        `<i class="${i < m.klara.length ? 'on' : ''}"></i>`).join('');
+      if (m.klara.length >= m.humans) { klart = true; res(); }
+    });
+  });
+  const start = Date.now();
+  await Promise.race([allaP, delay(700)]);           // syns bara om någon faktiskt är långsammare
+  if (!klart) {
+    bar.style.display = 'flex';
+    await Promise.race([allaP, delay(12000 - (Date.now() - start))]);  // timeout: en seg bänk låser aldrig de andra
+    klart = true;
+  }
+  bar.style.display = 'none';
+}
+
+async function runTutorial() {
+  const myLag = ONLINE ? realGame.me : (manifest.config?.humanTeam || 'aker');
+  const tut = makeTutorial(myLag);
+  game.attach(tut);
+  $('ov-start').classList.remove('open');
+  $('tutveil').style.display = 'block';
+  tut.startGame();
+  await delay(500);
+  $('timertxt').textContent = '–:––';
+  await banner('ÖVNING — RUNDA 0', false, 1500);
+
+  // B1 — BYGG (tidig vinst)
+  await tutBeat({ ix: 0, txt: 'Bygg något. Tryck på ett kort.', x: 540, y: 560, focus: '.handbar',
+    until: tutOnce('build', p => p.teamId === myLag),
+    autoDo: () => buyCard(E().getState().banDirtyThisRound ? 'standard' : 'smutsig') });
+  await delay(900);
+  await tutBarrier(1);
+
+  // B2 — VÄGGEN & BYTET (svårast): visa "saknar → BYT" på ett kort du inte har råd med
+  const mig = E().team(myLag);
+  const vagg = handFor(myLag).find(c => c.tier !== picked && (mig.pengar < c.kp || mig.material < c.km));
+  if (vagg) {
+    const el = document.querySelector(`#cards .card[data-tier="${vagg.tier}"]`);
+    const brist = [];
+    if (mig.pengar < vagg.kp) brist.push(`${vagg.kp - mig.pengar} 🪙`);
+    if (mig.material < vagg.km) brist.push(`${vagg.km - mig.material} 🧱`);
+    el?.classList.add('tut-vagg', 'poor');
+    el && (el.querySelector('.saknas').textContent = `saknar ${brist.join(' + ')} → BYT`);
+  }
+  const partner = E().getState().teams.find(x => x.id !== myLag && x.sektor !== mySector)?.id;
+  openTrade(partner);
+  await tutBeat({ ix: 1, txt: `Du gör bara ${CUR_ICON[giveCur]}. Byt till dig ${CUR_ICON[getCur]} av de andra.`,
+    x: 1180, y: 150, focus: null,
+    until: tutOnce('trade', p => p.from === myLag || p.to === myLag),
+    autoDo: () => $('btn-trade-go').click() });
+  document.querySelectorAll('#cards .card.tut-vagg').forEach(el => {
+    el.classList.remove('tut-vagg', 'poor');
+    el.querySelector('.saknas').textContent = '';
+  });
+  await delay(600);
+  await tutBarrier(2);
+
+  // B3 — RÖSTA (svårast): deterministiskt förslag, fyra prickar som fylls
+  const resolvedP = tutOnce('proposalResolved');
+  tut.script.oppnaForslag();
+  await delay(700);
+  await tutBeat({ ix: 2, txt: 'Ska vi hjälpa ön? Tryck JA.', x: 1180, y: 120, focus: null,
+    until: tutWaitP(() => tut.E().getState().proposal?.votes[myLag] !== undefined),
+    autoDo: () => $('btn-ja').click() });
+  for (const b of tut.script.bots) { await delay(650); tut.script.botRosta(b); }
+  await Promise.race([resolvedP, delay(3000)]);
+  await delay(900);
+  await tutBarrier(3);
+
+  // B4 — AVSLUTA & BOKSLUT: timer-ringen förklaras, mätaren rör sig, en award-popup
+  const roundEndP = tutOnce('roundEnd');
+  await tutBeat({ ix: 3, txt: 'Klar? Tryck här. Annars räknas det av självt.', x: 1040, y: 760, focus: '#endwrap',
+    until: roundEndP,
+    autoDo: () => $('btn-end').click() });
+  await delay(1200);
+  await tutWaitP(() => !running);                    // vänta ut bokslutsscenerna + award-popupen
+  await banner('NU KÖR VI PÅ RIKTIGT — RUNDA 1', false, 1700);
+  await tutBarrier(4);
+
+  // Övningen kastas — tillbaka till det riktiga spelet
+  $('tutveil').style.display = 'none';
+  game.attach(realGame);
+  game.startGame();                                   // online: servern ignorerar dubbletter — först klar startar
+  if (ONLINE) {
+    await delay(800);
+    const S = realGame.E()?.getState();
+    if (S && S.round >= 1 && !S.over) rebuildFromState(S);   // någon annan hann starta — hoppa in i läget
+  }
+}
+
+$('btn-start').addEventListener('click', async () => {
   audio.unlock();
   audio.play('ui_tap');
   if (ONLINE) {
     if (gamePhase() === 'pagar') return;
-    if (!game.me) { toast('Välj ett lag först!', true); return; }
-    initSector();
+    if (MODE === 'tutorial' && gamePhase() === 'lobby') {
+      if (!game.me) await delay(1500);             // kiosk-claim (?lag=) kan vara på väg in
+      if (!game.me) { toast('Tryck på ett lag först!', true); return; }   // i tutorial-läge startar man inte spelet utan lag
+      runTutorial(); return;
+    }
+    if (game.me) initSector();   // utan lag: starta ändå — alla lag körs av datorn, du tittar på
     game.startGame();
   } else {
     $('ov-start').classList.remove('open');
+    if (MODE === 'tutorial') { runTutorial(); return; }
     game.startGame();
   }
 });

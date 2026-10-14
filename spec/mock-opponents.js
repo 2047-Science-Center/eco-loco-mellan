@@ -60,6 +60,7 @@ export function mockOpponentsVote(engine, humans) {
     if (p.type === 'gron') yes = (S.oh < 55 && t.pengar >= engine.cfg.gronCost) || Math.random() < 0.35;
     if (p.type === 'skatt') yes = t.id !== worst.id;
     if (p.type === 'forbud') yes = S.oh < 52 || Math.random() < 0.4;
+    if (p.type === 'event') yes = Math.random() < 0.6;   // händelse-frestelse (t.ex. sponsrat): botarna nappar oftast
     engine.vote(t.id, yes);
   });
 }

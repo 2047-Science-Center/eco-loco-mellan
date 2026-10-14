@@ -67,4 +67,6 @@ export class ServerNet {
   openProposal(ptype) { this._send({ type: 'openProposal', ptype }); }
   vote(yes) { this._send({ type: 'vote', yes }); }
   klar() { this._send({ type: 'klar' }); }
+  awardsKlara() { this._send({ type: 'awardsKlara' }); }
+  tutBeat(beat) { this._send({ type: 'tutBeat', beat }); }
 }

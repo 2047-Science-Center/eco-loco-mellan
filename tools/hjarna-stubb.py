@@ -61,6 +61,8 @@ def set_spot(n, on):
     pub(f"ecoloco/rigg/out/spot/{n}", "1" if on else "0")
 def spots_off():
     for n in (1, 2, 3, 4): set_spot(n, False)
+def set_blandare(on):
+    pub("ecoloco/rigg/out/blandare", "1" if on else "0")
 
 # ---- ljud (one-shot, graceful om filen saknas) ----
 def resolve(fname):
@@ -189,6 +191,8 @@ def handle_gm(sub, payload):
             set_fx("none"); set_all(GREEN_LOOK); spots_off()
     elif sub.startswith("spot/"):
         set_spot(int(sub.split("/")[1]), payload == "1")
+    elif sub == "blandare":
+        set_blandare(payload == "1")
     elif sub == "ljud":
         play(payload if "." in payload else payload + ".wav")
 
@@ -201,7 +205,9 @@ def on_semantic(topic, payload):
     if   topic == "ecoloco/rigg/ohalsa":    apply_ohalsa(payload)
     elif topic == "ecoloco/rigg/scen":      apply_scen(payload)
     elif topic == "ecoloco/rigg/award":     apply_award(payload)
+    elif topic == "ecoloco/rigg/ljud":      play(payload)   # central "show"-ljud: round_start/win/lose/relief/proposal_open/event_*
     elif topic == "ecoloco/rigg/wave":      set_fx("wave" if payload == "1" else "none")
+    elif topic == "ecoloco/rigg/blandare":  set_blandare(payload == "1")
     elif topic == "ecoloco/rigg/countdown":
         if payload == "1":
             stop_ambience(); set_all({"h": 0, "s": 0, "v": 80}); set_fx("countdown"); play("countdown.wav")
@@ -210,7 +216,8 @@ def on_semantic(topic, payload):
 
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
-              "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/blandare",
+              "ecoloco/rigg/ljud", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")

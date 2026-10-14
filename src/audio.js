@@ -34,21 +34,7 @@ export class GameAudio {
     try { a.currentTime = 0; a.play().catch(() => {}); } catch { /* saknad fil */ }
   }
 
-  // Korsfada mjukt till rätt ambiens för öläget (~1.5 s, per design/AUDIO.md).
-  setAmbience(mode) {
-    if (mode === this.currentAmb) return;
-    const prev = this.amb[this.currentAmb], next = this.amb[mode];
-    this.currentAmb = mode;
-    if (next) { try { next.play().catch(() => {}); } catch { /* saknad fil */ } }
-    const steps = 15, dt = 100;
-    let i = 0;
-    clearInterval(this._fade);
-    this._fade = setInterval(() => {
-      i++;
-      const t = i / steps;
-      if (prev) prev.volume = this.ambVolume * (1 - t);
-      if (next) next.volume = this.ambVolume * t;
-      if (i >= steps) { clearInterval(this._fade); if (prev) { prev.pause(); } }
-    }, dt);
-  }
+  // Ambiens/soundscape spelas numera på CENTRALHÖGTALAREN (rigg/hjärna), inte på skärmen.
+  // Kvar som no-op så att anropare inte behöver ändras och amb_*-nycklarna är borta ur manifestet.
+  setAmbience(_mode) { /* no-op — all "show"-ljudbild ligger centralt */ }
 }

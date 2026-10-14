@@ -1,14 +1,14 @@
 // logos.js — Eco Loco (Mellan): de fyra företagsloggorna, omfärgade till områdesfärgerna.
 // Områdesfärgen ÄR lagfärgen (spec): åker=gul, skog=grön, tundra=orange, stad=grå.
-// Djuren från originalet (Eagle/Bison/Wolf/Bear) — mappning mot område (stäm av med Josef):
-//   Åkermark=Bison (betesmark), Skog=Björn, Tundra=Varg, Stad=Örn.
+// Lagnamn = djuren (beslut 2026-10-10): aker=Oxen (fd Bison), skog=Björnen, tundra=Räven, stad=Örnen.
+// Silhuetterna är kvar från originalet tills nya loggor ritas (tundras är en varg som får agera räv).
 // Stil: fasetterade silhuetter i mörk rund badge, i samma anda som originalets emblem.
 
 export const TEAM_LOGOS = {
-  aker:   { djur: 'Bison', farg: '#E7C24C', ljus: '#F2DA8A', mork: '#B08F2B' },
-  skog:   { djur: 'Björn', farg: '#3F8F4A', ljus: '#7FBF87', mork: '#28632F' },
-  tundra: { djur: 'Varg',  farg: '#D98A3C', ljus: '#EDB47C', mork: '#A5601F' },
-  stad:   { djur: 'Örn',   farg: '#A9AEB5', ljus: '#D3D7DC', mork: '#70767E' },
+  aker:   { djur: 'Oxen',    farg: '#E7C24C', ljus: '#F2DA8A', mork: '#B08F2B' },
+  skog:   { djur: 'Björnen', farg: '#3F8F4A', ljus: '#7FBF87', mork: '#28632F' },
+  tundra: { djur: 'Räven',   farg: '#D98A3C', ljus: '#EDB47C', mork: '#A5601F' },
+  stad:   { djur: 'Örnen',   farg: '#A9AEB5', ljus: '#D3D7DC', mork: '#70767E' },
 };
 
 // Fasetterade huvud-silhuetter i profil (100×100-box). Två toner per djur för djup.

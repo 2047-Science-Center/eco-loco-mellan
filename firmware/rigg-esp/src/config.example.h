@@ -21,3 +21,11 @@
 // --- Spottar (relä av/på) ---
 #define SPOT_PINS       { 14, 12, 13, 5 }   // NodeMCU D5 D6 D7 D1.  ESP32: byt till fria GPIO.
 #define SPOT_ACTIVE_LOW true                // billig relämodul = true. LED-mock på pinnen = false.
+
+// --- Saftblandare (på/av, EN kanal, AKTIV HÖG — driver MOSFET) ---
+// 255 = ej inkopplad (firmwaren hoppar över den). Sätt en fri GPIO när drivsteget kopplas in.
+// Förslag ESP32-S3-DevKitC-1: 15 (ligger intill spot-pinnarna 4-7 på underraden).
+// GPIO HIGH = PÅ. VARNING: last-/nätsidan är Eriks drivsteg (MOSFET) — dimensioneras efter
+// blandarens effekt (motorns startström/inrush), byggs in och säkras. Mjukvaran sätter bara pinnen.
+#define BLANDARE_PIN         255
+#define BLANDARE_ACTIVE_HIGH true

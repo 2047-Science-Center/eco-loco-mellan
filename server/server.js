@@ -19,7 +19,7 @@ import { EcoLoco, AREAS, timerSecFor } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { attachMqtt } from '../src/mqtt.js';
 import { attachRigg } from '../src/rigg.js';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 
 const PORT = parseInt(process.env.PORT) || 8765;
 // Förstärkningsriggen: publicera semantiska cues (ecoloco/rigg/*) till riggens broker.
@@ -58,6 +58,10 @@ const TEAMS = ['aker', 'skog', 'tundra', 'stad'];
 const NAMN = Object.fromEntries(AREAS.map(a => [a.id, a.namn]));
 let engine = null, rigg = null;
 let started = false;
+// GM-flaggan bor i SERVERN (drift), inte i motorn (regler): den styr DRIFT-flödet — om händelser
+// triggas via spelledarens ja/nej (GM PÅ) eller slumpas automatiskt med chansPerRunda (GM AV),
+// och om award-ceremonin stegas för hand eller av 10 s-klockan. Motorn får bara veta av/på via setGm().
+let gmMode = false;
 const claims = { aker: null, skog: null, tundra: null, stad: null };  // teamId → ws | 'bot' | null
 let klar = new Set();          // mänskliga lag som tryckt AVSLUTA
 let timerLeft = 0, timerInt = null;
@@ -79,14 +83,20 @@ function lobbyMsg() {
 
 function newEngine() {
   engine = new EcoLoco(manifest.config || {});
+  engine.setGm(gmMode);   // spegla serverns GM-läge in i den nya motorn
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
-  rigg = attachRigg(engine, { publish: riggPublish });  // förstärkningsriggen: semantiska cues
+  rigg = attachRigg(engine, { publish: riggPublish, gm: gmMode });  // förstärkningsriggen: semantiska cues
   const relay = ev => payload => broadcast({ type: 'event', event: ev, payload });
   for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'award', 'event', 'roundEnd', 'gameEnd'])
     engine.on(ev, relay(ev));
   engine.on('roundStart', p => {
     resolvingNow = false; klar = new Set();
     broadcast({ type: 'event', event: 'roundStart', payload: p });
+    // GM-läge: motorn har dragit rundans förslag men inte applicerat det — visa det för spelledarpanelen.
+    if (gmMode) {
+      const pe = engine.getState().pendingEvent;
+      if (pe) riggPublish('ecoloco/rigg/eventforslag', JSON.stringify({ id: pe.id, namn: pe.rubrik, text: pe.text }));
+    }
     if (p.round > 1) pauseForAwards(); else startTimer();   // runda 2+: timern väntar tills prisutdelningen klickats igenom
     maybeBotProposal(p.round);
   });
@@ -313,6 +323,57 @@ wss.on('connection', ws => {
     }
   });
 });
+
+// ——— Retur-kanal: spelledarpanel → server (ecoloco/spel/gm, ICKE-retained) ———
+// Samma mosquitto_sub-spawn-mönster som tools/hjarna-stubb.py — ingen ny npm-dep.
+// Payload = {cmd:...}. ENDAST spelledar-initierade kommandon; allt är fas-gardat & idempotent.
+function handleGmCmd(m) {
+  if (!m || typeof m.cmd !== 'string') return;
+  switch (m.cmd) {
+    case 'gm':   // {on:true/false} → serverns GM-flagga (styr händelse-flöde + award-takt)
+      gmMode = !!m.on;
+      engine?.setGm(gmMode);
+      rigg?.setGm(gmMode);
+      console.log(`[gm] GM-läge = ${gmMode}`);
+      break;
+    case 'pengaslapp':   // +10 pengar & +10 material till alla lag — bara under en pågående runda
+      if (!started || !engine || engine.getState().over || resolvingNow) break;
+      engine.pengaslapp();
+      break;
+    case 'event':   // {beslut:'ja'|'nej'} → kör/hoppa rundans händelseförslag (en gång/runda, idempotent via pendingEvent)
+      if (!gmMode || !started || !engine || engine.getState().over) break;
+      if (!engine.getState().pendingEvent) break;
+      engine.resolveEventDecision(m.beslut === 'ja' ? 'ja' : 'nej');
+      break;
+    case 'award_next':   // stega award-ceremonin ett pris (bara meningsfullt i GM-läge)
+      rigg?.awardNext?.();
+      break;
+  }
+}
+
+function attachGmChannel() {
+  let proc;
+  try {
+    proc = spawn('mosquitto_sub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-v', '-t', 'ecoloco/spel/gm']);
+  } catch (e) {
+    console.warn(`[gm] kunde inte starta mosquitto_sub (${e.code || e.message}) — spelledarpanelen når inte servern`);
+    return;
+  }
+  proc.on('error', e => console.warn(`[gm] mosquitto_sub-fel (${e.code || e.message}) — spelledarpanelen når inte servern`));
+  let buf = '';
+  proc.stdout.on('data', chunk => {
+    buf += chunk.toString();
+    let ix;
+    while ((ix = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, ix); buf = buf.slice(ix + 1);
+      const sp = line.indexOf(' ');            // mosquitto_sub -v ger "topic payload"
+      if (sp < 0) continue;
+      let m; try { m = JSON.parse(line.slice(sp + 1).trim()); } catch { continue; }
+      try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid kommando: ${e.message}`); }
+    }
+  });
+}
+attachGmChannel();
 
 httpServer.listen(PORT, async () => {
   const os = await import('node:os');

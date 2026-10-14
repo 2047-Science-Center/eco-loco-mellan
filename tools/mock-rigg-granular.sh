@@ -38,7 +38,7 @@ if [ -z "$1" ]; then
   echo "=== RIGG-REGLAGE (broker: $BROKER) ==="
   echo "Skriv en scen + Enter. Award tar siffra 1-4, t.ex: award-sab 2.  'q' = avsluta."
   echo "Scener: attract kris nastan-kris mellan ok superbra wave countdown"
-  echo "        award-sab award-foretagare award-eldsjal gm-grona blackout demo"
+  echo "        award-sab award-foretagare award-eldsjal blandare-pa blandare-av gm-grona blackout demo"
   while true; do
     read -rp "rigg> " c a || break
     [ "$c" = "q" ] && break
@@ -61,6 +61,8 @@ case "$1" in
   award-sab)        fx none; award "$SIDA" '{"h":0,"s":100,"v":100}' ;;
   award-foretagare) fx none; award "$SIDA" '{"h":110,"s":90,"v":90}' ;;
   award-eldsjal)    fx none; award "$SIDA" '{"h":135,"s":100,"v":70}' ;;
+  blandare-pa)   P "ecoloco/rigg/out/blandare" 1 ;;
+  blandare-av)   P "ecoloco/rigg/out/blandare" 0 ;;
   gm-grona)      fx none; all_sides '{"h":120,"s":100,"v":90}'; spots_off ;;
   blackout)      fx none; all_sides '{"h":0,"s":0,"v":0}'; spots_off ;;
   demo)

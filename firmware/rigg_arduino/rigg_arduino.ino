@@ -78,7 +78,7 @@ void render() {
     for (int i = ambientStarts[s]; i <= ambientEnds[s] && i < NUM_LEDS; i++) leds[i] = c;
   }
 
-  // 2. fx (wave/countdown) som chase ÖVER AMBIENT-DELEN — lämnar pil-segmenten ifred.
+  // 2. fx (wave/countdown/chase) som chase ÖVER AMBIENT-DELEN — lämnar pil-segmenten ifred.
   if (fxMode == "countdown") {
     float v = 20 + (sinf(2 * PI * now / 900.0) * 0.5 + 0.5) * 80;
     CRGB c = toRGB(0, 0, v);
@@ -92,6 +92,23 @@ void render() {
         int idx = ambLo + ((head - o + span) % span);
         uint8_t b = (uint8_t)(255 * (1.0 - o / 6.0));
         leds[idx] += CRGB(b, (uint8_t)(b * 0.7), (uint8_t)(b * 0.12));
+      }
+    }
+  } else if (fxMode == "chase") {
+    // Spännings-chase: likt wave men långsammare svep + mjukt kontinuerligt band med liten svans.
+    // Ett tydligt varmt ljusband sveper runt/över ambient-delen; pil-segmenten lämnas ifred (sektion 3).
+    int span = ambHi - ambLo + 1;
+    if (span > 0) {
+      float pxPerMs = 0.012 + (fxSpeed / 100.0) * 0.05;   // ~halva wave-farten = läsbar spänning
+      float head = fmodf(now * pxPerMs, (float)span);     // flyttal-position → mjuk rörelse
+      const float tail = 6.0f;                            // bandets längd i LED (huvud + svans)
+      for (int i = 0; i < span; i++) {
+        float d = head - i; if (d < 0) d += span;         // avstånd BAKOM huvudet, wrappar
+        if (d >= tail) continue;                          // utanför bandet = släckt
+        float f = 1.0f - d / tail;                        // 1 vid huvudet → 0 i svansänden
+        float b = f * f;                                  // mjuk (kvadratisk) falloff = liten svans
+        uint8_t v = (uint8_t)(255 * b);
+        leds[ambLo + i] += CRGB(v, (uint8_t)(v * 0.55), (uint8_t)(v * 0.10));  // varm bärnsten
       }
     }
   }

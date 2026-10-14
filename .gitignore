@@ -15,3 +15,7 @@ firmware/rigg_arduino/config.h
 
 # touch-paketet: per-maskin-konfig (varje NUC har sina egna USB-portar) checkas aldrig in
 drift/mint/touch/touch.env
+
+# Python bytecode (bieffekt av lokal syntaxkoll)
+__pycache__/
+*.pyc

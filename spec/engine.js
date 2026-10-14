@@ -38,6 +38,27 @@ export const AREAS = [
   { id: 'stad',   namn: 'Örnen',   farg: '#8A8F96', sektor: 'pengar'   },
 ];
 
+// ═══════════════ Händelser (events) ═══════════════
+// Hårdkodad men lätt-redigerbar struktur: Josef & Klara ändrar siffror/text direkt här.
+// chansPerRunda = sannolikhet att en händelse dras varje runda (endast i selfplay/auto-läge;
+//   i GM-läge dras förslaget varje runda och spelledaren avgör ja/nej).
+// utanAterlaggning = en dragen händelse återkommer inte (flyttas till drawnEvents).
+// typ:'auto' → slår automatiskt. typ:'rost' → individuell frestelse (varje lag röstar själv).
+// traffar: 'alla' | 'rikaste' | 'greenaste' | 'sektorPengar' | 'sektorMaterial' | 'omrade:<id>'
+// pengar/material = förändring per träffat lag. egenValuta = förändring i lagets egen sektorvaluta.
+// oh = öhälsoförändring (auto: alltid; rost: hela ön, om minst ett ja). ljud = central-rigg-ljud.
+export const EVENT_CONFIG = { chansPerRunda: 0.5, utanAterlaggning: true };
+export const EVENTS = [
+  { id:'storm', typ:'auto', traffar:'sektorPengar', pengar:-12, material:0, oh:-5, rubrik:'Höststormen är här', text:'Centralmyndigheten meddelar: kusten tar emot. De som byggt mot havet får bära vädrets kostnad — resten av ön önskar er lycka till.', ljud:'assets/audio/rigg/event_storm.mp3' },
+  { id:'skogsbrand', typ:'auto', traffar:'omrade:skog', pengar:0, material:-15, oh:-8, rubrik:'Det brinner i Björnens skogar', text:'Elden frågade inte om lov. Björnens lager går upp i rök, och röken lägger sig över hela ön. Tack för er förståelse.', ljud:'assets/audio/rigg/event_skogsbrand.mp3' },
+  { id:'uppror', typ:'auto', traffar:'rikaste', pengar:-15, material:-10, oh:-3, rubrik:'Folket har fått nog', text:'Missnöjet har hittat en adress: öns rikaste. Centralmakten ser på med milt ogillande medan era lager plundras.', ljud:'assets/audio/rigg/event_uppror.mp3' },
+  { id:'torka', typ:'auto', traffar:'sektorMaterial', pengar:0, material:-12, oh:-4, rubrik:'Torkan slår till', text:'Ingen regndans hjälpte. Åker och skog ger mindre i år — ön noterar att råvaror plötsligt blivit en bristvara.', ljud:'assets/audio/rigg/event_torka.mp3' },
+  { id:'godskord', typ:'auto', traffar:'alla', egenValuta:8, oh:2, rubrik:'Ett ovanligt gott år', text:'Vädret var med oss, för en gångs skull. Alla fyra lag får fylla på sina lager — njut, det varar inte.', ljud:'assets/audio/rigg/event_godskord.mp3' },
+  { id:'sponsrat', typ:'rost', pengarTillJa:15, oh:-6, rostFraga:'Ska ön anta koncernens erbjudande?', rubrik:'Ett erbjudande ni knappast kan tacka nej till', text:'En vänligt sinnad koncern vill investera i ön — mot att vi blundar för lite smuts. Rösta nu: tar ni pengarna?', ljud:'assets/audio/rigg/event_sponsrat.mp3' },
+  { id:'gronafonden', typ:'auto', traffar:'greenaste', pengar:12, material:0, oh:3, rubrik:'Gröna fonden delar ut', text:'Den som skött ön bäst belönas av omvärlden. Centralmakten gratulerar — övriga lag uppmanas vänligen att ta efter.', ljud:'assets/audio/rigg/event_gronafonden.mp3' },
+  { id:'marknadskrasch', typ:'auto', traffar:'sektorPengar', pengar:-15, material:0, oh:0, rubrik:'Marknaden kollapsar', text:'Pengar är bara papper i dag. Pengar-lagens förmögenheter smälter bort medan råvaror plötsligt är allt som räknas.', ljud:'assets/audio/rigg/event_marknadskrasch.mp3' },
+];
+
 // Rundtid: de första earlyRounds rundorna är längre (inlärning), resten timerSec.
 export const timerSecFor = (cfg, round) =>
   round <= (cfg.earlyRounds ?? 0) ? (cfg.timerSecEarly ?? cfg.timerSec) : cfg.timerSec;
@@ -80,7 +101,10 @@ export class EcoLoco {
     this.cfg = { ...DEFAULT_CONFIG, ...config };
     this._h = {};
     this.S = null;
+    this.gm = false;   // GM-läge: AV = händelser dras/applicera automatiskt (chansPerRunda);
+                       // PÅ = förslag dras men väntar på spelledarens ja/nej (sätts av server.js).
   }
+  setGm(on) { this.gm = !!on; }
   on(ev, cb) { (this._h[ev] ||= []).push(cb); return this; }
   _emit(ev, payload) { (this._h[ev] || []).forEach(cb => cb(payload)); }
   getState() { return this.S; }
@@ -91,6 +115,7 @@ export class EcoLoco {
       round: 1, oh: c.ohStart, lastDelta: 0, over: false,
       banDirtyThisRound: false, banDirtyNextRound: false,
       proposal: null, gronQueued: 0,
+      eventPool: EVENTS.map(e => e.id), drawnEvents: [], pendingEvent: null,
       teams: AREAS.map(a => ({
         id: a.id, namn: a.namn, farg: a.farg, sektor: a.sektor,
         pengar: c.startPengar, material: c.startMaterial,
@@ -153,7 +178,24 @@ export class EcoLoco {
   _resolveProposal() {
     const p = this.S.proposal;
     const yesCount = Object.values(p.votes).filter(Boolean).length;
-    p.resolved = true; p.passed = yesCount >= 3;
+    p.resolved = true;
+    // Händelse-omröstning (typ:'rost', t.ex. sponsrat): INDIVIDUELL frestelse — varje ja-lag
+    // får belöningen, och hela ön tar öhälso-smällen om minst ett lag nappar. Ingen 3/4-grind.
+    if (p.type === 'event') {
+      const ev = p.event;
+      this.S.teams.forEach(t => { if (p.votes[t.id]) t.pengar = Math.max(0, t.pengar + (ev.pengarTillJa || 0)); });
+      p.passed = yesCount >= 1;
+      if (p.passed && ev.oh) {
+        const before = this.S.oh;
+        this.S.oh = Math.max(0, Math.min(this.cfg.ohMax, this.S.oh + ev.oh));
+        this.S.lastDelta = this.S.oh - before;
+        this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: this.S.lastDelta });
+      }
+      this.S.pendingEvent = null;
+      this._emit('proposalResolved', { type: 'event', event: { id: ev.id, rubrik: ev.rubrik }, votes: { ...p.votes }, passed: p.passed, yesCount });
+      return;
+    }
+    p.passed = yesCount >= 3;
     if (p.passed) {
       if (p.type === 'gron') {
         this.S.teams.forEach(t => { if (p.votes[t.id]) t.pengar = Math.max(0, t.pengar - this.cfg.gronCost); });
@@ -219,14 +261,7 @@ export class EcoLoco {
     this.S.lastDelta = this.S.oh - before;
     this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: this.S.lastDelta });
 
-    // event vid kris
-    let ev = null;
-    if (this.S.oh > 0 && this.S.oh < c.redZone) {
-      const namn = ['Storm', 'Skogsbrand', 'Uppror', 'Torka'][Math.floor(Math.random() * 4)];
-      this.S.teams.forEach(t => { t.pengar = Math.max(0, t.pengar - c.eventLoss); t.material = Math.max(0, t.material - c.eventLoss); });
-      ev = { namn, loss: c.eventLoss };
-      this._emit('event', ev);
-    }
+    // (Gamla kris-slumpen är borttagen — händelser hanteras nu av EVENT-systemet vid roundStart.)
 
     // rundans kapitalökning (för award "ledande")
     this.S.teams.forEach(t => t._roundGain = (t.pengar + t.material) - t._roundStartWealth);
@@ -246,7 +281,90 @@ export class EcoLoco {
     }
     this.S.round++;
     this._snapshot();
+    this._drawEvent();                               // dra rundans händelse (före roundStart → servern ser pendingEvent)
     this._emit('roundStart', { round: this.S.round });
+    if (!this.gm && this.S.pendingEvent) this._runEvent(this.S.pendingEvent);   // auto-läge: applicera direkt
+  }
+
+  // ═══════════════ Händelse-system ═══════════════
+  // Dra rundans händelse. Auto-läge: chansPerRunda avgör; GM-läge: dra alltid (spelledaren avgör sen).
+  // Utan återläggning → flyttas till drawnEvents så den inte kommer igen.
+  _drawEvent() {
+    this.S.pendingEvent = null;
+    const pool = this.S.eventPool;
+    if (!pool || pool.length === 0) return;
+    if (!this.gm && Math.random() >= EVENT_CONFIG.chansPerRunda) return;
+    const i = Math.floor(Math.random() * pool.length);
+    const id = EVENT_CONFIG.utanAterlaggning === false ? pool[i] : pool.splice(i, 1)[0];
+    this.S.drawnEvents.push(id);
+    this.S.pendingEvent = EVENTS.find(e => e.id === id) || null;
+  }
+
+  // Spelledaren svarar på rundans händelseförslag (GM-läge). ja = kör, nej = hoppa. Idempotent.
+  resolveEventDecision(beslut) {
+    const ev = this.S?.pendingEvent;
+    if (!ev) return;
+    if (beslut === 'ja') this._runEvent(ev);
+    else this.S.pendingEvent = null;
+  }
+
+  // Kör en dragen händelse. typ:'auto' → applicera på en gång. typ:'rost' → öppna individuell omröstning.
+  _runEvent(ev) {
+    if (!ev) return;
+    if (ev.typ === 'rost') {
+      this.S.proposal = { type: 'event', event: ev, by: null, votes: {}, resolved: false, passed: false };
+      this._emit('proposalOpened', { type: 'event', by: null,
+        event: { id: ev.id, rubrik: ev.rubrik, text: ev.text, rostFraga: ev.rostFraga, ja: ev.pengarTillJa, ljud: ev.ljud } });
+      return;   // pendingEvent ligger kvar tills omröstningen upplöses
+    }
+    const targets = this._eventTargets(ev.traffar);
+    targets.forEach(t => {
+      if (ev.egenValuta) t[t.sektor] = Math.max(0, t[t.sektor] + ev.egenValuta);
+      if (ev.pengar)   t.pengar   = Math.max(0, t.pengar + ev.pengar);
+      if (ev.material) t.material = Math.max(0, t.material + ev.material);
+    });
+    if (ev.oh) {
+      const before = this.S.oh;
+      this.S.oh = Math.max(0, Math.min(this.cfg.ohMax, this.S.oh + ev.oh));
+      this.S.lastDelta = this.S.oh - before;
+      this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: this.S.lastDelta });
+    }
+    this._emit('event', { id: ev.id, rubrik: ev.rubrik, text: ev.text, ljud: ev.ljud, traffade: targets.map(t => t.id) });
+    this.S.pendingEvent = null;
+  }
+
+  // Lös upp en träff-selektor till en lag-lista.
+  _eventTargets(traffar) {
+    const teams = this.S.teams;
+    if (traffar === 'alla') return teams;
+    if (traffar === 'sektorPengar') return teams.filter(t => t.sektor === 'pengar');
+    if (traffar === 'sektorMaterial') return teams.filter(t => t.sektor === 'material');
+    if (traffar === 'rikaste') return [this.richest()];
+    if (traffar === 'greenaste') return [this._greenest()];
+    if (typeof traffar === 'string' && traffar.startsWith('omrade:')) {
+      const t = this.team(traffar.slice('omrade:'.length));
+      return t ? [t] : [];
+    }
+    return [];
+  }
+
+  // Grönast = högst impactNeg (minst negativ). Tie-break: lägst totalt kapital, sedan AREAS-ordning.
+  _greenest() {
+    const order = AREAS.map(a => a.id);
+    return [...this.S.teams].sort((a, b) =>
+      (b.impactNeg - a.impactNeg) ||
+      ((a.pengar + a.material) - (b.pengar + b.material)) ||
+      (order.indexOf(a.id) - order.indexOf(b.id)))[0];
+  }
+
+  // ACTION (GM): pengasläpp från centralmakten — +10 pengar och +10 material till ALLA fyra lag.
+  pengaslapp() {
+    if (!this.S || this.S.over) return;
+    this.S.teams.forEach(t => { t.pengar += 10; t.material += 10; });
+    this.S.teams.forEach(t => this._emit('income', { teamId: t.id, pengar: 10, material: 10 }));
+    this._emit('event', { id: 'pengaslapp', rubrik: 'PENGASLÄPP FRÅN CENTRALMAKTEN',
+      text: 'Centralmakten skjuter till 10 pengar och 10 material till varje lag för att hålla öns ekonomi flytande.',
+      ljud: null, traffade: this.S.teams.map(t => t.id) });
   }
 
   _computeAwards() {

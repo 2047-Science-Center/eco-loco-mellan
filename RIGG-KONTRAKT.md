@@ -22,12 +22,24 @@ Migration A→B och Python→Blocks är osynlig nedåt: båda lagren nedan är f
 | `ecoloco/rigg/award` | vid varje prisuppläsning | `{"typ":"sabotor\|foretagare\|eldsjal","lag":"aker\|skog\|tundra\|stad"}` | nej |
 | `ecoloco/rigg/wave` | bokslut börjar (`resolveStart`) | `1` = starta wave, `0` = stopp | nej |
 | `ecoloco/rigg/countdown` | 10 s kvar | `1` = starta, `0` = stopp | nej |
+| `ecoloco/rigg/blandare` | spelet vill köra blandaren (valfri cue, ej inkopplad i rigg.js än) | `1` = på, `0` = av | nej |
+| `ecoloco/rigg/ljud` | central "show"-ljud (ej på skärmen) | ljud-id/filnamn, t.ex. `round_start`, `win`, `lose`, `relief`, `proposal_open`, `event_storm.mp3` | nej |
+| `ecoloco/rigg/eventforslag` | GM-läge, vid rundstart: rundans dragna händelse (för spelledarpanelen) | `{"id":...,"namn":...,"text":...}` | nej |
+
+Retur-kanal (spelledarpanel → server, icke-retained): `ecoloco/spel/gm`
+| Payload | Effekt (server.js) |
+|---------|--------------------|
+| `{"cmd":"gm","on":true\|false}` | serverns GM-läge: händelser via ja/nej (på) eller 50 %-auto (av) + award-takt |
+| `{"cmd":"pengaslapp"}` | +10 pengar & +10 material till alla fyra lag (under pågående runda) |
+| `{"cmd":"event","beslut":"ja"\|"nej"}` | kör/hoppa rundans händelseförslag (GM-läge, en gång/runda) |
+| `{"cmd":"award_next"}` | stega award-ceremonin ett pris (GM-läge) |
 
 GM (master, bryter spelet): `ecoloco/rigg/gm/<kommando>`
 | Topic | Payload |
 |-------|---------|
 | `ecoloco/rigg/gm/alla_grona` | `1` / `0` |
 | `ecoloco/rigg/gm/spot/<1-4>` | `0` / `1` |
+| `ecoloco/rigg/gm/blandare` | `0` / `1` |
 | `ecoloco/rigg/gm/ljud` | ljud-id (sträng) |
 | `ecoloco/rigg/gm/master` | `1` = GM tar över (ignorera spelets cues), `0` = släpp |
 
@@ -40,6 +52,7 @@ GM (master, bryter spelet): `ecoloco/rigg/gm/<kommando>`
 | `ecoloco/rigg/out/led/<1-4>` | `{"h":0-360,"s":0-100,"v":0-100,"puls":0-100,"blink":0-100}` | sätter sida N:s grundfärg + puls/blink-takt (lokalt) |
 | `ecoloco/rigg/out/fx` | `{"fx":"none\|wave\|countdown","speed":0-100}` | helslinge-overlay (tombola-wave / vit nedräkningspuls) |
 | `ecoloco/rigg/out/spot/<1-4>` | `0` / `1` | relä av/på (aktiv-låg-flagga i firmware) |
+| `ecoloco/rigg/out/blandare` | `0` / `1` | saftblandar-relä av/på (egen aktiv-låg-flagga, boot-säker i firmware) |
 
 Sida→punktintervall är en **konstant i firmwaren** (t.ex. `LAG_A = 0..34`), bytbar när antal punkter ändras.
 

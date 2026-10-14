@@ -19,6 +19,15 @@ const int sideStarts[4] = SIDE_STARTS;
 const int sideEnds[4]   = SIDE_ENDS;
 const int spotPins[4]   = SPOT_PINS;
 
+// Saftblandare: en extra relä-kanal (samma princip som en spot).
+// 255 = ej inkopplad -> firmwaren hoppar över den (äldre config.h kompilerar oförändrat).
+#ifndef BLANDARE_PIN
+  #define BLANDARE_PIN 255
+#endif
+#ifndef BLANDARE_ACTIVE_HIGH
+  #define BLANDARE_ACTIVE_HIGH true   // MOSFET: GPIO HIGH = PA
+#endif
+
 struct SideLook { float h=0, s=0, v=0, puls=0, blink=0; };
 SideLook sideLook[4];
 String fxMode = "none";
@@ -33,6 +42,11 @@ CRGB toRGB(float h, float s, float v) {
 void setSpot(int i, bool on) {
   bool level = SPOT_ACTIVE_LOW ? !on : on;
   digitalWrite(spotPins[i], level ? HIGH : LOW);
+}
+void setBlandare(bool on) {
+  if (BLANDARE_PIN == 255) return;                 // ej inkopplad
+  bool level = BLANDARE_ACTIVE_HIGH ? on : !on;
+  digitalWrite(BLANDARE_PIN, level ? HIGH : LOW);
 }
 
 // puls = mjuk sinus på v; blink = hård av/på. Högre värde = snabbare/djupare.
@@ -98,6 +112,8 @@ void onMsg(char *topic, byte *payload, unsigned int len) {
   } else if (t.startsWith("ecoloco/rigg/out/spot/")) {
     int n = t.substring(22).toInt(); if (n < 1 || n > 4) return;
     setSpot(n - 1, buf[0] == '1');
+  } else if (t == "ecoloco/rigg/out/blandare") {
+    setBlandare(buf[0] == '1');
   }
 }
 
@@ -109,6 +125,7 @@ void connectMqtt() {
       mqtt.subscribe("ecoloco/rigg/out/led/+");
       mqtt.subscribe("ecoloco/rigg/out/fx");
       mqtt.subscribe("ecoloco/rigg/out/spot/+");
+      mqtt.subscribe("ecoloco/rigg/out/blandare");
     } else { Serial.print(F("[rigg] MQTT fail rc=")); Serial.println(mqtt.state()); delay(1000); }
   }
 }
@@ -120,6 +137,11 @@ void setup() {
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(255);
   for (int i = 0; i < 4; i++) { pinMode(spotPins[i], OUTPUT); setSpot(i, false); }
+  if (BLANDARE_PIN != 255) {                          // boot-säker: lägg reläet AV innan pinMode
+    digitalWrite(BLANDARE_PIN, BLANDARE_ACTIVE_HIGH ? LOW : HIGH);
+    pinMode(BLANDARE_PIN, OUTPUT);
+    setBlandare(false);
+  }
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);

@@ -1,7 +1,13 @@
 {
   "_readme": "Manifest som spelet läser LIVE. Byggnads-nycklar = <område>_<nivå> och matchar engine.js card.asset samt filnamnen i assets/. Alla 12 byggnader finns. Ljudfiler ej på plats än (se design/AUDIO.md). Fable: skriv in slots-koordinaterna i Fas 1 när kartan ritats.",
   "config": {
-    "_readme": "Overrides av DEFAULT_CONFIG i spec/engine.js - las live av spel.html. Tomt objekt = motorns standardvarden (rounds 8, timerSec 90, startPengar 40, startMaterial 30, ohStart 50, threshold 60, humanTeam aker m.fl.)."
+    "_readme": "Overrides av DEFAULT_CONFIG i spec/engine.js - las live av spel.html. Tomt objekt = motorns standardvarden (rounds 8, timerSec 90, startPengar 40, startMaterial 30, ohStart 50, threshold 60, humanTeam aker m.fl.). mode styr onboarding-lagret (tutorial | selfplay | gm), aldrig motorns regler; ?mode=... i URL:en vinner.",
+    "mode": "tutorial"
+  },
+  "onboarding": {
+    "_readme": "Onboarding-lagrets videoklipp. Saknas filen visas en placeholder - allt funkar utan klipp. attract = 15 s tyst loop (viloläge), narrativ = 45 s berättarklipp (scenario A).",
+    "attract": "assets/video/attract.mp4",
+    "narrativ": "assets/video/narrativ.mp4"
   },
   "areas": [
     {
@@ -331,6 +337,7 @@
     ]
   },
   "audio": {
+    "_readme": "Skärm-ljud (assets/audio/) = torr interaktions-/feedback-ljud som spelas i webbläsaren. Central-ljud (assets/audio/rigg/) = all 'show'-ljudbild; spelas INTE på skärmen utan på centralhögtalaren av tools/hjarna-stubb.py (via rigg-cues). Mp3-filerna genereras separat.",
     "build_smutsig": "assets/audio/build_smutsig.mp3",
     "build_standard": "assets/audio/build_standard.mp3",
     "build_gron": "assets/audio/build_gron.mp3",
@@ -339,17 +346,22 @@
     "vote": "assets/audio/vote.mp3",
     "proposal_pass": "assets/audio/proposal_pass.mp3",
     "proposal_fail": "assets/audio/proposal_fail.mp3",
-    "round_start": "assets/audio/round_start.mp3",
-    "event": "assets/audio/event.mp3",
-    "award_led": "assets/audio/award_led.mp3",
-    "award_eld": "assets/audio/award_eld.mp3",
-    "award_sab": "assets/audio/award_sab.mp3",
-    "win": "assets/audio/win.mp3",
-    "lose": "assets/audio/lose.mp3",
-    "amb_superdaligt": "assets/audio/amb_superdaligt.mp3",
-    "amb_daligt": "assets/audio/amb_daligt.mp3",
-    "amb_neutralt": "assets/audio/amb_neutralt.mp3",
-    "amb_bra": "assets/audio/amb_bra.mp3",
-    "amb_mycketbra": "assets/audio/amb_mycketbra.mp3"
+    "win": "assets/audio/rigg/win.mp3",
+    "lose": "assets/audio/rigg/lose.mp3",
+    "relief": "assets/audio/rigg/relief.mp3",
+    "round_start": "assets/audio/rigg/round_start.mp3",
+    "proposal_open": "assets/audio/rigg/proposal_open.mp3",
+    "pil_blip": "assets/audio/rigg/pil_blip.mp3",
+    "spanning": "assets/audio/rigg/spanning.mp3",
+    "larm": "assets/audio/rigg/larm.mp3",
+    "happening": "assets/audio/rigg/happening.mp3",
+    "event_storm": "assets/audio/rigg/event_storm.mp3",
+    "event_skogsbrand": "assets/audio/rigg/event_skogsbrand.mp3",
+    "event_uppror": "assets/audio/rigg/event_uppror.mp3",
+    "event_torka": "assets/audio/rigg/event_torka.mp3",
+    "event_godskord": "assets/audio/rigg/event_godskord.mp3",
+    "event_sponsrat": "assets/audio/rigg/event_sponsrat.mp3",
+    "event_gronafonden": "assets/audio/rigg/event_gronafonden.mp3",
+    "event_marknadskrasch": "assets/audio/rigg/event_marknadskrasch.mp3"
   }
 }

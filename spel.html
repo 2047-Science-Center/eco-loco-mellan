@@ -191,6 +191,49 @@
   #banner .bt { font-size: 76px; font-weight: 800; letter-spacing: 6px; text-shadow: 0 4px 30px #000; background: rgba(20,18,14,.8); border: 3px solid var(--edge2); border-radius: 20px; padding: 24px 60px; }
   #banner .bt.varn { color: var(--led-red); border-color: var(--led-red); }
 
+  /* ——— Runda 0: tutorial-lagret ——— */
+  #tutveil { position: absolute; inset: 0; background: rgba(10, 9, 7, .72); z-index: 8; display: none; }
+  .tut-focus { position: relative; z-index: 9; }
+  .hand-locked .card.tut-vagg { opacity: 1; }
+  #tutbox { position: absolute; z-index: 13; display: none; max-width: 560px; background: var(--panel);
+      border: 4px solid var(--gold); border-radius: 18px; padding: 20px 24px; box-shadow: 0 10px 50px rgba(0,0,0,.7); }
+  #tutbox .txt { font-size: 30px; font-weight: 800; line-height: 1.35; }
+  #tutbox .footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+  #tutbox .beatdots { display: flex; gap: 10px; }
+  #tutbox .beatdots i { width: 13px; height: 13px; border-radius: 50%; background: var(--panel2); border: 2px solid var(--edge2); }
+  #tutbox .beatdots i.on { background: var(--gold); border-color: var(--gold); }
+  #tutbox .skip { background: none; border: none; color: var(--dim); font: inherit; font-size: 15px;
+      font-weight: 800; letter-spacing: 1px; cursor: pointer; text-decoration: underline; }
+  #tutbarrier { position: absolute; inset: 0; background: rgba(10, 9, 7, .85); z-index: 14; display: none;
+      align-items: center; justify-content: center; flex-direction: column; gap: 18px; }
+  #tutbarrier .t { font-size: 34px; font-weight: 800; letter-spacing: 2px; }
+  #tutbarrier .pdots { display: flex; margin: 0; }
+
+  /* ——— Onboarding: attract + narrativ ——— */
+  #ov-attract, #ov-narrativ { background: #000; z-index: 15; }
+  #ov-attract video, #ov-narrativ video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .vid-fallback { position: absolute; inset: 0; background:
+      radial-gradient(1200px 600px at 50% 30%, #1C4E60 0%, #14323E 45%, #0E0D0A 100%); }
+  .vid-fallback .note { position: absolute; bottom: 36px; left: 0; right: 0; text-align: center;
+      color: var(--dim); font-size: 16px; letter-spacing: 2px; }
+  .attract-inner { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px;
+      text-shadow: 0 4px 40px #000; }
+  .attract-inner h1 { margin: 0; font-size: 92px; letter-spacing: 10px; }
+  .attract-inner .exp { font-size: 30px; letter-spacing: 6px; color: var(--gold); margin-bottom: 46px; }
+  .attract-inner .bigbtn { width: auto; padding: 22px 70px; font-size: 30px; background: rgba(42,39,33,.88);
+      animation: fortsattpuls 2.2s ease-in-out infinite; }
+  .narr-inner { position: relative; z-index: 2; max-width: 980px; text-align: center; }
+  .narr-inner h2 { font-size: 26px; letter-spacing: 3px; color: var(--dim); margin: 0 0 34px; }
+  .narr-manus { list-style: none; margin: 0; padding: 0; font-size: 38px; line-height: 2; font-weight: 700; }
+  .narr-manus .ic { margin-right: 18px; }
+  .onb-dots { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; justify-content: center; gap: 14px; z-index: 3; }
+  .onb-dots i { width: 16px; height: 16px; border-radius: 50%; background: var(--panel2); border: 2px solid var(--edge2); }
+  .onb-dots i.on { background: var(--gold); border-color: var(--gold); }
+  .onb-skip { position: absolute; right: 44px; bottom: 36px; z-index: 3; background: rgba(42,39,33,.85); color: var(--text);
+      border: 3px solid var(--edge2); border-radius: 12px; font: inherit; font-size: 20px; font-weight: 800;
+      letter-spacing: 1px; padding: 14px 24px; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .5s; }
+  .onb-skip.visas { opacity: 1; pointer-events: auto; }
+
   /* Startskärm */
   #ov-start .modal { text-align: center; max-width: 900px; }
   #ov-start h1 { font-size: 58px; margin: 0 0 6px; letter-spacing: 4px; }
@@ -206,9 +249,20 @@
   .lobbyteam.sel { border-color: var(--gold); }
   .lobbyteam.sel small { color: var(--gold); font-weight: 800; }
   .lobbyteam.taken { opacity: .55; cursor: default; }
-  #connstatus { margin-bottom: 14px; font-size: 15px; font-weight: 700; }
+  #connstatus { margin-bottom: 6px; font-size: 15px; font-weight: 700; }
   #connstatus.ok { color: var(--led-green); }
   #connstatus.bad { color: var(--led-red); }
+  .pdots { display: none; justify-content: center; align-items: center; gap: 10px; margin: 0 0 16px; }
+  .pdots .lbl { font-size: 13px; letter-spacing: 1.5px; color: var(--dim); font-weight: 800; margin-right: 8px; }
+  .pdots i { width: 18px; height: 18px; border-radius: 50%; background: var(--panel2); border: 3px solid var(--edge2); }
+  .pdots i.on { background: var(--led-green); border-color: #2c5e3d; }
+  .lobbyteam .st { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; color: var(--dim); }
+  .lobbyteam .st .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--panel2); border: 2px solid var(--edge2); flex: none; }
+  .lobbyteam .st.human .dot { background: var(--led-green); border-color: #2c5e3d; }
+  .lobbyteam .st.human { color: var(--led-green); }
+  .lobbyteam .st.du { color: var(--gold); }
+  .lobbyteam .st.du .dot { background: var(--gold); border-color: #8a742f; }
+  .startnote { margin-top: 10px; color: var(--dim); font-size: 15px; display: none; }
 </style>
 </head>
 <body>
@@ -279,6 +333,7 @@
     <h1>🏝 ECO LOCO</h1>
     <div class="tag" id="lobbytag">Bli rikast — utan att sänka ön ni delar.</div>
     <div id="connstatus" style="display:none"></div>
+    <div class="pdots" id="pdots"></div>
     <div id="lobby" style="display:none"></div>
     <div class="howto" id="howto">
       <div><span class="n">🃏</span><b>Bygg</b><br>Välj 1 kort per runda.<br>Smutsigt är billigt — men skadar ön.</div>
@@ -287,6 +342,7 @@
     </div>
     <div class="sub" style="font-size:18px">Håller ön <b style="color:var(--led-green)">över 60</b> efter 8 rundor vinner det rikaste laget. Faller den under — <b style="color:var(--led-red)">förlorar alla.</b></div>
     <button class="bigbtn gold" id="btn-start" style="font-size:26px">STARTA SPELET</button>
+    <div class="startnote" id="startnote">Lag utan spelare styrs av datorn 🤖</div>
   </div></div>
 
   <!-- Byteshandel -->
@@ -342,6 +398,53 @@
     <h3>📖 Din årsberättelse</h3>
     <div id="me-contrib" style="font-size:17px;margin-bottom:10px"></div>
     <table class="logtable" id="tbl-log"></table>
+  </div>
+
+  <!-- Runda 0: tutorial-lagret -->
+  <div id="tutveil"></div>
+  <div id="tutbox">
+    <div class="txt" id="tut-txt"></div>
+    <div class="footer">
+      <div class="beatdots" id="tut-dots"><i></i><i></i><i></i><i></i></div>
+      <button class="skip" id="tut-skip">HOPPA ÖVER ›</button>
+    </div>
+  </div>
+  <div id="tutbarrier">
+    <div class="t">VÄNTAR PÅ DE ANDRA…</div>
+    <div class="pdots" id="tutbarrier-dots" style="display:flex"></div>
+  </div>
+
+  <!-- Onboarding steg 1: attract (viloläge) -->
+  <div class="overlay open" id="ov-attract">
+    <video id="attract-video" muted loop playsinline></video>
+    <div class="vid-fallback" id="attract-fallback" style="display:none">
+      <div class="note">VIDEO: 15 s loop, folk som spelar — läggs till senare</div>
+    </div>
+    <div class="attract-inner">
+      <h1>MAKTSPELET</h1>
+      <div class="exp">– THE EXPERIENCE –</div>
+      <button class="bigbtn gold" id="btn-attract">STARTA SPELET</button>
+    </div>
+  </div>
+
+  <!-- Onboarding steg 2: förstå (narrativ 45 s) -->
+  <div class="overlay" id="ov-narrativ">
+    <video id="narrativ-video" playsinline></video>
+    <div class="vid-fallback" id="narrativ-fallback" style="display:none">
+      <div class="narr-inner" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;left:0;right:0;margin:auto">
+        <h2>NARRATIV 45 s (läggs till)</h2>
+        <ul class="narr-manus">
+          <li><span class="ic">🏝</span>Ni är fyra företag på en ö.</li>
+          <li><span class="ic">🚨</span>Ön är i kris.</li>
+          <li><span class="ic">👑</span>Bli rikast — men håll ön vid liv.</li>
+          <li><span class="ic">🏭</span>Billigt skadar ön.</li>
+          <li><span class="ic">🔁</span>Du gör bara en sorts resurs. Byt med de andra.</li>
+          <li><span class="ic">💀</span>Faller ön: alla förlorar.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="onb-dots"><i class="on"></i><i></i><i></i><i></i></div>
+    <button class="onb-skip" id="btn-narr-skip">VIDARE ›</button>
   </div>
 
   <!-- Slutskärm -->
