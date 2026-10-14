@@ -20,17 +20,15 @@ export function attachRigg(engine, opts = {}) {
   const awardMs = opts.awardMs ?? 8750;    // per pris — matchar skärmens popup-takt (används bara när GM är AV)
   const redZone = engine.cfg?.redZone ?? 30;
 
-  let gm = opts.gm ?? false;               // GM PÅ → award-ceremonin stegas av 'award_next' i stället för klockan
-  let stepResolve = null;                  // väntar på nästa steg i GM-ceremonin
+  let gm = opts.gm ?? false;               // GM PÅ → SERVERN dirigerar ceremonin (ett pris per NÄSTA AWARD)
   let lastOh = engine.cfg?.ohStart ?? 50;
   let over = false;
   let ceremony = Promise.resolve();
   let countdownFired = false;
-  let pendingAwards = null;                // motorns award-event (samma vinnare som skärmen)
+  let pendingAwards = null;                // motorns award-event (för den auto-timade ceremonin i selfplay)
 
   // Centrala "show"-ljud spelas på centralhögtalaren av hjarna-stubb/Blocks (aldrig på skärmen).
   const cue = name => { if (name) P('ecoloco/rigg/ljud', base(name)); };
-  const waitStep = () => new Promise(res => { stepResolve = res; });
 
   // Award-sekvensen för riggen = SAMMA vinnare och ordning som skärmen (motorns award-event),
   // så ljus/ljud alltid matchar popupen. Skärmens ordning: led(🏆 ledande)→eld(🌱 eldsjäl)→sab(💀 sabotör).
@@ -44,13 +42,14 @@ export function attachRigg(engine, opts = {}) {
     return seq;
   }
 
-  // Option A: adaptern sprider ut awards i skärmens ordning/takt. GM PÅ → ett steg per 'award_next'.
+  // SELFPLAY: adaptern sprider ut awards i skärmens ordning/takt (auto-timad).
+  // GM-läge: servern dirigerar i stället via beginAwards/showAward/endAwards nedan.
   async function runCeremony() {
     P('ecoloco/rigg/scen', 'awards');
     await sleep(500);                    // kort paus (matchar skärmens pre-award); ambience redan tyst
     for (const a of awardSeq()) {
       P('ecoloco/rigg/award', a);        // sida + spot + ljud (hjärnan) — samma lag/ordning som skärmen
-      if (gm) await waitStep(); else await sleep(awardMs);
+      await sleep(awardMs);
     }
     if (over) {
       P('ecoloco/rigg/scen', 'slut');
@@ -70,17 +69,25 @@ export function attachRigg(engine, opts = {}) {
   engine.on('roundStart', p  => { countdownFired = false; if (p.round > 1) cue('round_start'); });
   engine.on('gameEnd',    p  => { over = true; cue(p.won ? 'win' : 'lose'); });
   engine.on('award',      p  => { pendingAwards = p; });   // fångas FÖRE roundEnd (motorns emit-ordning)
-  engine.on('roundEnd',   () => { ceremony = runCeremony(); });
+  engine.on('roundEnd',   () => { if (!gm) ceremony = runCeremony(); });   // GM: servern dirigerar ceremonin
   // Händelse-ljud (auto) + förslags-/frestelse-ljud (rost) på centralhögtalaren.
   engine.on('event',        p => cue(p.ljud));
   engine.on('proposalOpened', p => cue(p.event?.ljud || 'proposal_open'));
+
+  // Mappning: skärmens pris-typ → riggens award-typ (färg/sida sätts av hjärnan/Blocks).
+  const RIG_TYP = { led: 'foretagare', eld: 'eldsjal', sab: 'sabotor' };
 
   return {
     // Vänta tills pågående award-ceremoni spelat klart (för selfplay-harness / server-pacing).
     whenIdle: () => ceremony,
     setGm(on) { gm = !!on; },
-    // GM-läge: stega ett pris framåt i award-ceremonin.
-    awardNext() { const r = stepResolve; stepResolve = null; if (r) r(); },
+    // GM-ceremonin (servern dirigerar): öppna scenen → ett pris i taget → stäng/återställ.
+    beginAwards() { P('ecoloco/rigg/scen', 'awards'); },
+    showAward(typ, w) { if (w) P('ecoloco/rigg/award', { typ: RIG_TYP[typ], lag: w.teamId }); },
+    endAwards(isOver) {
+      if (isOver) P('ecoloco/rigg/scen', 'slut');
+      else { P('ecoloco/rigg/scen', 'runda'); P('ecoloco/rigg/ohalsa', lastOh); }
+    },
     // Anropa varje sekund från den som äger timern (ui.js / server.js). Ingen timer -> hoppa över.
     tick(left) {
       if (left <= 10 && left > 0 && !countdownFired) { countdownFired = true; P('ecoloco/rigg/countdown', 1); }

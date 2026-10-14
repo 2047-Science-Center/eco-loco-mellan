@@ -68,6 +68,8 @@ let timerLeft = 0, timerInt = null;
 let tutBeats = {};             // tutorial-barriären: beat → Set av lag som är klara
 let awardsVantar = new Set();  // mänskliga lag som inte klickat klart prisutdelningen än
 let awardsFailsafe = null;     // timeout som startar timern även om någon klient tappas
+let lastAwards = null;         // senaste rundans prisvinnare (motorns 'award'-event)
+let cer = null;                // GM-prisutdelning som servern dirigerar: { steps:[{typ,w}], i }
 let resolvingNow = false;
 let offerSeq = 0;
 const offers = new Map();      // offerId → { from, to, give, giveCur, get, getCur }
@@ -84,11 +86,21 @@ function lobbyMsg() {
 function newEngine() {
   engine = new EcoLoco(manifest.config || {});
   engine.setGm(gmMode);   // spegla serverns GM-läge in i den nya motorn
+  lastAwards = null; cer = null;
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
   rigg = attachRigg(engine, { publish: riggPublish, gm: gmMode });  // förstärkningsriggen: semantiska cues
   const relay = ev => payload => broadcast({ type: 'event', event: ev, payload });
-  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'award', 'event', 'roundEnd', 'gameEnd'])
+  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'roundEnd', 'gameEnd'])
     engine.on(ev, relay(ev));
+  // Award: SELFPLAY skickar hela paketet → skärmen stegar själv. GM-läge: servern dirigerar
+  // ceremonin (awardCeremony → awardStep×N → awardDone) så skärm + rigg kliver i exakt takt.
+  engine.on('award', p => { lastAwards = p; if (!gmMode) broadcast({ type: 'event', event: 'award', payload: p }); });
+  engine.on('roundEnd', () => {
+    if (!gmMode || !lastAwards) return;
+    cer = { steps: buildCeremonySteps(lastAwards), i: -1 };
+    rigg.beginAwards();                                                  // riggen går till award-scenen, väntar
+    broadcast({ type: 'event', event: 'awardCeremony', payload: { total: cer.steps.length } });
+  });
   engine.on('roundStart', p => {
     resolvingNow = false; klar = new Set();
     broadcast({ type: 'event', event: 'roundStart', payload: p });
@@ -125,11 +137,22 @@ function stopTimer() {
 
 // Prisutdelning: visa full rundtid men låt den stå stilla tills alla levande människor
 // klickat igenom award-korten (eller failsafen slår till — tappad klient ska inte frysa spelet).
+// Prisutdelningens pris-ordning = samma som skärmen visar: 🏆 ledande → 🌱 eldsjäl → 💀 sabotör.
+// led/eld hoppas över om de saknas; sab-kortet visas alltid (null = "Ön andas ut").
+function buildCeremonySteps(aw) {
+  const steps = [];
+  if (aw.led) steps.push({ typ: 'led', w: aw.led });
+  if (aw.eld) steps.push({ typ: 'eld', w: aw.eld });
+  steps.push({ typ: 'sab', w: aw.sab || null });
+  return steps;
+}
+
 function pauseForAwards() {
   stopTimer();
   const full = roundFull();
   timerLeft = full;
   broadcast({ type: 'timer', left: timerLeft, full, paused: true });
+  if (gmMode) return;   // GM: servern startar timern när spelledaren klickat klart ceremonin (awardDone)
   awardsVantar = new Set(liveHumanIds());
   if (awardsVantar.size === 0) return startTimer();
   awardsFailsafe = setTimeout(() => { awardsVantar = new Set(); startTimer(); }, 40000);
@@ -345,9 +368,22 @@ function handleGmCmd(m) {
       if (!engine.getState().pendingEvent) break;
       engine.resolveEventDecision(m.beslut === 'ja' ? 'ja' : 'nej');
       break;
-    case 'award_next':   // stega award-ceremonin ett pris (bara meningsfullt i GM-läge)
-      rigg?.awardNext?.();
+    case 'award_next': {   // GM: stega prisutdelningen ett pris — skärm + rigg i exakt takt
+      if (!gmMode || !cer) break;
+      cer.i++;
+      if (cer.i < cer.steps.length) {
+        const s = cer.steps[cer.i];
+        rigg?.showAward(s.typ, s.w);                                     // riggen tänder priset
+        broadcast({ type: 'event', event: 'awardStep', payload: { typ: s.typ, w: s.w, i: cer.i, total: cer.steps.length } });
+      } else {                                                           // sista priset passerat → avsluta
+        const over = engine.getState().over;
+        rigg?.endAwards(over);
+        broadcast({ type: 'event', event: 'awardDone', payload: { over } });
+        cer = null;
+        if (!over) startTimer();                                         // rundan återupptas
+      }
       break;
+    }
   }
 }
 

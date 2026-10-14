@@ -137,7 +137,8 @@ function makeProxy() {
   let cur = null;
   const seen = new Set();
   const FWD = ['start', 'roundStart', 'build', 'trade', 'proposalOpened', 'proposalResolved',
-               'income', 'ohalsa', 'award', 'event', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
+               'income', 'ohalsa', 'award', 'awardCeremony', 'awardStep', 'awardDone',
+               'event', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
                'disconnected', 'reconnected'];
   return {
@@ -282,23 +283,48 @@ function clickOrTimeout(el, ms) {
   });
 }
 
+// Pris-typ → kort-innehåll (samma för selfplay-popupen och GM-stegningen). Ljud spelas centralt (rigg/hjärna).
+const awardMeta = (typ, w) => ({
+  led: { em: '🏆', rubrik: 'Årets ledande företag', val: w ? `+${w.varde} kapital` : '', cls: 'ohplus' },
+  eld: { em: '🌱', rubrik: 'Årets eldsjäl',          val: w ? `+${w.varde} öhälsa` : '',  cls: 'ohplus' },
+  sab: { em: '💀', rubrik: 'Årets sabotör',          val: w ? `${w.varde} öhälsa` : '',   cls: 'ohminus' },
+}[typ]);
+function renderAwardCard(typ, w, footer = '') {
+  const m = awardMeta(typ, w);
+  $('awardcard').innerHTML = `<div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
+    (w ? `<div class="who">${logoSVG(w.teamId, 64)}${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
+       : `<div class="who" style="font-size:19px;color:var(--dim)">Ön andas ut 😮‍💨</div>`) + footer;
+}
+
+// SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
-  const show = async (em2, rubrik, w, val, snd, cls) => {
-    // Award-ljud spelas centralt (rigg/hjärna) — popupen visas tyst på skärmen.
-    $('awardcard').innerHTML = `<div class="em">${em2}</div><h4>${rubrik}</h4>` +
-      (w ? `<div class="who">${logoSVG(w.teamId, 64)}${w.namn}<span class="val ${cls}">${val}</span></div>`
-         : `<div class="who" style="font-size:19px;color:var(--dim)">Ön andas ut 😮‍💨</div>`) +
-      `<div class="fortsatt">tryck för att fortsätta ›</div>`;
+  const show = async (typ, w) => {
+    renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
     $('ov-award').classList.add('open');
     await delay(500);                       // hinner läsas innan tryck registreras
     await clickOrTimeout($('ov-award'), 8000);
     $('ov-award').classList.remove('open');
     await delay(250);
   };
-  if (p.led) await show('🏆', 'Årets ledande företag', p.led, `+${p.led.varde} kapital`, 'award_led', 'ohplus');
-  if (p.eld) await show('🌱', 'Årets eldsjäl', p.eld, `+${p.eld.varde} öhälsa`, 'award_eld', 'ohplus');
-  await show('💀', 'Årets sabotör', p.sab, p.sab ? `${p.sab.varde} öhälsa` : '', 'award_sab', 'ohminus');
+  if (p.led) await show('led', p.led);
+  if (p.eld) await show('eld', p.eld);
+  await show('sab', p.sab);
   game.awardsKlara?.();   // prisutdelningen genomklickad → rundtimern får börja ticka
+  renderRegs();
+}));
+
+// GM-LÄGE: servern dirigerar — skärmen visar det pris spelledaren klickar fram (ingen auto-stegning).
+game.on('awardCeremony', () => run(async () => {
+  $('awardcard').innerHTML = `<div class="em">🏅</div><h4>Prisutdelning</h4>` +
+    `<div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div>`;
+  $('ov-award').classList.add('open');
+}));
+game.on('awardStep', p => run(async () => {
+  renderAwardCard(p.typ, p.w);
+  $('ov-award').classList.add('open');
+}));
+game.on('awardDone', () => run(async () => {
+  $('ov-award').classList.remove('open');
   renderRegs();
 }));
 
