@@ -15,6 +15,7 @@ import { renderMap } from './map.js';
 import { logoSVG } from './logos.js';
 import { GameAudio } from './audio.js';
 import { ServerNet } from './net.js';
+import { ico, moodIco, curIco } from './icons.js';
 
 const $ = id => document.getElementById(id);
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -26,8 +27,8 @@ const slots = Object.fromEntries(Object.entries(manifest.slots).filter(([k]) => 
 const audio = new GameAudio(manifest.audio || {});
 
 const MODE_LABEL = {
-  superdaligt: '🤢 Superdåligt', daligt: '😟 Dåligt', neutralt: '😐 Neutralt',
-  bra: '🙂 Bra', mycketbra: '😄 Mycket bra',
+  superdaligt: 'Superdåligt', daligt: 'Dåligt', neutralt: 'Neutralt',
+  bra: 'Bra', mycketbra: 'Mycket bra',
 };
 const TIER_LABEL = { smutsig: 'SMUTSIG', standard: 'STANDARD', gron: 'GRÖN' };
 const CUR_ICON = { pengar: '🪙', material: '🧱' };
@@ -184,6 +185,20 @@ const E = game.E;
 // ═══════════════ Karta + skala ═══════════════
 const map = renderMap($('map'), { slots, mode: 'neutralt' });
 map.showSlots(false);
+
+// Egna fasett-ikoner i det statiska chromet (ersätter generiska emoji).
+function initIcons() {
+  const set = (sel, html) => { const el = document.querySelector(sel); if (el) el.innerHTML = html; };
+  set('#box-pengar .ic', ico('pengar', 26));
+  set('#box-material .ic', ico('material', 26));
+  set('#btn-trade', `${ico('byt', 22)} BYT VALUTOR`);
+  set('#btn-prop', `${ico('rosta', 22)} LÄGG FÖRSLAG`);
+  const regH = document.querySelectorAll('.reg h4');
+  if (regH[0]) regH[0].innerHTML = `${ico('borsen', 18)} BÖRSEN`;
+  if (regH[1]) regH[1].innerHTML = `${ico('industri', 18)} KLIMAT&shy;REGISTRET`;
+  set('#ov-start h1', `${ico('on', 46)} ECO LOCO`);
+}
+initIcons();
 function fit() {
   const s = Math.min(innerWidth / 1920, innerHeight / 1080);
   $('stage').style.transform = `scale(${s})`;
@@ -428,7 +443,7 @@ function updateOh({ value, mode, delta }) {
   const d = $('ohdelta');
   d.textContent = delta === 0 ? '—' : (delta > 0 ? `▲ ${delta}` : `▼ ${-delta}`);
   d.className = 'ohdelta' + (delta > 0 ? ' pos' : delta < 0 ? ' neg' : '');
-  $('ohmode').textContent = MODE_LABEL[mode];
+  $('ohmode').innerHTML = `${moodIco(mode, 22)} ${MODE_LABEL[mode]}`;
   map.setOhalsaMode(mode);
   // Ambiens flyttad till centralhögtalaren (rigg/hjärna) — skärmen är tyst mellan interaktioner.
 }

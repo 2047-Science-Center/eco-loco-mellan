@@ -13,7 +13,7 @@ import { logoSVG } from './logos.js';
 
 export const VIEW = { w: 1536, h: 1024 };                 // kartbildens mått
 const VB = { x: -130, y: -60, w: 1796, h: 1170 };          // viewBox med havsmarginal
-export const MAP_IMAGE = 'assets/karta.png';
+export const MAP_IMAGE = 'assets/Karta%201.2.png';
 
 export const AREA_COLORS = {
   aker: '#E7C24C', skog: '#3F8F4A', tundra: '#D98A3C', stad: '#8A8F96',

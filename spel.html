@@ -4,16 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Eco Loco</title>
+<link rel="stylesheet" href="./assets/fonts/fonts.css">
 <style>
   :root {
-    --bg: #14120E; --panel: #2A2721; --panel2: #353128; --panel3: #1F1D17;
-    --edge: #4A443A; --edge2: #5C5547; --gold: #C9A94F; --text: #E9E2D2; --dim: #A79F8C;
-    --led: #FFB35C; --led-red: #FF6B4A; --led-green: #7FE08A;
-    --oh-red: #E04438; --oh-yellow: #E8C33C; --oh-green: #35D97B;
+    --bg: #121009; --panel: #211E17; --panel2: #2A261D; --panel3: #0C0B07;
+    --edge: #4A443A; --edge2: #5C5547; --gold: #C9A94F; --text: #F2ECDD; --dim: #B8AF9A;
+    --led: #F0B33C; --led-red: #F0564B; --led-green: #3DD68C;
+    --pengar: #F0B33C; --material: #8FB3C4;
+    --oh-red: #F0564B; --oh-yellow: #F5C518; --oh-green: #3DD68C;
+    --team-aker: #D4A53C; --team-skog: #1F6E57; --team-tundra: #C96F2E; --team-stad: #7E8794;
     --smutsig: #8A4A38; --standard: #7A7263; --gron: #4E9C58;
+    --font-disp: "Oxanium", "Avenir Next", system-ui, sans-serif;
+    --font-num: "Chakra Petch", ui-monospace, "Menlo", monospace;
   }
   * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
-  html, body { margin: 0; height: 100%; background: #0E0D0A; color: var(--text); font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: #0E0D0A; color: var(--text); font-family: var(--font-disp); overflow: hidden; }
+  /* Tekniska display-siffror (panel-/gauge-känsla) — Chakra Petch */
+  .ohval, .resbox .v, .team .tr, .endtime, .stepper .amt, .ranktable .n, #me-pengar, #me-material, .chip span { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
   #stagewrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
   #stage { width: 1920px; height: 1080px; transform-origin: center center; position: relative; background: var(--bg); display: flex; flex-direction: column; }
