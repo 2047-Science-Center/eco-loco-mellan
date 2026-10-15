@@ -166,6 +166,7 @@ function makeProxy() {
     claim: (...a) => cur.claim?.(...a),
     tradeAnswer: (...a) => cur.tradeAnswer?.(...a),
     podiumAnswer: (...a) => cur.podiumAnswer?.(...a),   // slutdelen
+    _emit: (ev, p) => em.emit(ev, p),   // test-krok: injicera events lokalt (slutdeltest)
   };
 }
 
@@ -1303,3 +1304,37 @@ game.on('slutdelDone', () => run(async () => {
   sdQuestion = null;
   $('ov-slut').classList.add('open');   // tillbaka till slutskärmen
 }));
+
+// ═══ TEST: öppna slutdelen direkt för genomklickning — spel.html?slutdeltest=1 ═══
+// Kräver inget parti och ingen server: stegar hela podiet + Newfoundland lokalt med en NÄSTA-knapp.
+// Exempel-fördelning (fyra lag-färgade marker) visas per fråga så hela vyn kan bedömas.
+if (params.has('slutdeltest')) {
+  (async () => {
+    const { buildSlutdel } = await import('../spec/slutdel.js');
+    const steps = buildSlutdel('A');   // returnerar steglistan direkt (array)
+    const LAGFARG = { aker: '#E7C24C', skog: '#3F8F4A', tundra: '#D98A3C', stad: '#8A8F96' };
+    ['ov-attract', 'ov-narrativ', 'ov-start'].forEach(id => $(id)?.classList.remove('open'));
+    let i = 0;
+    const showStep = () => {
+      const s = steps[i];
+      if (!s) { game._emit('slutdelDone'); btn.textContent = 'KLART ✕'; btn.onclick = () => btn.remove(); return; }
+      if (s.kind === 'question') {
+        game._emit('slutdelQuestion', { id: s.id, fraga: s.fraga, options: s.options, bild: s.bild });
+        setTimeout(() => game._emit('slutdelDist', {
+          questionId: s.id,
+          tokens: ['aker', 'skog', 'tundra', 'stad'].map((lag, k) =>
+            ({ team: lag, farg: LAGFARG[lag], option: s.options[k % s.options.length] })),
+        }), 500);
+      } else {
+        game._emit('slutdelReveal', { kort: s });
+      }
+    };
+    game._emit('slutdelStart');
+    const btn = document.createElement('button');
+    btn.textContent = 'NÄSTA ›';
+    btn.style.cssText = 'position:absolute;bottom:28px;right:28px;z-index:60;background:#C9A94F;color:#241E0F;border:0;border-radius:12px;font:inherit;font-weight:800;font-size:22px;letter-spacing:1px;padding:16px 30px;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.6)';
+    btn.onclick = () => { try { audio.unlock(); } catch {} i++; showStep(); };
+    $('stage').appendChild(btn);
+    showStep();
+  })();
+}
