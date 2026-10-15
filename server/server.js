@@ -29,7 +29,9 @@ const PORT = parseInt(process.env.PORT) || 8765;
 const RIGG_BROKER = process.env.RIGG_BROKER || 'localhost';
 const RIGG_PORT   = process.env.RIGG_PORT   || '1883';
 let riggWarned = false;
+let riggSilent = false;   // "med spelledare": spelet skickar INGA rigg-cues (spelledaren driver riggen manuellt)
 const riggPublish = (t, m) => {
+  if (riggSilent) return;
   console.log(`[rigg→] ${t} ${m}`);
   execFile('mosquitto_pub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-t', t, '-m', String(m)], (err) => {
     if (err && !riggWarned) {
@@ -74,6 +76,7 @@ let gmMode = false;
 const claims = { aker: null, skog: null, tundra: null, stad: null };  // teamId → ws | 'bot' | null
 let klar = new Set();          // mänskliga lag som tryckt AVSLUTA
 let timerLeft = 0, timerInt = null;
+let paused = false;       // paus → frys BARA spelmotorn (timer + bokslut). Riggen/ambiencen rörs ej.
 let tutBeats = {};             // tutorial-barriären: beat → Set av lag som är klara
 let awardsVantar = new Set();  // mänskliga lag som inte klickat klart prisutdelningen än
 let awardsFailsafe = null;     // timeout som startar timern även om någon klient tappas
@@ -142,6 +145,7 @@ function startTimer() {
   timerLeft = full;
   broadcast({ type: 'timer', left: timerLeft, full });
   timerInt = setInterval(() => {
+    if (paused) return;   // pausad → frys nedräkningen. Inget rigg-cue skickas, så ambiencen loopar vidare.
     timerLeft--;
     broadcast({ type: 'timer', left: timerLeft, full });
     rigg?.tick(timerLeft);                    // countdown-cue vid 10 s kvar
@@ -151,6 +155,17 @@ function startTimer() {
 function stopTimer() {
   clearInterval(timerInt); timerInt = null;
   clearTimeout(awardsFailsafe); awardsFailsafe = null; awardsVantar = new Set();
+}
+
+// Paus: fryser BARA spelmotorn (nedräkning + bokslut). Skickar inget till riggen, så
+// soundscape/ambience loopar vidare. Utlöses av skärmknapp (WS), GM-kommando eller
+// fysisk knapp/Blocks (ecoloco/spel/pause). Gäller i både auto- och spelledarläge.
+function setPaused(on) {
+  on = !!on;
+  if (on === paused || !started) return;
+  paused = on;
+  broadcast({ type: 'paused', paused, left: timerLeft });
+  console.log(`[spel] paus = ${paused}`);
 }
 
 // Prisutdelning: visa full rundtid men låt den stå stilla tills alla levande människor
@@ -196,7 +211,7 @@ function forceOpenVotes() {
 }
 
 function forceResolve() {
-  if (resolvingNow || !started || engine.getState().over) return;
+  if (paused || resolvingNow || !started || engine.getState().over) return;
   resolvingNow = true;
   forceOpenVotes();
   broadcast({ type: 'resolveStart' });
@@ -204,7 +219,7 @@ function forceResolve() {
   engine.endRound();
 }
 function maybeResolve() {
-  if (resolvingNow) return;
+  if (paused || resolvingNow) return;
   const p = engine.getState().proposal;
   if (p && !p.resolved) return;                            // röstning pågår
   if (liveHumanIds().every(id => klar.has(id))) { stopTimer(); forceResolve(); }
@@ -299,6 +314,8 @@ wss.on('connection', ws => {
         if (started && !engine.getState().over) break;
         for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
         started = true;
+        riggSilent = !!m.spelledare;   // "med spelledare" → spelet tyst mot riggen (manuell styrning)
+        if (riggSilent) console.log('[spel] MED spelledare — riggen styrs manuellt (inga rigg-cues från spelet)');
         tutBeats = {};
         newEngine();
         broadcast(lobbyMsg());
@@ -383,6 +400,7 @@ wss.on('connection', ws => {
       case 'rigCue': { if (m.phase) riggPublish('ecoloco/rigg/ceremoni', String(m.phase)); break; }
       // ——— SLUTDEL/GM: sekundär kontrollkanal över WS (webb-spelledarpanel + headless-test) ———
       // MQTT-kanalen ecoloco/spel/gm är oförändrad; detta är ett ADDITIV alternativ med samma payload.
+      case 'pause': { setPaused(m.on !== undefined ? m.on : !paused); break; }   // skärmknapp → pausa/fortsätt
       case 'gmcmd': { try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid WS-kommando: ${e.message}`); } break; }
     }
   });
@@ -408,6 +426,13 @@ function handleGmCmd(m) {
       engine?.setGm(gmMode);
       rigg?.setGm(gmMode);
       console.log(`[gm] GM-läge = ${gmMode}`);
+      break;
+    case 'pause':        // {on?:bool} eller toggla — frys bara spelmotorn (paus-knapp / arkadknapp / Blocks)
+      setPaused(m.on !== undefined ? !!m.on : !paused);
+      break;
+    case 'spelledare':   // {on:bool} → med/utan spelledare (on = spelet tyst mot riggen)
+      riggSilent = !!m.on;
+      console.log(`[spel] läge: ${riggSilent ? 'MED' : 'UTAN'} spelledare (rigg-cues ${riggSilent ? 'AV' : 'PÅ'})`);
       break;
     case 'pengaslapp':   // +10 pengar & +10 material till alla lag — bara under en pågående runda
       if (!started || !engine || engine.getState().over || resolvingNow) break;
@@ -477,7 +502,7 @@ function handleGmCmd(m) {
 function attachGmChannel() {
   let proc;
   try {
-    proc = spawn('mosquitto_sub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-v', '-t', 'ecoloco/spel/gm']);
+    proc = spawn('mosquitto_sub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-v', '-t', 'ecoloco/spel/gm', '-t', 'ecoloco/spel/pause']);
   } catch (e) {
     console.warn(`[gm] kunde inte starta mosquitto_sub (${e.code || e.message}) — spelledarpanelen når inte servern`);
     return;
@@ -491,7 +516,12 @@ function attachGmChannel() {
       const line = buf.slice(0, ix); buf = buf.slice(ix + 1);
       const sp = line.indexOf(' ');            // mosquitto_sub -v ger "topic payload"
       if (sp < 0) continue;
-      let m; try { m = JSON.parse(line.slice(sp + 1).trim()); } catch { continue; }
+      const topic = line.slice(0, sp), payload = line.slice(sp + 1).trim();
+      if (topic === 'ecoloco/spel/pause') {    // fysisk knapp / Blocks: 1=pausa, 0=fortsätt, annat=toggla
+        setPaused(payload === '1' ? true : payload === '0' ? false : !paused);
+        continue;
+      }
+      let m; try { m = JSON.parse(payload); } catch { continue; }
       try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid kommando: ${e.message}`); }
     }
   });

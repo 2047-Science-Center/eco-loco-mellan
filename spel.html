@@ -327,6 +327,12 @@
   .lobbyteam .st.du { color: var(--gold); }
   .lobbyteam .st.du .dot { background: var(--gold); border-color: #8a742f; }
   .startnote { margin-top: 10px; color: var(--dim); font-size: 15px; display: none; }
+  .modeseg { display: inline-flex; margin: 0 0 18px; border: 2px solid var(--edge2); border-radius: 12px; overflow: hidden; }
+  .modeseg .seg { background: var(--panel3); color: var(--dim); border: none; padding: 11px 22px; font-size: 16px; font-weight: 800; cursor: pointer; }
+  .modeseg .seg.sel { background: var(--gold); color: #1a1710; }
+  #btn-paus { position: fixed; left: 16px; bottom: 16px; z-index: 11; background: var(--panel3); color: var(--text); border: 2px solid var(--edge2); border-radius: 12px; padding: 10px 16px; font-size: 16px; font-weight: 800; cursor: pointer; }
+  #btn-paus.aktiv { background: var(--gold); color: #1a1710; }
+  #ov-paus { z-index: 17; cursor: pointer; }
 
   /* Start-ceremoni: redo → nedräkning → vitt ljus → RUNDA 1 */
   #ov-ready .ready-q { font-size: 84px; font-weight: 800; letter-spacing: 4px; text-shadow: 0 4px 30px #000; }
@@ -464,8 +470,19 @@
       <div><span class="n">🗳</span><b>Rösta</b><br>Ett förslag per runda.<br>3 av 4 JA krävs.</div>
     </div>
     <div class="sub" style="font-size:18px">Håller ön <b style="color:var(--led-green)">över 60</b> efter 8 rundor vinner det rikaste laget. Faller den under — <b style="color:var(--led-red)">förlorar alla.</b></div>
+    <div class="modeseg" id="modeseg">
+      <button type="button" class="seg sel" data-sp="0">Utan spelledare</button>
+      <button type="button" class="seg" data-sp="1">Med spelledare</button>
+    </div>
     <button class="bigbtn gold" id="btn-start" style="font-size:26px">STARTA SPELET</button>
     <div class="startnote" id="startnote">Lag utan spelare styrs av datorn 🤖</div>
+  </div></div>
+
+  <!-- Paus (spelledare): fryser bara spelmotorn, ambiencen fortsätter -->
+  <button id="btn-paus" title="Pausa spelmotorn" style="display:none">⏸ PAUS</button>
+  <div class="overlay" id="ov-paus"><div class="modal" style="text-align:center">
+    <div style="font-size:72px;font-weight:800;letter-spacing:6px">PAUSAD</div>
+    <div class="tag" style="margin-top:14px">Spelet är fryst — ambiencen spelar vidare.<br>Tryck var som helst för att fortsätta.</div>
   </div></div>
 
   <!-- Byteshandel -->

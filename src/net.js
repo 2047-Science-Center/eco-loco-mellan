@@ -60,7 +60,8 @@ export class ServerNet {
   }
 
   claim(lag) { this._send({ type: 'claim', lag }); }
-  startGame() { this._send({ type: 'startGame' }); }
+  startGame(opts = {}) { this._send({ type: 'startGame', ...opts }); }   // opts.spelledare → med/utan spelledare
+  pause() { this._send({ type: 'pause' }); }                             // paus: frys bara spelmotorn
   selectCard(tier) { return this._request({ type: 'selectCard', tier }); }
   trade(to, give, giveCur, get, getCur) { return this._request({ type: 'tradeOffer', to, give, giveCur, get, getCur }, 30000); }
   tradeAnswer(offerId, accept) { this._send({ type: 'tradeAnswer', offerId, accept }); }

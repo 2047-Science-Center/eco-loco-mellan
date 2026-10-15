@@ -105,6 +105,7 @@ function makeLocal() {
     vote: yes => { engine.vote(me, yes); setTimeout(() => mockOpponentsVote(engine, me), 900); },
     klar: () => doResolve(),
     awardsKlara: () => { if (!tid && !engine.getState().over) startT(); },
+    pause: () => {},   // lokalt läge: ingen server/rigg att pausa
     playAgain: () => location.reload(),
   };
 }
@@ -117,7 +118,8 @@ async function makeOnline() {
     online: true, net,
     get me() { return net.me; }, E: () => net.reader,
     on: (ev, cb) => net.on(ev, cb),
-    startGame: () => net.startGame(),
+    startGame: (opts) => net.startGame(opts),
+    pause: () => net.pause(),
     selectCard: t => net.selectCard(t),
     trade: (to, give, gc, get, gc2) => net.trade(to, give, gc, get, gc2),
     openProposal: t => net.openProposal(t),
@@ -142,7 +144,7 @@ function makeProxy() {
                'income', 'ohalsa', 'award', 'awardCeremony', 'awardStep', 'awardDone',
                'event', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
-               'disconnected', 'reconnected',
+               'disconnected', 'reconnected', 'paused',
                'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone'];
   return {
     attach(b) {
@@ -162,6 +164,7 @@ function makeProxy() {
     vote: (...a) => cur.vote(...a),
     klar: (...a) => cur.klar(...a),
     awardsKlara: (...a) => cur.awardsKlara?.(...a),
+    pause: (...a) => cur.pause?.(...a),
     playAgain: (...a) => cur.playAgain(...a),
     claim: (...a) => cur.claim?.(...a),
     tradeAnswer: (...a) => cur.tradeAnswer?.(...a),
@@ -1212,6 +1215,22 @@ async function runTutorial() {
   await startCeremony();
 }
 
+// Spelledar-läge (väljs i lobbyn): PÅ → spelet skickar INGA rigg-cues; spelledaren driver riggen manuellt.
+let medSpelledare = false;
+document.querySelectorAll('#modeseg .seg').forEach(b => b.addEventListener('click', () => {
+  medSpelledare = b.dataset.sp === '1';
+  document.querySelectorAll('#modeseg .seg').forEach(x => x.classList.toggle('sel', x === b));
+}));
+// Paus (spelledare): fryser BARA spelmotorn — ambiencen i riggen fortsätter spela.
+$('btn-paus')?.addEventListener('click', () => game.pause());
+$('ov-paus')?.addEventListener('click', () => game.pause());
+game.on('paused', m => {
+  $('ov-paus')?.classList.toggle('open', !!m.paused);
+  $('btn-paus')?.classList.toggle('aktiv', !!m.paused);
+});
+game.on('start',   () => { const pb = $('btn-paus'); if (pb) pb.style.display = ''; });
+game.on('gameEnd', () => { const pb = $('btn-paus'); if (pb) pb.style.display = 'none'; $('ov-paus')?.classList.remove('open'); });
+
 $('btn-start').addEventListener('click', async () => {
   audio.unlock();
   audio.play('ui_tap');
@@ -1223,11 +1242,11 @@ $('btn-start').addEventListener('click', async () => {
       runTutorial(); return;
     }
     if (game.me) initSector();   // utan lag: starta ändå — alla lag körs av datorn, du tittar på
-    game.startGame();
+    game.startGame({ spelledare: medSpelledare });
   } else {
     $('ov-start').classList.remove('open');
     if (MODE === 'tutorial') { runTutorial(); return; }
-    game.startGame();
+    game.startGame({ spelledare: medSpelledare });
   }
 });
 
