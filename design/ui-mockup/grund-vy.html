@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eco Loco · grund-vy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* neutral */
+    --bg:#121009; --panel:#211E17; --inset:#0C0B07; --line:#4A443A;
+    --text:#F2ECDD; --dim:#B8AF9A;
+    /* valuta (skild temperatur) */
+    --pengar:#F0B33C; --material:#8FB3C4;
+    /* signal (bara öhälsa) */
+    --sig-red:#F0564B; --sig-yel:#F5C518; --sig-grn:#3DD68C;
+    /* guld-accent (din tur / identitet / primär handling) */
+    --guld:#C9A94F;
+    /* terräng/lag — öns EGNA originalfärger (map.js / assets.json) */
+    --t-akra:#E7C24C; --t-skog:#3F8F4A; --t-tundra:#D98A3C; --t-stad:#8A8F96;
+    /* kort-band */
+    --band-smut:#7A3A2E; --band-std:#5C5547; --band-gron:#2E6B46;
+
+    --disp:"Chakra Petch", ui-monospace, "SF Mono", monospace;
+    --body:"Inter", system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;min-height:100%}
+  body{
+    background:#060504;
+    color:var(--text);
+    font-family:var(--body);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ——— två skärmar staplade, vardera skalad till fönsterbredd ——— */
+  #screens{display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 20px 72px}
+  .screen{display:flex;flex-direction:column;align-items:center;gap:11px}
+  .screen-label{font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.32em;
+    text-transform:uppercase;color:#8c8470}
+  .screen-label b{color:var(--guld);font-weight:700}
+  .stagewrap{position:relative} /* bredd/höjd sätts av JS = skalad ram */
+  .frame{
+    position:absolute;top:0;left:0;width:1600px;height:900px;transform-origin:top left;
+    background:
+      radial-gradient(130% 100% at 50% -12%, #1B1810 0%, var(--bg) 58%),
+      var(--bg);
+    display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 30px 120px rgba(0,0,0,.7);border-radius:4px;
+  }
+
+  /* ikon-värdar */
+  [data-ic],[data-face],[data-badge]{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;line-height:0}
+  [data-ic]>svg,[data-face]>svg,[data-badge]>svg{width:100%;height:100%;display:block}
+
+  /* ========================================================================
+     1 · HERO — ÖNS HÄLSA  (öhälso-mätaren full bredd under hjälte-klustret)
+     ======================================================================== */
+  .topbar{
+    height:158px;flex:0 0 auto;display:flex;flex-direction:column;gap:11px;
+    padding:14px 28px 12px;
+    background:linear-gradient(180deg,#1A1710,#17140E);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 6px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .top-row{display:flex;align-items:center;gap:26px}
+  /* liten runda-pod (nedtonad) */
+  .round-pod{
+    flex:0 0 auto;text-align:center;padding:9px 16px;border-radius:10px;
+    background:var(--inset);border:1px solid var(--line);
+  }
+  .round-pod .k{font-size:10px;letter-spacing:.3em;color:var(--dim);text-transform:uppercase}
+  .round-pod .v{font-family:var(--disp);font-weight:700;font-size:28px;line-height:1.1;letter-spacing:.03em;color:var(--text)}
+  .round-pod .v small{color:var(--dim);font-size:.6em;font-weight:600}
+
+  /* hero-klustret: tal + delta som EN sak */
+  .hero{flex:0 0 auto;display:flex;align-items:center;gap:20px}
+  .hero-eyebrow{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+  .hero-num{
+    font-family:var(--disp);font-weight:700;font-size:62px;line-height:.9;letter-spacing:.01em;
+    color:var(--sig-yel);text-shadow:0 0 26px rgba(245,197,24,.4);
+    font-variant-numeric:tabular-nums;
+  }
+  .hero-delta{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.02em;
+    padding:4px 11px;border-radius:8px;
+    color:var(--sig-grn);background:rgba(61,214,140,.1);border:1px solid rgba(61,214,140,.4);
+  }
+  .hero-mode{margin-left:auto;display:inline-flex;align-items:center;gap:10px;
+    font-size:17px;font-weight:600;color:var(--text);
+    padding:8px 15px;border-radius:10px;background:var(--inset);border:1px solid var(--line)}
+  .hero-mode [data-face]{width:30px;height:30px}
+  .hero-mode small{display:block;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim);font-weight:600}
+
+  /* full-bredds zon-mätare */
+  .zonewrap{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0;justify-content:center}
+  .zonemeta{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:#7c7462}
+  .zonebar{position:relative;height:30px;border-radius:7px;background:var(--inset);
+    border:1px solid var(--line);box-shadow:inset 0 2px 8px rgba(0,0,0,.6);overflow:visible}
+  .zones{position:absolute;inset:3px;border-radius:5px;overflow:hidden;display:flex}
+  .zones i{height:100%}
+  .zones .z-red{width:30%;background:var(--sig-red);opacity:.45}
+  .zones .z-yel{width:40%;background:var(--sig-yel);opacity:.45}
+  .zones .z-grn{width:30%;background:var(--sig-grn);opacity:.45}
+  .zonefill{position:absolute;left:3px;top:3px;bottom:3px;width:calc(54% - 3px);
+    border-radius:5px 2px 2px 5px;background:linear-gradient(90deg,rgba(245,197,24,.0),rgba(245,197,24,.55));}
+  .needle{position:absolute;top:-5px;bottom:-5px;left:54%;width:4px;transform:translateX(-2px);
+    background:var(--sig-yel);border-radius:3px;box-shadow:0 0 10px rgba(245,197,24,.8),0 0 0 2px rgba(0,0,0,.5)}
+  .goal{position:absolute;top:-16px;bottom:-9px;left:60%;width:0;border-left:2px dashed var(--guld)}
+  .goal em{position:absolute;top:-15px;left:5px;font-style:normal;font-family:var(--disp);
+    font-weight:700;font-size:12px;letter-spacing:.12em;color:var(--guld);white-space:nowrap}
+
+  /* ========================================================================
+     mitten — tre kolumner
+     ======================================================================== */
+  .cols{flex:1;display:flex;gap:16px;padding:16px 28px 10px;min-height:0}
+  .col-me{width:296px;flex:0 0 auto;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .col-island{flex:1;min-width:0}
+  .col-right{width:324px;flex:0 0 auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+  /* hjälte-sekundär: mitt lag får tjockare ram + högre kontrast */
+  .panel.strong{border:2px solid #6A5F49;box-shadow:0 2px 0 rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.04)}
+  .plabel{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
+
+  /* --- MITT LAG --- */
+  .me{padding:14px 15px;display:flex;flex-direction:column;gap:13px;flex:0 0 auto}
+  .me-id{display:flex;align-items:center;gap:12px}
+  .me-id .badge{width:50px;height:50px;flex:0 0 auto}
+  .me-id .nm{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:.02em;line-height:1}
+  .me-id .du{font-size:11px;letter-spacing:.24em;color:var(--guld);font-weight:700;margin-top:4px}
+
+  /* MINA TVÅ VALUTOR stora */
+  .wallet{display:flex;gap:10px}
+  .coin{flex:1;background:var(--inset);border:1px solid #2c281f;border-radius:10px;
+    padding:9px 12px;display:flex;align-items:center;gap:11px;box-shadow:inset 0 2px 9px rgba(0,0,0,.55)}
+  .coin [data-ic]{width:30px;height:30px}
+  .coin .c-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .coin .c-val{font-family:var(--disp);font-weight:700;font-size:44px;line-height:.92;font-variant-numeric:tabular-nums}
+  .coin.pengar .c-val{color:var(--pengar);text-shadow:0 0 12px rgba(240,179,60,.35)}
+  .coin.material .c-val{color:var(--material);text-shadow:0 0 12px rgba(143,179,196,.3)}
+
+  /* beroendet tydligt */
+  .dep{font-size:14.5px;line-height:1.5;color:var(--text)}
+  .dep .mk{color:var(--material);font-weight:700}
+  .dep .lack{color:var(--pengar);font-weight:700}
+  .dep .lack::after{content:"";display:inline-block;width:7px;height:7px;margin-left:5px;border-radius:50%;
+    background:var(--sig-red);box-shadow:0 0 7px var(--sig-red);vertical-align:middle}
+
+  .byt{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    background:linear-gradient(180deg,#2A2415,#201B10);color:var(--guld);
+    border:2px solid var(--guld);border-radius:11px;padding:13px;cursor:pointer;
+    font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.08em;
+    box-shadow:0 0 22px rgba(201,169,79,.45);} /* glöd: valuta saknas */
+  .byt [data-ic]{width:24px;height:24px}
+  .me-log{text-align:center;font-size:12.5px;color:#8c8470;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+  /* --- ÖN (riktiga låg-poly-kartan) --- */
+  .island{height:100%;border:2px solid var(--line);border-radius:12px;overflow:hidden;position:relative;background:#19566A}
+  .island svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .island .cap{position:absolute;left:12px;bottom:10px;font-size:10px;letter-spacing:.26em;
+    text-transform:uppercase;color:rgba(242,236,221,.5)}
+
+  /* ========================================================================
+     höger-kolumn — EN sammanhållen lista: TOPPLISTA → klimat → politik
+     ======================================================================== */
+  .board{padding:10px 13px 11px;display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+  .board-head{display:flex;align-items:baseline;gap:9px}
+  .board-head .plabel{font-weight:700}
+  .board-head .hint{margin-left:auto;font-size:10px;letter-spacing:.1em;color:#7c7462;text-transform:uppercase}
+
+  /* LEDAREN — egen tier, störst */
+  .lead-tier{position:relative;background:linear-gradient(180deg,#2A2416,#211B11);
+    border:2px solid var(--guld);border-radius:12px;padding:10px 13px 11px;overflow:hidden;
+    box-shadow:0 0 0 1px rgba(201,169,79,.15), inset 0 1px 0 rgba(255,255,255,.05)}
+  .lead-tier .spine{position:absolute;left:0;top:0;bottom:0;width:5px}
+  .lead-top{display:flex;align-items:center;gap:11px}
+  .lead-top .badge{width:46px;height:46px;flex:0 0 auto}
+  .lead-top .nm{font-family:var(--disp);font-weight:700;font-size:23px;line-height:1;letter-spacing:.01em}
+  .lead-top .area{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+  .lead-crown{margin-left:auto;display:flex;flex-direction:column;align-items:center;gap:1px}
+  .lead-crown [data-ic]{width:30px;height:30px}
+  .lead-crown .rk{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--guld);font-weight:700}
+  .lead-res{display:flex;gap:8px;margin-top:10px;align-items:stretch}
+  .lead-res .res{flex:1;display:flex;align-items:center;gap:8px;background:var(--inset);
+    border:1px solid #352e1d;border-radius:9px;padding:7px 10px}
+  .lead-res .res [data-ic]{width:24px;height:24px;flex:0 0 auto}
+  .lead-res .res .rv{font-family:var(--disp);font-weight:700;font-size:28px;line-height:.9;font-variant-numeric:tabular-nums}
+  .lead-res .res .rl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .lead-res .res.pengar .rv{color:var(--pengar)}
+  .lead-res .res.material .rv{color:var(--material)}
+  .lead-byt{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    background:transparent;color:var(--guld);border:1.5px solid var(--guld);border-radius:9px;padding:0 15px;cursor:pointer;
+    font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.12em}
+  .lead-byt [data-ic]{width:20px;height:20px}
+
+  /* ÖVRIGA tre — mindre rader, var sin BYT (ditt lag = DU) */
+  .trow{display:flex;align-items:center;gap:10px;position:relative;
+    background:var(--inset);border:1px solid #27231b;border-radius:9px;padding:6px 10px 6px 13px;overflow:hidden}
+  .trow .spine{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .trow .rk{font-family:var(--disp);font-weight:700;font-size:13px;color:#716a5a;width:12px;flex:0 0 auto;text-align:center}
+  .trow .badge{width:30px;height:30px;flex:0 0 auto}
+  .trow .who{flex:1;min-width:0}
+  .trow .who .n{font-size:14px;font-weight:600;letter-spacing:.01em}
+  .trow .who .r{display:flex;gap:11px;margin-top:2px;font-family:var(--disp);font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .trow .who .r b{font-weight:700}
+  .trow .who .r .p{color:var(--pengar)}
+  .trow .who .r .m{color:var(--material)}
+  .trow .mini-byt{flex:0 0 auto;font-family:var(--disp);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--guld);
+    border:1px solid var(--guld);border-radius:7px;padding:6px 11px;cursor:pointer}
+  .trow.self{border:1px solid #5a5139;background:#1b1810}
+  .trow.self .du{flex:0 0 auto;font-family:var(--disp);font-size:11px;font-weight:700;letter-spacing:.18em;color:var(--guld);
+    border:1px solid #5a5139;border-radius:7px;padding:6px 10px;background:rgba(201,169,79,.08)}
+
+  /* KLIMATREGISTRET — liten nedtonad spegel */
+  .klimat{display:flex;align-items:center;gap:9px;padding:8px 13px;background:#1b1813;border:1px solid #2a261e;border-radius:10px}
+  .klimat .kh{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .klimat .kh [data-ic]{width:15px;height:15px;opacity:.8}
+  .klimat .kh .kt{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#8c8470;font-weight:700;line-height:1.1;max-width:66px}
+  .klimat .krank{flex:1;min-width:0;display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;
+    font-family:var(--disp);font-size:11.5px;color:#8c8470}
+  .klimat .krank span{white-space:nowrap}
+  .klimat .krank b{color:var(--dim);font-weight:700}
+  .klimat .krank .bov{color:#C98A3C}
+  .klimat .krank .bov [data-ic]{width:11px;height:11px;margin-right:2px;vertical-align:-1px}
+
+  /* POLITIK / RÖSTA — tydlig ingång */
+  .vote{display:flex;align-items:center;gap:13px;width:100%;cursor:pointer;
+    background:linear-gradient(180deg,#242a20,#1a1f17);border:2px solid #4b6b3f;border-radius:12px;padding:12px 15px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+  .vote .vic{width:42px;height:42px;flex:0 0 auto;background:#121a10;border:1px solid #3c5433;border-radius:10px;
+    display:inline-flex;align-items:center;justify-content:center}
+  .vote .vic [data-ic]{width:30px;height:30px}
+  .vote .vtx{flex:1;min-width:0}
+  .vote .vtx .vt{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.04em;color:#CDE3C2}
+  .vote .vtx .vs{font-size:11px;color:#8ba17f;margin-top:3px;letter-spacing:.02em}
+  .vote .vgo{flex:0 0 auto;font-family:var(--disp);font-weight:700;font-size:20px;color:#8ba17f}
+
+  /* ========================================================================
+     MIN HAND
+     ======================================================================== */
+  .handbar{height:224px;flex:0 0 auto;display:flex;align-items:stretch;gap:16px;padding:6px 32px 18px}
+  .hand-label{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;
+    font-size:12px;letter-spacing:.34em;color:var(--dim);font-weight:700;flex:0 0 auto}
+  .hand{flex:1;display:flex;gap:14px;min-width:0}
+  .card{flex:1;min-width:0;background:var(--panel);border:2px solid #4f4838;border-radius:13px;
+    overflow:hidden;display:flex;flex-direction:column;position:relative;
+    box-shadow:0 2px 0 rgba(0,0,0,.3)}
+  .card .band{padding:5px 12px;font-size:12px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:#F2ECDD}
+  .card.smut .band{background:var(--band-smut)}
+  .card.std  .band{background:var(--band-std)}
+  .card.gron .band{background:var(--band-gron)}
+  .card .body{flex:1;display:flex;flex-direction:column;padding:9px 14px 10px;gap:7px;min-height:0}
+
+  /* kortets STÖRSTA siffra = ö-effekten */
+  .effect{display:flex;align-items:center;gap:10px}
+  .effect [data-ic]{width:40px;height:40px}
+  .effect .n{font-family:var(--disp);font-weight:700;font-size:40px;line-height:.9;font-variant-numeric:tabular-nums}
+  .effect .u{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);line-height:1.25}
+  .card.smut .effect .n,.card.std .effect .n{color:var(--sig-red);text-shadow:0 0 13px rgba(240,86,75,.4)}
+  .card.gron .effect .n{color:var(--sig-grn);text-shadow:0 0 13px rgba(61,214,140,.4)}
+
+  .card .cname{font-family:var(--disp);font-weight:600;font-size:24px;line-height:1.04;letter-spacing:.01em;margin-top:2px;white-space:nowrap}
+  .lines{margin-top:auto;display:flex;flex-direction:column;gap:3px}
+  .line{display:flex;align-items:center;gap:7px;font-size:13px}
+  .line .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);width:46px;flex:0 0 auto}
+  .line .amt{font-family:var(--disp);font-weight:600;display:flex;align-items:center;gap:8px}
+  .line .amt .q{display:inline-flex;align-items:center;gap:3px}
+  .line .amt [data-ic]{width:15px;height:15px}
+  .line.cost.cheap .amt{color:var(--pengar)}
+  .line.yield .amt{color:var(--material)}
+  .line.yield.earn .amt{color:var(--pengar)}
+
+  .kop{margin:0 13px 11px;display:block;background:transparent;color:var(--guld);
+    border:1.5px solid var(--guld);border-radius:9px;padding:9px;cursor:pointer;
+    font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:.16em;text-align:center}
+  .card.locked .kop{color:#6b6454;border-color:#3a352b;cursor:default}
+  .card .lack-chip{position:absolute;top:34px;right:10px;display:flex;align-items:center;gap:4px;
+    background:rgba(240,86,75,.14);border:1px solid rgba(240,86,75,.5);color:var(--sig-red);
+    font-family:var(--disp);font-weight:700;font-size:12px;border-radius:7px;padding:4px 7px;z-index:2}
+  .card .lack-chip [data-ic]{width:13px;height:13px}
+
+  /* AVSLUTA OMGÅNG + timer (guld-accent, primär) */
+  .endwrap{width:168px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+    background:var(--panel);border:2px solid #6A5F49;border-radius:13px}
+  .ring{position:relative;width:118px;height:118px}
+  .ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .ring .end-btn{position:absolute;inset:13px;border-radius:50%;cursor:pointer;
+    background:radial-gradient(circle at 36% 30%,#2E2816,#1B1710);border:2px solid var(--guld);
+    color:var(--guld);font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.06em;line-height:1.2;
+    box-shadow:0 0 18px rgba(201,169,79,.3)}
+  .timer{font-family:var(--disp);font-weight:700;font-size:26px;color:var(--text);letter-spacing:.06em}
+  .end-lbl{font-size:10px;letter-spacing:.22em;color:var(--dim);font-weight:700;text-transform:uppercase}
+
+  /* anim-not */
+  .animnote{position:absolute;left:0;right:0;bottom:0;padding:5px 28px;font-size:10px;color:#5b5446;
+    letter-spacing:.04em;background:rgba(6,5,4,.6);border-top:1px solid #1b1813;text-align:center}
+  .animnote b{color:#8c8470;font-weight:600}
+
+  /* ========================================================================
+     BYT-VY — byteshandels-modal (andra skärmen)
+     ======================================================================== */
+  .frame.trade{background:#0b0a06}
+  .trade-backdrop{position:absolute;inset:0;
+    background:radial-gradient(120% 90% at 50% 0%, rgba(201,169,79,.05), transparent 60%), rgba(4,3,2,.82)}
+  .trade-modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:1000px;max-height:830px;display:flex;flex-direction:column;gap:14px;
+    background:linear-gradient(180deg,#201D16,#1A1710);border:2px solid #6A5F49;border-radius:18px;
+    padding:24px 26px 20px;box-shadow:0 40px 120px rgba(0,0,0,.7)}
+  .trade-head{display:flex;align-items:flex-start;gap:18px}
+  .t-eyebrow{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--dim)}
+  .t-title{margin:5px 0 7px;font-family:var(--disp);font-weight:700;font-size:34px;letter-spacing:.01em;line-height:1}
+  .t-title .amber{color:var(--pengar)}
+  .t-sub{font-size:14px;color:var(--dim);max-width:620px;line-height:1.5}
+  .t-close{margin-left:auto;flex:0 0 auto;width:44px;height:44px;border-radius:11px;cursor:pointer;
+    background:var(--inset);border:1px solid var(--line);color:var(--dim);font-size:20px;font-weight:600}
+
+  .give-strip{display:flex;align-items:center;gap:13px;background:var(--inset);border:1px solid #2c281f;
+    border-radius:12px;padding:11px 15px}
+  .give-strip .badge{width:38px;height:38px;flex:0 0 auto}
+  .give-strip .give-txt{font-size:13px;color:var(--dim);letter-spacing:.02em}
+  .give-strip .give-have{margin-left:auto;display:flex;align-items:center;gap:8px;
+    font-family:var(--disp);font-weight:700;font-size:20px;color:var(--material)}
+  .give-strip .give-have [data-ic]{width:24px;height:24px}
+  .give-strip .give-have b{font-size:26px}
+
+  .rank{display:flex;flex-direction:column;gap:12px}
+  .deal{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .deal .spine{position:absolute;left:0;top:0;bottom:0;width:5px}
+
+  /* ledaren av din bristvaluta — störst, med växla-kontroll */
+  .deal.lead{border:2px solid var(--guld);box-shadow:0 0 0 1px rgba(201,169,79,.15);
+    display:grid;grid-template-columns:1.1fr 1fr;grid-template-areas:"id res" "xchg xchg";gap:14px;padding:16px 18px}
+  .deal.lead .deal-rankchip{position:absolute;top:0;right:0;background:var(--guld);color:#1a1710;
+    font-family:var(--disp);font-weight:700;font-size:11px;letter-spacing:.18em;padding:5px 12px;border-radius:0 12px 0 12px}
+  .deal.lead .deal-id{grid-area:id;display:flex;align-items:center;gap:13px}
+  .deal.lead .deal-id .badge{width:56px;height:56px;flex:0 0 auto}
+  .deal.lead .deal-nm{font-family:var(--disp);font-weight:700;font-size:28px;line-height:1}
+  .deal.lead .deal-area{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:4px}
+  .deal.lead .deal-res{grid-area:res;display:flex;gap:12px;align-items:center;justify-content:flex-end}
+  .deal .res{display:flex;align-items:center;gap:9px;background:var(--inset);border:1px solid #352e1d;border-radius:10px;padding:8px 13px}
+  .deal .res [data-ic]{width:26px;height:26px;flex:0 0 auto}
+  .deal .res .rv{font-family:var(--disp);font-weight:700;font-size:32px;line-height:.9;font-variant-numeric:tabular-nums}
+  .deal .res .rl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .deal .res.pengar .rv{color:var(--pengar)}
+  .deal .res.material .rv{color:var(--material)}
+  .deal .res.pengar.most{border-color:rgba(240,179,60,.55);box-shadow:0 0 18px rgba(240,179,60,.16)}
+
+  .xchg{grid-area:xchg;display:flex;align-items:flex-end;gap:16px;background:var(--inset);
+    border:1px solid #2c281f;border-radius:12px;padding:13px 16px}
+  .xcol{display:flex;flex-direction:column;gap:7px}
+  .xk{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .xstep{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .xstep button{width:38px;height:44px;background:#17140e;border:none;color:var(--dim);font-size:22px;font-weight:600;cursor:pointer}
+  .xstep .xq{display:inline-flex;align-items:center;gap:6px;padding:0 15px;height:44px;
+    font-family:var(--disp);font-weight:700;font-size:24px;color:var(--material);font-variant-numeric:tabular-nums}
+  .xstep .xq [data-ic]{width:20px;height:20px}
+  .xarrow{width:34px;height:34px;margin-bottom:6px;flex:0 0 auto}
+  .xval{display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 16px;border-radius:9px;
+    background:#17140e;border:1px solid var(--line);
+    font-family:var(--disp);font-weight:700;font-size:24px;color:var(--pengar);font-variant-numeric:tabular-nums}
+  .xval [data-ic]{width:20px;height:20px}
+  .xgo{margin-left:auto;align-self:stretch;min-width:170px;cursor:pointer;
+    background:linear-gradient(180deg,#2A2415,#201B10);color:var(--guld);border:2px solid var(--guld);border-radius:11px;
+    font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.08em;
+    box-shadow:0 0 22px rgba(201,169,79,.4)}
+
+  /* mindre bytes-rader */
+  .deal.small{display:flex;align-items:center;gap:14px;padding:12px 16px}
+  .deal.small .badge{width:40px;height:40px;flex:0 0 auto}
+  .deal.small .rkn{font-family:var(--disp);font-weight:700;font-size:15px;color:#716a5a;width:16px;text-align:center;flex:0 0 auto}
+  .deal.small .who{flex:0 0 auto;min-width:118px}
+  .deal.small .who .n{font-family:var(--disp);font-weight:700;font-size:19px;line-height:1}
+  .deal.small .who .a{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+  .deal.small .mres{margin-left:auto;display:flex;gap:10px}
+  .deal.small .mres .res{padding:6px 12px}
+  .deal.small .mres .res .rv{font-size:22px}
+  .deal.small .sbyt{flex:0 0 auto;min-width:118px;cursor:pointer;padding:11px 16px;
+    background:transparent;color:var(--guld);border:1.5px solid var(--guld);border-radius:10px;
+    font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.12em;display:flex;align-items:center;justify-content:center;gap:8px}
+  .deal.small .sbyt [data-ic]{width:17px;height:17px}
+
+  .trade-foot{text-align:center;font-size:11.5px;color:#6f6858;letter-spacing:.04em}
+  .trade-foot b{color:#8c8470;font-weight:600}
+</style>
+</head>
+<body>
+<div id="screens">
+
+  <!-- ================= SKÄRM 1 · GRUND-VY ================= -->
+  <section class="screen">
+    <div class="screen-label">Grund-vy · <b>spelskärm</b></div>
+    <div class="stagewrap">
+      <div class="frame" id="frame1">
+
+        <!-- 1 · HERO: öns hälsa (mätare full bredd) -->
+        <div class="topbar">
+          <div class="top-row">
+            <div class="round-pod"><div class="k">Runda</div><div class="v">3<small> / 8</small></div></div>
+            <div class="hero">
+              <div>
+                <div class="hero-eyebrow">Öns hälsa</div>
+                <div class="hero-num">54</div>
+              </div>
+              <div class="hero-delta">▲ +4</div>
+            </div>
+            <div class="hero-mode"><span data-face="neutral"></span><span>Neutralt<small>öläge</small></span></div>
+          </div>
+
+          <div class="zonewrap">
+            <div class="zonebar">
+              <div class="zones"><i class="z-red"></i><i class="z-yel"></i><i class="z-grn"></i></div>
+              <div class="zonefill"></div>
+              <div class="goal"><em>MÅL 60</em></div>
+              <div class="needle"></div>
+            </div>
+            <div class="zonemeta"><span>0 · kollaps</span><span>röd &lt; 30</span><span>grön &gt; 70</span><span>frisk ö · 100</span></div>
+          </div>
+        </div>
+
+        <!-- mitten -->
+        <div class="cols">
+
+          <!-- MITT LAG (hjälte-sekundär) -->
+          <aside class="col-me">
+            <div class="panel strong me">
+              <div class="plabel">Mitt lag</div>
+              <div class="me-id">
+                <span class="badge" data-badge="ox" data-ring="var(--t-akra)"></span>
+                <div><div class="nm">Oxen</div><div class="du">Åkermark · du</div></div>
+              </div>
+              <div class="wallet">
+                <div class="coin pengar">
+                  <span data-ic="pengar"></span>
+                  <div><div class="c-lbl">Pengar</div><div class="c-val">16</div></div>
+                </div>
+                <div class="coin material">
+                  <span data-ic="material"></span>
+                  <div><div class="c-lbl">Material</div><div class="c-val">24</div></div>
+                </div>
+              </div>
+              <div class="dep">Du gör <span class="mk">material</span>.<br>Du saknar <span class="lack">pengar</span> för att bygga grönt.</div>
+              <button class="byt"><span data-ic="byt"></span>Byt till dig pengar</button>
+              <div class="me-log">Din årsberättelse</div>
+            </div>
+          </aside>
+
+          <!-- ÖN (riktiga låg-poly-kartan, originalfärger) -->
+          <main class="col-island">
+            <div class="island">
+              <svg viewBox="0 0 600 440" preserveAspectRatio="xMidYMid slice" aria-label="Den delade ön">
+                <defs>
+                  <radialGradient id="sea" cx="50%" cy="46%" r="78%">
+                    <stop offset="0%" stop-color="#2E7D93"/>
+                    <stop offset="62%" stop-color="#235E72"/>
+                    <stop offset="100%" stop-color="#17475A"/>
+                  </radialGradient>
+                </defs>
+                <rect width="600" height="440" fill="url(#sea)"/>
+                <!-- vågfasetter -->
+                <polygon points="0,350 120,320 180,360 60,400" fill="#1C5468" opacity="0.5"/>
+                <polygon points="470,70 600,52 600,150 520,140" fill="#2A6B80" opacity="0.45"/>
+                <polygon points="30,90 150,70 120,150 20,170" fill="#2A6B80" opacity="0.3"/>
+
+                <!-- svall-ring / strand runt ön -->
+                <polygon points="300,56 396,72 470,128 508,210 476,300 402,360 300,386 200,362 126,302 92,212 128,128 206,74"
+                  fill="none" stroke="#4FA3B8" stroke-width="22" stroke-linejoin="round" opacity="0.28"/>
+                <polygon points="300,50 402,66 480,124 516,210 482,308 408,368 300,394 194,368 118,308 84,210 122,122 204,68"
+                  fill="#2C8097" opacity="0.5"/>
+
+                <!-- ÅKER (gul) NV -->
+                <polygon points="300,205 300,56 206,74" fill="#F2D370"/>
+                <polygon points="300,205 206,74 128,128" fill="#E7C24C"/>
+                <polygon points="300,205 128,128 92,212" fill="#C9A233"/>
+                <!-- SKOG (grön) NÖ -->
+                <polygon points="300,205 300,56 396,72" fill="#57A862"/>
+                <polygon points="300,205 396,72 470,128" fill="#3F8F4A"/>
+                <polygon points="300,205 470,128 508,210" fill="#2E6E39"/>
+                <!-- STAD (grå) SÖ -->
+                <polygon points="300,205 508,210 476,300" fill="#A3A8AF"/>
+                <polygon points="300,205 476,300 402,360" fill="#8A8F96"/>
+                <polygon points="300,205 402,360 300,386" fill="#6E737A"/>
+                <!-- TUNDRA (orange) SV -->
+                <polygon points="300,205 300,386 200,362" fill="#E8A25C"/>
+                <polygon points="300,205 200,362 126,302" fill="#D98A3C"/>
+                <polygon points="300,205 126,302 92,212" fill="#B86E28"/>
+                <!-- mittfog -->
+                <circle cx="300" cy="205" r="3" fill="#1b1813" opacity="0.35"/>
+
+                <!-- byggnader droppade på slots (låg-poly, assetsens intryck) -->
+                <!-- åker: smutsigt bygge (rödaktigt) + lätt smog -->
+                <g>
+                  <polygon points="201,163 212,163 212,150 201,150" fill="#8A8372"/>
+                  <polygon points="212,163 223,163 223,150 212,150" fill="#6E685A"/>
+                  <polygon points="199,150 212,141 212,150 199,150" fill="#B3463C"/>
+                  <polygon points="212,141 225,150 212,150" fill="#8E372F"/>
+                </g>
+                <!-- skog: standard (grön tak) -->
+                <g>
+                  <polygon points="386,159 396,159 396,147 386,147" fill="#8E9A8C"/>
+                  <polygon points="396,159 406,159 406,147 396,147" fill="#6E786C"/>
+                  <polygon points="384,147 396,139 396,147 384,147" fill="#3F8F4A"/>
+                  <polygon points="396,139 408,147 396,147" fill="#2E6E39"/>
+                </g>
+                <!-- stad: kontor (grå) -->
+                <g>
+                  <polygon points="384,274 394,274 394,258 384,258" fill="#9AA0A8"/>
+                  <polygon points="394,274 404,274 404,258 394,258" fill="#767C84"/>
+                  <polygon points="383,258 394,251 394,258 383,258" fill="#656D79"/>
+                  <polygon points="394,251 405,258 394,258" fill="#4C535C"/>
+                </g>
+                <!-- tundra: grönt bygge (vindkraft-hint, teal tak) -->
+                <g>
+                  <polygon points="203,282 213,282 213,269 203,269" fill="#B08A6A"/>
+                  <polygon points="213,282 223,282 223,269 213,269" fill="#8E6E50"/>
+                  <polygon points="201,269 213,261 213,269 201,269" fill="#2E8A6D"/>
+                  <polygon points="213,261 225,269 213,269" fill="#236B54"/>
+                </g>
+
+                <!-- lätt smog över åkerns smutsiga bygge -->
+                <ellipse cx="214" cy="140" rx="30" ry="11" fill="#C9C2B2" opacity="0.14"/>
+                <ellipse cx="226" cy="132" rx="20" ry="8" fill="#C9C2B2" opacity="0.1"/>
+
+                <!-- lag-/områdesetiketter i havet (orientering som map.js) -->
+                <g font-family="Chakra Petch, monospace" font-weight="700" fill="#EAF2F4" opacity="0.72" letter-spacing="2">
+                  <text x="86" y="60" font-size="13">ÅKER · OXEN</text>
+                  <text x="514" y="60" font-size="13" text-anchor="end">SKOG · BJÖRNEN</text>
+                  <text x="86" y="392" font-size="13">TUNDRA · RÄVEN</text>
+                  <text x="514" y="392" font-size="13" text-anchor="end">STAD · ÖRNEN</text>
+                </g>
+              </svg>
+              <div class="cap">Delad ö · öhälsan målas på kartan · byggen droppar per runda</div>
+            </div>
+          </main>
+
+          <!-- HÖGER: TOPPLISTA (= de andra lagen) → klimat → politik -->
+          <aside class="col-right">
+            <div class="panel board">
+              <div class="board-head">
+                <span class="plabel">Topplista</span>
+                <span class="hint">Rank · förmögenhet</span>
+              </div>
+
+              <!-- LEDAREN — egen tier -->
+              <div class="lead-tier">
+                <span class="spine" style="background:var(--t-skog)"></span>
+                <div class="lead-top">
+                  <span class="badge" data-badge="bear" data-ring="var(--t-skog)"></span>
+                  <div><div class="nm">Björnen</div><div class="area">Skog</div></div>
+                  <div class="lead-crown"><span data-ic="krona"></span><span class="rk">1:a</span></div>
+                </div>
+                <div class="lead-res">
+                  <div class="res pengar"><span data-ic="pengar"></span><div><div class="rv">26</div><div class="rl">pengar</div></div></div>
+                  <div class="res material"><span data-ic="material"></span><div><div class="rv">26</div><div class="rl">material</div></div></div>
+                  <button class="lead-byt"><span data-ic="byt"></span>Byt</button>
+                </div>
+              </div>
+
+              <!-- ÖVRIGA tre -->
+              <div class="trow">
+                <span class="spine" style="background:var(--t-tundra)"></span>
+                <span class="rk">2</span>
+                <span class="badge" data-badge="fox" data-ring="var(--t-tundra)"></span>
+                <div class="who"><div class="n">Räven</div>
+                  <div class="r"><span class="p"><b>36</b> 🪙</span><span class="m"><b>16</b> 🧱</span></div></div>
+                <span class="mini-byt">Byt</span>
+              </div>
+              <div class="trow">
+                <span class="spine" style="background:var(--t-stad)"></span>
+                <span class="rk">3</span>
+                <span class="badge" data-badge="eagle" data-ring="var(--t-stad)"></span>
+                <div class="who"><div class="n">Örnen</div>
+                  <div class="r"><span class="p"><b>26</b> 🪙</span><span class="m"><b>26</b> 🧱</span></div></div>
+                <span class="mini-byt">Byt</span>
+              </div>
+              <div class="trow self">
+                <span class="spine" style="background:var(--t-akra)"></span>
+                <span class="rk">4</span>
+                <span class="badge" data-badge="ox" data-ring="var(--t-akra)"></span>
+                <div class="who"><div class="n">Oxen</div>
+                  <div class="r"><span class="p"><b>16</b> 🪙</span><span class="m"><b>24</b> 🧱</span></div></div>
+                <span class="du">DU</span>
+              </div>
+
+              <!-- KLIMATREGISTRET — liten nedtonad spegel -->
+              <div class="klimat">
+                <div class="kh"><span data-ic="industri"></span><span class="kt">Klimat&shy;registret</span></div>
+                <div class="krank">
+                  <span class="bov"><span data-ic="varning"></span>Räven <b>8</b></span>
+                  <span>Örnen <b>6</b></span>
+                  <span>Oxen <b>4</b></span>
+                  <span>Björnen <b>2</b></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- POLITIK / RÖSTA -->
+            <div class="vote">
+              <span class="vic"><span data-ic="rosta"></span></span>
+              <div class="vtx">
+                <div class="vt">Lägg förslag / Rösta</div>
+                <div class="vs">Ett förslag per runda · 3 av 4 JA avgör</div>
+              </div>
+              <span class="vgo">›</span>
+            </div>
+          </aside>
+        </div>
+
+        <!-- MIN HAND -->
+        <div class="handbar">
+          <div class="hand-label">Din hand · välj 1</div>
+          <div class="hand">
+
+            <div class="card smut">
+              <div class="band">Smutsig</div>
+              <div class="body">
+                <div class="effect"><span data-ic="industri"></span><span class="n">−4</span>
+                  <span class="u">öhälsa<br>/ runda</span></div>
+                <div class="cname">Industri&shy;jordbruk</div>
+                <div class="lines">
+                  <div class="line cost cheap"><span class="k">Kostar</span>
+                    <span class="amt"><span class="q"><span data-ic="pengar"></span>10</span></span></div>
+                  <div class="line yield"><span class="k">Ger</span>
+                    <span class="amt"><span class="q">+8 <span data-ic="material"></span></span>/ runda</span></div>
+                </div>
+              </div>
+              <button class="kop">Köp</button>
+            </div>
+
+            <div class="card std">
+              <div class="band">Standard</div>
+              <div class="body">
+                <div class="effect"><span data-ic="industri"></span><span class="n">−2</span>
+                  <span class="u">öhälsa<br>/ runda</span></div>
+                <div class="cname">Jordbruk</div>
+                <div class="lines">
+                  <div class="line cost"><span class="k">Kostar</span>
+                    <span class="amt"><span class="q"><span data-ic="pengar"></span>15</span><span class="q"><span data-ic="material"></span>5</span></span></div>
+                  <div class="line yield"><span class="k">Ger</span>
+                    <span class="amt"><span class="q">+6 <span data-ic="material"></span></span>/ runda</span></div>
+                </div>
+              </div>
+              <button class="kop">Köp</button>
+            </div>
+
+            <div class="card gron locked">
+              <div class="band">Grön</div>
+              <div class="lack-chip"><span data-ic="pengar"></span>−9</div>
+              <div class="body">
+                <div class="effect"><span data-ic="tillvaxt"></span><span class="n">+1</span>
+                  <span class="u">öhälsa<br>/ runda</span></div>
+                <div class="cname">Ekologiskt jordbruk</div>
+                <div class="lines">
+                  <div class="line cost"><span class="k">Kostar</span>
+                    <span class="amt"><span class="q"><span data-ic="pengar"></span>25</span><span class="q"><span data-ic="material"></span>10</span></span></div>
+                  <div class="line yield"><span class="k">Ger</span>
+                    <span class="amt"><span class="q">+5 <span data-ic="material"></span></span>/ runda</span></div>
+                </div>
+              </div>
+              <button class="kop">Byt först</button>
+            </div>
+
+          </div>
+
+          <div class="endwrap">
+            <div class="ring">
+              <svg viewBox="0 0 118 118">
+                <circle cx="59" cy="59" r="52" fill="none" stroke="#2a2619" stroke-width="7"/>
+                <circle cx="59" cy="59" r="52" fill="none" stroke="var(--guld)" stroke-width="7"
+                  stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="54"/>
+              </svg>
+              <button class="end-btn">Avsluta<br>omgång</button>
+            </div>
+            <div class="timer">1:30</div>
+            <div class="end-lbl">Sen: bokslut</div>
+          </div>
+        </div>
+
+        <div class="animnote">Statisk mockup. <b>Animeras:</b> öhälso-talet slår + zon-nålen glider vid rundbyte · byggen droppar på kartan · BYT-knappens glöd pulsar när valuta saknas · kort på <b>:active</b> trycks ned + Köp bygger.</div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SKÄRM 2 · BYT-VY ================= -->
+  <section class="screen">
+    <div class="screen-label">Byt-vy · <b>byteshandel</b> (modal över spelskärmen)</div>
+    <div class="stagewrap">
+      <div class="frame trade" id="frame2">
+        <div class="trade-backdrop"></div>
+        <div class="trade-modal">
+
+          <div class="trade-head">
+            <div>
+              <div class="t-eyebrow">Byteshandel · Runda 3</div>
+              <h2 class="t-title">Byt till dig <span class="amber">pengar</span></h2>
+              <div class="t-sub">Du gör material men saknar pengar för att bygga grönt. Lagen rankas efter hur mycket <b>pengar</b> de har — byt med den överst.</div>
+            </div>
+            <button class="t-close" aria-label="Stäng">✕</button>
+          </div>
+
+          <div class="give-strip">
+            <span class="badge" data-badge="ox" data-ring="var(--t-akra)"></span>
+            <div class="give-txt">Du ger ur ditt lager — du får pengar tillbaka</div>
+            <div class="give-have"><span data-ic="material"></span><b>24</b> material</div>
+          </div>
+
+          <div class="rank">
+
+            <!-- LEDAREN av din bristvaluta — störst, med växla-kontroll -->
+            <article class="deal lead">
+              <span class="spine" style="background:var(--t-tundra)"></span>
+              <div class="deal-rankchip">Mest pengar</div>
+              <div class="deal-id">
+                <span class="badge" data-badge="fox" data-ring="var(--t-tundra)"></span>
+                <div><div class="deal-nm">Räven</div><div class="deal-area">Tundra · tjänar pengar</div></div>
+              </div>
+              <div class="deal-res">
+                <div class="res pengar most"><span data-ic="pengar"></span><div><div class="rv">36</div><div class="rl">pengar</div></div></div>
+                <div class="res material"><span data-ic="material"></span><div><div class="rv">16</div><div class="rl">material</div></div></div>
+              </div>
+              <div class="xchg">
+                <div class="xcol give">
+                  <div class="xk">Du ger</div>
+                  <div class="xstep"><button aria-label="minska">−</button><span class="xq"><span data-ic="material"></span>8</span><button aria-label="öka">+</button></div>
+                </div>
+                <span class="xarrow" data-ic="byt"></span>
+                <div class="xcol get">
+                  <div class="xk">Du får</div>
+                  <div class="xval"><span data-ic="pengar"></span>8</div>
+                </div>
+                <button class="xgo">Föreslå byte</button>
+              </div>
+            </article>
+
+            <!-- mindre -->
+            <article class="deal small">
+              <span class="spine" style="background:var(--t-skog)"></span>
+              <span class="rkn">2</span>
+              <span class="badge" data-badge="bear" data-ring="var(--t-skog)"></span>
+              <div class="who"><div class="n">Björnen</div><div class="a">Skog · 👑 ledare</div></div>
+              <div class="mres">
+                <div class="res pengar"><span data-ic="pengar"></span><div><div class="rv">26</div><div class="rl">pengar</div></div></div>
+                <div class="res material"><span data-ic="material"></span><div><div class="rv">26</div><div class="rl">material</div></div></div>
+              </div>
+              <button class="sbyt"><span data-ic="byt"></span>Byt</button>
+            </article>
+
+            <article class="deal small">
+              <span class="spine" style="background:var(--t-stad)"></span>
+              <span class="rkn">3</span>
+              <span class="badge" data-badge="eagle" data-ring="var(--t-stad)"></span>
+              <div class="who"><div class="n">Örnen</div><div class="a">Stad · tjänar pengar</div></div>
+              <div class="mres">
+                <div class="res pengar"><span data-ic="pengar"></span><div><div class="rv">26</div><div class="rl">pengar</div></div></div>
+                <div class="res material"><span data-ic="material"></span><div><div class="rv">26</div><div class="rl">material</div></div></div>
+              </div>
+              <button class="sbyt"><span data-ic="byt"></span>Byt</button>
+            </article>
+
+          </div>
+
+          <div class="trade-foot">Datorlag svarar direkt · mot människor öppnas en <b>accept-dialog</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ——— ikon-SVG lyfta exakt ur variant-a-frontend.html ——— */
+var D="#1E1E1A";
+var INNER={
+  pengar:`<polygon points="50,10 78,22 90,50 78,78 50,90 22,78 10,50 22,22" fill="#F0B33C"/>
+    <polygon points="50,10 78,22 90,50 10,50 22,22" fill="#F7CE78"/>
+    <polygon points="90,50 78,78 50,90 50,50" fill="#B5832A"/>
+    <polygon points="50,26 70,34 78,50 70,66 50,74 30,66 22,50 30,34" fill="none" stroke="${D}" stroke-width="2.4" opacity="0.6"/>
+    <polygon points="50,33 60,50 50,67 40,50" fill="#B5832A"/>
+    <polygon points="50,33 60,50 50,50 40,50" fill="#F7CE78"/>`,
+  material:`<polygon points="50,16 84,35 50,54 16,35" fill="#B9D4E0"/>
+    <polygon points="16,35 50,54 50,90 16,71" fill="#8FB3C4"/>
+    <polygon points="84,35 50,54 50,90 84,71" fill="#5E8699"/>
+    <polygon points="16,35 50,54 50,44 24,30" fill="#D4E6EE" opacity="0.55"/>
+    <line x1="50" y1="54" x2="50" y2="90" stroke="${D}" stroke-width="1.4" opacity="0.4"/>
+    <line x1="16" y1="35" x2="50" y2="54" stroke="#3b5663" stroke-width="1.2" opacity="0.5"/>`,
+  tillvaxt:`<polygon points="47,90 53,90 51,56 49,56" fill="#2A9E64"/>
+    <polygon points="34,52 40,44 50,58" fill="#3DD68C"/>
+    <polygon points="24,36 40,44 50,58" fill="#7FE7B5"/>
+    <polygon points="24,36 50,58 34,52" fill="#2A9E64"/>
+    <polygon points="50,58 60,44 66,52" fill="#3DD68C"/>
+    <polygon points="76,36 60,44 50,58" fill="#7FE7B5"/>
+    <polygon points="76,36 50,58 66,52" fill="#2A9E64"/>`,
+  industri:`<polygon points="12,86 12,58 30,58 30,44 48,58 48,44 66,58 66,44 84,58 84,86" fill="#F0564B"/>
+    <polygon points="30,44 48,58 30,58" fill="#F58A82"/>
+    <polygon points="48,44 66,58 48,58" fill="#F58A82"/>
+    <polygon points="66,44 84,58 66,58" fill="#F58A82"/>
+    <polygon points="60,58 84,58 84,86 60,86" fill="#B33A32"/>
+    <polygon points="16,58 16,30 26,30 26,58" fill="#F0564B"/>
+    <polygon points="21,30 26,30 26,58 21,58" fill="#B33A32"/>
+    <rect x="20" y="66" width="8" height="10" fill="${D}"/>
+    <rect x="36" y="66" width="8" height="10" fill="${D}"/>
+    <rect x="68" y="66" width="8" height="12" fill="${D}"/>
+    <rect x="48" y="70" width="12" height="16" fill="${D}"/>
+    <polygon points="19,25 27,19 35,25 28,31" fill="#8A8372"/>
+    <polygon points="29,16 38,9 47,16 39,23" fill="#B8AF9A"/>`,
+  byt:`<polygon points="16,32 58,32 58,21 82,40 58,59 58,48 16,48" fill="#F0B33C"/>
+    <polygon points="16,32 58,32 58,21 82,40 58,40 16,40" fill="#F7CE78"/>
+    <polygon points="58,40 82,40 58,59 58,48" fill="#B5832A"/>
+    <polygon points="84,68 42,68 42,79 18,60 42,41 42,52 84,52" fill="#8FB3C4"/>
+    <polygon points="84,68 42,68 42,79 18,60 42,60 84,60" fill="#5E8699"/>
+    <polygon points="42,60 18,60 42,41 42,52" fill="#B9D4E0"/>`,
+  rosta:`<polygon points="20,54 50,66 80,54 50,42" fill="#D8D1C2"/>
+    <polygon points="42,53 58,53 56,57 44,57" fill="${D}"/>
+    <polygon points="20,54 50,66 50,92 20,80" fill="#B8AF9A"/>
+    <polygon points="80,54 50,66 50,92 80,80" fill="#8A8372"/>
+    <polygon points="46,52 64,45 68,23 50,30" fill="#E4CE8C"/>
+    <polygon points="64,45 68,23 62,25 58,47" fill="#C9A94F"/>
+    <polyline points="52,37 56,43 64,30" fill="none" stroke="#2A9E64" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+  krona:`<polygon points="16,72 22,40 38,60 50,32 62,60 78,40 84,72" fill="#C9A94F"/>
+    <polygon points="16,72 22,40 38,60 50,32 50,72" fill="#E4CE8C"/>
+    <polygon points="50,32 62,60 78,40 84,72 50,72" fill="#937A34"/>
+    <rect x="16" y="71" width="34" height="13" fill="#E4CE8C"/>
+    <rect x="50" y="71" width="34" height="13" fill="#937A34"/>
+    <polygon points="50,74 55,79 50,84 45,79" fill="#F0564B"/>
+    <polygon points="29,74 33,78 29,82 25,78" fill="#8FB3C4"/>
+    <polygon points="71,74 75,78 71,82 67,78" fill="#8FB3C4"/>`,
+  varning:`<polygon points="50,14 88,84 12,84" fill="#F5C518"/>
+    <polygon points="50,14 12,84 50,84" fill="#FADD6E"/>
+    <polygon points="50,14 88,84 50,84" fill="#BD9608"/>
+    <polygon points="50,26 79,78 21,78" fill="none" stroke="${D}" stroke-width="2" opacity="0.28"/>
+    <polygon points="46,38 54,38 52,64 48,64" fill="${D}"/>
+    <rect x="46" y="69" width="8" height="8" rx="1" fill="${D}"/>`,
+  borsen:`<rect x="14" y="88" width="72" height="3" fill="#4A443A"/>
+    <polygon points="18,62 34,62 34,88 18,88" fill="#B5832A"/>
+    <polygon points="18,62 34,62 34,67 18,67" fill="#F7CE78"/>
+    <polygon points="42,46 58,46 58,88 42,88" fill="#F0B33C"/>
+    <polygon points="42,46 58,46 58,51 42,51" fill="#F7CE78"/>
+    <polygon points="54,46 58,46 58,88 54,88" fill="#B5832A"/>
+    <polygon points="66,28 82,28 82,88 66,88" fill="#F0B33C"/>
+    <polygon points="66,28 82,28 82,33 66,33" fill="#F7CE78"/>
+    <polygon points="78,28 82,28 82,88 78,88" fill="#B5832A"/>
+    <polyline points="20,58 46,40 74,20" fill="none" stroke="#C9A94F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="84,15 66,19 78,31" fill="#E4CE8C"/>`,
+  on:`<polygon points="12,66 30,58 50,56 70,58 88,66 70,78 50,80 30,78" fill="#5E8699"/>
+    <polygon points="12,66 30,58 50,56 30,66" fill="#8FB3C4"/>
+    <polygon points="22,66 40,59 50,57 62,59 78,66 64,72 36,72" fill="#C9A94F"/>
+    <polygon points="22,66 40,59 50,57 36,66" fill="#E4CE8C"/>
+    <polygon points="50,24 66,59 34,59" fill="#C9A94F"/>
+    <polygon points="50,24 34,59 44,51" fill="#E4CE8C"/>
+    <polygon points="50,24 66,59 56,51" fill="#937A34"/>
+    <polygon points="50,24 58,41 42,41" fill="#7FE7B5"/>`,
+};
+
+/* öläges-ansikte (lage3 neutral, gul) — faceFace ur variant-a */
+var FACE_NEUTRAL=`
+  <polygon points="50,14 76,24 86,50 76,76 50,86 24,76 14,50 24,24" fill="#F5C518"/>
+  <polygon points="50,14 76,24 86,50 14,50 24,24" fill="#FADD6E"/>
+  <polygon points="86,50 76,76 50,86 50,50" fill="#BD9608"/>
+  <polygon points="34,40 41,43 39,51 32,49" fill="${D}"/>
+  <polygon points="66,40 59,43 61,51 68,49" fill="${D}"/>
+  <rect x="36" y="61" width="28" height="3.6" rx="1.8" fill="${D}"/>`;
+
+/* djur-badge-glyfer (ben-ton, samma fasett-familj — identitet via form + färg-ring) */
+var ANIMAL={
+  ox:`<path d="M36,42 C22,38 12,28 10,18 C20,22 32,30 40,44 Z" fill="#BFB7A6"/>
+    <path d="M64,42 C78,38 88,28 90,18 C80,22 68,30 60,44 Z" fill="#9C9484"/>
+    <polygon points="50,30 68,40 70,60 50,76 30,60 32,40" fill="#CFC7B5"/>
+    <polygon points="50,30 68,40 70,60 50,60" fill="#B6AE9C"/>
+    <polygon points="50,30 32,40 30,60 50,60" fill="#E6E0D2"/>
+    <polygon points="40,60 60,60 55,72 45,72" fill="#B6AE9C"/>
+    <polygon points="40,46 46,48 44,53 39,51" fill="${D}"/>
+    <polygon points="60,46 54,48 56,53 61,51" fill="${D}"/>
+    <circle cx="46" cy="66" r="1.8" fill="${D}"/><circle cx="54" cy="66" r="1.8" fill="${D}"/>`,
+  bear:`<circle cx="30" cy="32" r="11" fill="#BFB7A6"/><circle cx="70" cy="32" r="11" fill="#9C9484"/>
+    <circle cx="30" cy="32" r="5" fill="#8A8372"/><circle cx="70" cy="32" r="5" fill="#8A8372"/>
+    <polygon points="50,28 72,42 72,64 50,78 28,64 28,42" fill="#CFC7B5"/>
+    <polygon points="50,28 72,42 72,64 50,64" fill="#B6AE9C"/>
+    <polygon points="50,28 28,42 28,64 50,64" fill="#E6E0D2"/>
+    <polygon points="40,58 60,58 56,72 44,72" fill="#B6AE9C"/>
+    <polygon points="46,66 54,66 52,73 48,73" fill="${D}"/>
+    <circle cx="41" cy="50" r="3" fill="${D}"/><circle cx="59" cy="50" r="3" fill="${D}"/>`,
+  fox:`<polygon points="24,18 40,40 22,42" fill="#BFB7A6"/><polygon points="76,18 60,40 78,42" fill="#9C9484"/>
+    <polygon points="27,24 37,39 27,40" fill="#8A8372"/><polygon points="73,24 63,39 73,40" fill="#8A8372"/>
+    <polygon points="26,36 74,36 50,82" fill="#CFC7B5"/>
+    <polygon points="50,36 74,36 50,82" fill="#B6AE9C"/>
+    <polygon points="26,36 50,36 50,82" fill="#E6E0D2"/>
+    <polygon points="45,70 55,70 50,82" fill="#8A8372"/>
+    <polygon points="47,78 53,78 50,84" fill="${D}"/>
+    <polygon points="37,48 45,50 41,55 35,53" fill="${D}"/>
+    <polygon points="63,48 55,50 59,55 65,53" fill="${D}"/>`,
+  eagle:`<polygon points="30,34 16,30 28,42" fill="#BFB7A6"/><polygon points="70,34 84,30 72,42" fill="#9C9484"/>
+    <polygon points="50,26 72,40 70,60 50,70 30,60 28,40" fill="#CFC7B5"/>
+    <polygon points="50,26 72,40 70,60 50,60" fill="#B6AE9C"/>
+    <polygon points="50,26 28,40 30,60 50,60" fill="#E6E0D2"/>
+    <polygon points="44,58 56,58 54,74 50,82 46,74" fill="#E0B23C"/>
+    <polygon points="50,58 56,58 54,74 50,80" fill="#B5832A"/>
+    <polygon points="47,74 53,74 50,82" fill="#8A6A20"/>
+    <circle cx="41" cy="48" r="3.2" fill="${D}"/><circle cx="59" cy="48" r="3.2" fill="${D}"/>`,
+};
+
+function svgWrap(inner){return '<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="display:block">'+inner+'</svg>';}
+function badge(animal,ring){
+  var g='<circle cx="50" cy="50" r="48" fill="#26251F"/>'+
+        '<circle cx="50" cy="50" r="48" fill="none" stroke="'+ring+'" stroke-width="4"/>'+
+        '<circle cx="50" cy="50" r="41" fill="none" stroke="#000" stroke-width="1.5" opacity="0.35"/>'+
+        '<g transform="translate(50,50) scale(0.72) translate(-50,-50)">'+ANIMAL[animal]+'</g>';
+  return svgWrap(g);
+}
+/* stämpla */
+document.querySelectorAll('[data-ic]').forEach(function(el){var k=el.getAttribute('data-ic');if(INNER[k])el.innerHTML=svgWrap(INNER[k]);});
+document.querySelectorAll('[data-face]').forEach(function(el){el.innerHTML=svgWrap(FACE_NEUTRAL);});
+document.querySelectorAll('[data-badge]').forEach(function(el){
+  var ring=getComputedStyle(el).getPropertyValue(el.getAttribute('data-ring').replace('var(','').replace(')',''))||el.getAttribute('data-ring');
+  el.innerHTML=badge(el.getAttribute('data-badge'), ring.trim());
+});
+
+/* skala varje 1600×900-ram till fönsterbredd (två skärmar staplade) */
+function fit(){
+  var s=Math.min((window.innerWidth-40)/1600, 1);
+  document.querySelectorAll('.frame').forEach(function(f){
+    f.style.transform='scale('+s+')';
+    var w=f.parentElement; w.style.width=(1600*s)+'px'; w.style.height=(900*s)+'px';
+  });
+}
+window.addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

@@ -5,6 +5,9 @@ Referens UI/
 .DS_Store
 *.log
 
+# Claude Code session-state (worktrees, lokala settings) — checkas aldrig in
+.claude/
+
 # Session-loggar (persistens, fas 4-grund) — genereras i drift, checkas aldrig in
 data/
 

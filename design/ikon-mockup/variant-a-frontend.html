@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ikon-provark A</title>
+<style>
+  :root{
+    --bg:#121009; --panel:#211E17; --inset:#0C0B07; --line:#4A443A;
+    --text:#F2ECDD; --dim:#B8AF9A;
+    --pengar:#F0B33C; --material:#8FB3C4;
+    --sig-red:#F0564B; --sig-yel:#F5C518; --sig-grn:#3DD68C;
+    --guld:#C9A94F;
+    --font-disp:"Avenir Next","Futura","Helvetica Neue",system-ui,sans-serif;
+    --font-led:ui-monospace,"SF Mono","Menlo",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(120% 90% at 50% -10%, #1A1710 0%, var(--bg) 60%) fixed,
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-disp);
+    -webkit-font-smoothing:antialiased;
+    padding:40px 20px 72px;
+    line-height:1.4;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+
+  /* ---- Header ---- */
+  header{
+    border-bottom:1px solid var(--line);
+    padding-bottom:22px;margin-bottom:34px;
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px 28px;
+  }
+  .badge-dot{
+    width:52px;height:52px;flex:0 0 auto;
+    border-radius:50%;background:#26251F;
+    border:3px solid var(--guld);
+    display:grid;place-items:center;
+  }
+  h1{
+    font-size:clamp(20px,3.2vw,30px);
+    font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    margin:0;color:var(--text);
+  }
+  h1 small{display:block;font-size:.5em;letter-spacing:.28em;color:var(--guld);margin-top:7px;font-weight:600}
+  .sub{color:var(--dim);font-size:13.5px;max-width:52ch;margin-left:auto;text-align:right;line-height:1.5}
+
+  /* ---- Sections ---- */
+  section{margin-top:40px}
+  .sec-label{
+    display:flex;align-items:center;gap:14px;
+    font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--dim);margin:0 0 18px;
+  }
+  .sec-label::after{content:"";flex:1;height:1px;background:var(--line)}
+  .sec-label b{color:var(--guld);font-weight:600}
+
+  /* ---- Icon grid ---- */
+  .grid{
+    display:grid;gap:14px;
+    grid-template-columns:repeat(auto-fill,minmax(216px,1fr));
+  }
+  .cell{
+    background:linear-gradient(180deg,#242017 0%, var(--panel) 100%);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:18px 18px 16px;
+    display:flex;flex-direction:column;gap:12px;
+    position:relative;
+  }
+  .cell::before{ /* corner rivet, control-panel feel */
+    content:"";position:absolute;top:7px;right:7px;
+    width:5px;height:5px;border-radius:50%;
+    background:#0C0B07;box-shadow:0 0 0 1px #3a352c;
+  }
+  .glyphs{display:flex;align-items:flex-end;gap:16px}
+  .glyph-big{width:72px;height:72px;flex:0 0 auto}
+  .glyph-sm{width:24px;height:24px;flex:0 0 auto;align-self:flex-end;margin-bottom:3px}
+  .glyph-sm-wrap{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .glyph-sm-wrap span{font-size:9px;letter-spacing:.14em;color:#6e675a}
+  .meta{margin-top:2px}
+  .meta .name{font-size:14px;font-weight:600;letter-spacing:.02em;color:var(--text)}
+  .meta .emoji{color:#6e675a;font-size:12px;margin-left:7px;font-weight:400}
+  .meta .mean{font-size:12px;color:var(--dim);margin-top:3px;line-height:1.45}
+
+  /* ---- Context panels ---- */
+  .ctx-grid{
+    display:grid;gap:16px;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    align-items:stretch;
+  }
+  .ctx{
+    background:var(--panel);border:1px solid var(--line);border-radius:4px;
+    padding:16px 18px 18px;display:flex;flex-direction:column;gap:14px;
+  }
+  .ctx h3{
+    margin:0;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim);font-weight:600;
+  }
+  /* resurs-avläsning */
+  .readout{
+    background:var(--inset);border:1px solid #2c281f;border-radius:4px;
+    padding:14px 16px;display:flex;gap:26px;align-items:center;justify-content:center;
+    box-shadow:inset 0 2px 10px rgba(0,0,0,.6);
+  }
+  .res{display:flex;align-items:center;gap:10px}
+  .res svg{display:block}
+  .led{font-family:var(--font-led);font-weight:700;font-size:30px;line-height:1;letter-spacing:.04em}
+  .led.amber{color:var(--pengar);text-shadow:0 0 10px rgba(240,179,60,.45)}
+  .led.blue{color:var(--material);text-shadow:0 0 10px rgba(143,179,196,.4)}
+  /* kort-ö-badge */
+  .cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .card{
+    width:120px;border-radius:5px;padding:12px 10px 11px;position:relative;
+    border:1px solid;background:var(--inset);
+    display:flex;flex-direction:column;align-items:center;gap:7px;
+  }
+  .card.dirty{border-color:#5a2b26}
+  .card.green{border-color:#235c42}
+  .card .cardname{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .card .delta{
+    font-family:var(--font-led);font-weight:700;font-size:34px;line-height:1;
+    display:flex;align-items:center;gap:7px;
+  }
+  .card.dirty .delta{color:var(--sig-red);text-shadow:0 0 12px rgba(240,86,75,.5)}
+  .card.green .delta{color:var(--sig-grn);text-shadow:0 0 12px rgba(61,214,140,.5)}
+  .card .lbl{font-size:10px;color:var(--dim);letter-spacing:.1em}
+  /* topplist */
+  .board{background:var(--inset);border:1px solid #2c281f;border-radius:4px;overflow:hidden}
+  .board .row{
+    display:flex;align-items:center;gap:12px;padding:10px 14px;
+    border-bottom:1px solid #211d16;font-size:14px;
+  }
+  .board .row:last-child{border-bottom:0}
+  .board .row.lead{background:linear-gradient(90deg,rgba(201,169,79,.14),transparent)}
+  .board .rank{font-family:var(--font-led);color:var(--dim);width:20px}
+  .board .row.lead .rank{color:var(--guld)}
+  .board .team{flex:1;letter-spacing:.02em}
+  .board .row.lead .team{color:var(--text);font-weight:600}
+  .board .score{font-family:var(--font-led);font-weight:700;color:var(--pengar);letter-spacing:.04em}
+  .board .crown{width:22px;height:22px}
+
+  footer{margin-top:46px;color:#6e675a;font-size:11px;letter-spacing:.14em;text-transform:uppercase;border-top:1px solid var(--line);padding-top:16px}
+  @media (max-width:560px){
+    .sub{text-align:left;margin-left:0}
+    header{flex-direction:column;align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge-dot" aria-hidden="true">
+      <!-- liten ö-markör -->
+      <svg width="34" height="34" viewBox="0 0 100 100" id="hdr-island"></svg>
+    </div>
+    <h1>Ikon-provark A<small>frontend-design · ren / geometrisk</small></h1>
+    <p class="sub">Spelspecifika fasett-ikoner för Eco Loco (mellan) som ersätter dagens emoji. Tre toner per form (ljus / bas / mörk) + mörk accent, samma familj som djurbadgsen. Ritade i 100px-box, läsbara ner till 24px på mörk panel.</p>
+  </header>
+
+  <section>
+    <p class="sec-label"><b>Valutor</b> · fria silhuetter, skild temperatur så "har vs saknar" syns</p>
+    <div class="grid" id="grid-valuta"></div>
+  </section>
+
+  <section>
+    <p class="sec-label"><b>Öhälsa</b> · delade mätaren, signalfärger</p>
+    <div class="grid" id="grid-ohalsa"></div>
+  </section>
+
+  <section>
+    <p class="sec-label"><b>Handling</b> · det spelaren gör</p>
+    <div class="grid" id="grid-handling"></div>
+  </section>
+
+  <section>
+    <p class="sec-label"><b>Märkningar</b> · sitter i mörk rund badge (som loggorna)</p>
+    <div class="grid" id="grid-markning"></div>
+  </section>
+
+  <section>
+    <p class="sec-label"><b>Register</b> · alltid synligt</p>
+    <div class="grid" id="grid-register"></div>
+  </section>
+
+  <section>
+    <p class="sec-label"><b>Ölägen</b> · fem steg på öhälso-mätaren (valfritt)</p>
+    <div class="grid" id="grid-lagen"></div>
+  </section>
+
+  <section>
+    <p class="sec-label"><b>I kontext</b> · så sitter de i gränssnittet</p>
+    <div class="ctx-grid">
+      <div class="ctx">
+        <h3>Resurs-avläsning (ditt lag)</h3>
+        <div class="readout">
+          <div class="res"><svg width="26" height="26" viewBox="0 0 100 100" data-icon="pengar"></svg><span class="led amber">16</span></div>
+          <div class="res"><svg width="26" height="26" viewBox="0 0 100 100" data-icon="material"></svg><span class="led blue">24</span></div>
+        </div>
+      </div>
+
+      <div class="ctx">
+        <h3>Kort-ö-badge</h3>
+        <div class="cards">
+          <div class="card dirty">
+            <span class="cardname">Smutsig</span>
+            <div class="delta"><svg width="34" height="34" viewBox="0 0 100 100" data-icon="industri"></svg>−4</div>
+            <span class="lbl">öhälsa / runda</span>
+          </div>
+          <div class="card green">
+            <span class="cardname">Grön</span>
+            <div class="delta"><svg width="34" height="34" viewBox="0 0 100 100" data-icon="tillvaxt"></svg>+1</div>
+            <span class="lbl">öhälsa / runda</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctx">
+        <h3>Börsen · förmögenhetsrank</h3>
+        <div class="board">
+          <div class="row lead">
+            <span class="rank">1</span>
+            <svg class="crown" viewBox="0 0 100 100" data-icon="krona-plain"></svg>
+            <span class="team">Björnen</span><span class="score">42</span>
+          </div>
+          <div class="row"><span class="rank">2</span><span class="team" style="margin-left:34px">Räven</span><span class="score">42</span></div>
+          <div class="row"><span class="rank">3</span><span class="team" style="margin-left:34px">Örnen</span><span class="score">26</span></div>
+          <div class="row"><span class="rank">4</span><span class="team" style="margin-left:34px">Oxen</span><span class="score">22</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Eco Loco · mellan — ikon-mockup variant A — endast för stilgodkännande</footer>
+</div>
+
+<script>
+/* =========================================================================
+   Fasett-ikoner. Varje "inner" är ren SVG-innehåll i 100x100-box.
+   Toner: ljus (övre-vänster) / bas / mörk (nedre-höger) + #1E1E1A accent.
+   ========================================================================= */
+var DARK = "#1E1E1A";
+
+var INNER = {
+
+  /* ---------- VALUTOR ---------- */
+  pengar: `
+    <polygon points="50,10 78,22 90,50 78,78 50,90 22,78 10,50 22,22" fill="#F0B33C"/>
+    <polygon points="50,10 78,22 90,50 10,50 22,22" fill="#F7CE78"/>
+    <polygon points="90,50 78,78 50,90 50,50" fill="#B5832A"/>
+    <polygon points="50,26 70,34 78,50 70,66 50,74 30,66 22,50 30,34" fill="none" stroke="${DARK}" stroke-width="2.4" opacity="0.6"/>
+    <polygon points="50,33 60,50 50,67 40,50" fill="#B5832A"/>
+    <polygon points="50,33 60,50 50,50 40,50" fill="#F7CE78"/>`,
+
+  material: `
+    <polygon points="50,16 84,35 50,54 16,35" fill="#B9D4E0"/>
+    <polygon points="16,35 50,54 50,90 16,71" fill="#8FB3C4"/>
+    <polygon points="84,35 50,54 50,90 84,71" fill="#5E8699"/>
+    <polygon points="16,35 50,54 50,44 24,30" fill="#D4E6EE" opacity="0.55"/>
+    <line x1="50" y1="54" x2="50" y2="90" stroke="${DARK}" stroke-width="1.4" opacity="0.4"/>
+    <line x1="16" y1="35" x2="50" y2="54" stroke="#3b5663" stroke-width="1.2" opacity="0.5"/>`,
+
+  /* ---------- ÖHÄLSA ---------- */
+  tillvaxt: `
+    <polygon points="47,90 53,90 51,56 49,56" fill="#2A9E64"/>
+    <polygon points="34,52 40,44 50,58" fill="#3DD68C"/>
+    <polygon points="24,36 40,44 50,58" fill="#7FE7B5"/>
+    <polygon points="24,36 50,58 34,52" fill="#2A9E64"/>
+    <polygon points="50,58 60,44 66,52" fill="#3DD68C"/>
+    <polygon points="76,36 60,44 50,58" fill="#7FE7B5"/>
+    <polygon points="76,36 50,58 66,52" fill="#2A9E64"/>`,
+
+  industri: `
+    <polygon points="12,86 12,58 30,58 30,44 48,58 48,44 66,58 66,44 84,58 84,86" fill="#F0564B"/>
+    <polygon points="30,44 48,58 30,58" fill="#F58A82"/>
+    <polygon points="48,44 66,58 48,58" fill="#F58A82"/>
+    <polygon points="66,44 84,58 66,58" fill="#F58A82"/>
+    <polygon points="60,58 84,58 84,86 60,86" fill="#B33A32"/>
+    <polygon points="16,58 16,30 26,30 26,58" fill="#F0564B"/>
+    <polygon points="21,30 26,30 26,58 21,58" fill="#B33A32"/>
+    <rect x="20" y="66" width="8" height="10" fill="${DARK}"/>
+    <rect x="36" y="66" width="8" height="10" fill="${DARK}"/>
+    <rect x="68" y="66" width="8" height="12" fill="${DARK}"/>
+    <rect x="48" y="70" width="12" height="16" fill="${DARK}"/>
+    <polygon points="19,25 27,19 35,25 28,31" fill="#8A8372"/>
+    <polygon points="29,16 38,9 47,16 39,23" fill="#B8AF9A"/>`,
+
+  on: `
+    <polygon points="12,66 30,58 50,56 70,58 88,66 70,78 50,80 30,78" fill="#5E8699"/>
+    <polygon points="12,66 30,58 50,56 30,66" fill="#8FB3C4"/>
+    <polygon points="22,66 40,59 50,57 62,59 78,66 64,72 36,72" fill="#C9A94F"/>
+    <polygon points="22,66 40,59 50,57 36,66" fill="#E4CE8C"/>
+    <polygon points="50,24 66,59 34,59" fill="#C9A94F"/>
+    <polygon points="50,24 34,59 44,51" fill="#E4CE8C"/>
+    <polygon points="50,24 66,59 56,51" fill="#937A34"/>
+    <polygon points="50,24 58,41 42,41" fill="#7FE7B5"/>`,
+
+  /* ---------- HANDLING ---------- */
+  byt: `
+    <polygon points="16,32 58,32 58,21 82,40 58,59 58,48 16,48" fill="#F0B33C"/>
+    <polygon points="16,32 58,32 58,21 82,40 58,40 16,40" fill="#F7CE78"/>
+    <polygon points="58,40 82,40 58,59 58,48" fill="#B5832A"/>
+    <polygon points="84,68 42,68 42,79 18,60 42,41 42,52 84,52" fill="#8FB3C4"/>
+    <polygon points="84,68 42,68 42,79 18,60 42,60 84,60" fill="#5E8699"/>
+    <polygon points="42,60 18,60 42,41 42,52" fill="#B9D4E0"/>`,
+
+  rosta: `
+    <polygon points="20,54 50,66 80,54 50,42" fill="#D8D1C2"/>
+    <polygon points="42,53 58,53 56,57 44,57" fill="${DARK}"/>
+    <polygon points="20,54 50,66 50,92 20,80" fill="#B8AF9A"/>
+    <polygon points="80,54 50,66 50,92 80,80" fill="#8A8372"/>
+    <polygon points="46,52 64,45 68,23 50,30" fill="#E4CE8C"/>
+    <polygon points="64,45 68,23 62,25 58,47" fill="#C9A94F"/>
+    <polyline points="52,37 56,43 64,30" fill="none" stroke="#2A9E64" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+
+  /* ---------- MÄRKNINGAR (badge) ---------- */
+  krona: `
+    <polygon points="16,72 22,40 38,60 50,32 62,60 78,40 84,72" fill="#C9A94F"/>
+    <polygon points="16,72 22,40 38,60 50,32 50,72" fill="#E4CE8C"/>
+    <polygon points="50,32 62,60 78,40 84,72 50,72" fill="#937A34"/>
+    <rect x="16" y="71" width="34" height="13" fill="#E4CE8C"/>
+    <rect x="50" y="71" width="34" height="13" fill="#937A34"/>
+    <polygon points="50,74 55,79 50,84 45,79" fill="#F0564B"/>
+    <polygon points="29,74 33,78 29,82 25,78" fill="#8FB3C4"/>
+    <polygon points="71,74 75,78 71,82 67,78" fill="#8FB3C4"/>`,
+
+  varning: `
+    <polygon points="50,14 88,84 12,84" fill="#F5C518"/>
+    <polygon points="50,14 12,84 50,84" fill="#FADD6E"/>
+    <polygon points="50,14 88,84 50,84" fill="#BD9608"/>
+    <polygon points="50,26 79,78 21,78" fill="none" stroke="${DARK}" stroke-width="2" opacity="0.28"/>
+    <polygon points="46,38 54,38 52,64 48,64" fill="${DARK}"/>
+    <rect x="46" y="69" width="8" height="8" rx="1" fill="${DARK}"/>`,
+
+  trofe: `
+    <path d="M30,30 C15,30 16,54 33,51" fill="none" stroke="#E4CE8C" stroke-width="5"/>
+    <path d="M70,30 C85,30 84,54 67,51" fill="none" stroke="#937A34" stroke-width="5"/>
+    <polygon points="30,24 70,24 64,48 50,59 36,48" fill="#C9A94F"/>
+    <polygon points="30,24 50,24 50,59 36,48" fill="#E4CE8C"/>
+    <polygon points="50,24 70,24 64,48 50,59" fill="#937A34"/>
+    <polygon points="46,59 54,59 54,69 46,69" fill="#937A34"/>
+    <polygon points="33,69 67,69 73,83 27,83" fill="#C9A94F"/>
+    <polygon points="33,69 50,69 50,83 27,83" fill="#E4CE8C"/>
+    <polygon points="50,30 53,38 61,38 55,43 57,51 50,46 43,51 45,43 39,38 47,38" fill="${DARK}" opacity="0.32"/>`,
+
+  sabotor: `
+    <polygon points="26,30 40,20 60,20 74,30 78,48 72,58 62,58 62,67 38,67 38,58 28,58 22,48" fill="#B8AF9A"/>
+    <polygon points="26,30 40,20 50,20 50,67 38,67 38,58 28,58 22,48" fill="#D8D1C2"/>
+    <polygon points="50,20 60,20 74,30 78,48 72,58 62,58 62,67 50,67" fill="#8A8372"/>
+    <polygon points="42,67 58,67 56,77 50,81 44,77" fill="#B8AF9A"/>
+    <polygon points="50,67 58,67 56,77 50,81" fill="#8A8372"/>
+    <polygon points="30,40 43,37 41,50 31,50" fill="${DARK}"/>
+    <polygon points="70,40 57,37 59,50 69,50" fill="${DARK}"/>
+    <polygon points="50,50 55,60 45,60" fill="${DARK}"/>
+    <rect x="44" y="68" width="2.4" height="10" fill="#8A8372"/>
+    <rect x="49" y="68" width="2.4" height="12" fill="#8A8372"/>
+    <rect x="54" y="68" width="2.4" height="10" fill="#8A8372"/>`,
+
+  /* ---------- REGISTER ---------- */
+  borsen: `
+    <rect x="14" y="88" width="72" height="3" fill="#4A443A"/>
+    <polygon points="18,62 34,62 34,88 18,88" fill="#B5832A"/>
+    <polygon points="18,62 34,62 34,67 18,67" fill="#F7CE78"/>
+    <polygon points="42,46 58,46 58,88 42,88" fill="#F0B33C"/>
+    <polygon points="42,46 58,46 58,51 42,51" fill="#F7CE78"/>
+    <polygon points="54,46 58,46 58,88 54,88" fill="#B5832A"/>
+    <polygon points="66,28 82,28 82,88 66,88" fill="#F0B33C"/>
+    <polygon points="66,28 82,28 82,33 66,33" fill="#F7CE78"/>
+    <polygon points="78,28 82,28 82,88 78,88" fill="#B5832A"/>
+    <polyline points="20,58 46,40 74,20" fill="none" stroke="#C9A94F" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="84,15 66,19 78,31" fill="#E4CE8C"/>`,
+
+  /* ---------- ÖLÄGEN (fem) ---------- */
+  lage1: faceFace("#F0564B","#F58A82","#B33A32","sick"),
+  lage2: faceFace("#EE7D45","#F2A070","#C05A28","frown"),
+  lage3: faceFace("#F5C518","#FADD6E","#BD9608","flat"),
+  lage4: faceFace("#7FE7B5","#B4F0D4","#4FC48E","smile"),
+  lage5: faceFace("#3DD68C","#7FE7B5","#2A9E64","grin"),
+};
+
+/* Fasetterat ansikte i oktagon (för ölägena). */
+function faceFace(base,ljus,mork,mouth){
+  var oct = "50,14 76,24 86,50 76,76 50,86 24,76 14,50 24,24";
+  var m = {
+    sick:  '<polyline points="33,66 41,60 50,62 59,60 67,66" fill="none" stroke="'+DARK+'" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>'
+          +'<polygon points="64,54 70,54 67,62" fill="#2A9E64"/>',
+    frown: '<path d="M34,66 Q50,56 66,66" fill="none" stroke="'+DARK+'" stroke-width="3.6" stroke-linecap="round"/>',
+    flat:  '<rect x="36" y="61" width="28" height="3.6" rx="1.8" fill="'+DARK+'"/>',
+    smile: '<path d="M34,60 Q50,70 66,60" fill="none" stroke="'+DARK+'" stroke-width="3.6" stroke-linecap="round"/>',
+    grin:  '<path d="M33,58 Q50,76 67,58 Z" fill="'+DARK+'"/><path d="M38,61 Q50,70 62,61 Z" fill="#F58A82" opacity="0.65"/>'
+  }[mouth];
+  return `
+    <polygon points="${oct}" fill="${base}"/>
+    <polygon points="50,14 76,24 86,50 14,50 24,24" fill="${ljus}"/>
+    <polygon points="86,50 76,76 50,86 50,50" fill="${mork}"/>
+    <polygon points="34,40 41,43 39,51 32,49" fill="${DARK}"/>
+    <polygon points="66,40 59,43 61,51 68,49" fill="${DARK}"/>
+    ${m}`;
+}
+
+/* Bygger en SVG-sträng. badgeStroke => rita mörk rund badge som loggorna. */
+function svg(id, size, badgeStroke){
+  var ring = "";
+  if(badgeStroke){
+    ring =
+      '<circle cx="50" cy="50" r="48" fill="#26251F"/>'+
+      '<circle cx="50" cy="50" r="48" fill="none" stroke="'+badgeStroke+'" stroke-width="4"/>'+
+      '<circle cx="50" cy="50" r="41" fill="none" stroke="#000" stroke-width="1.5" opacity="0.35"/>';
+  }
+  // skala ned motivet något inuti badgen så det ryms i ringen
+  var body = INNER[id] || "";
+  if(badgeStroke) body = '<g transform="translate(50,50) scale(0.74) translate(-50,-50)">'+body+'</g>';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img">'+ring+body+'</svg>';
+}
+
+/* Datadriven rendering av rutnäten. */
+var SETS = {
+  "grid-valuta":[
+    {id:"pengar",   name:"Pengar",   emoji:"🪙", mean:"Valuta — tjänas av Tundra & Stad. Varm amber."},
+    {id:"material", name:"Material", emoji:"🧱", mean:"Valuta — tjänas av Åker & Skog. Kall sten-blå."},
+  ],
+  "grid-ohalsa":[
+    {id:"on",       name:"Ön",            emoji:"🏝", mean:"Den delade ön — öhälso-visningen."},
+    {id:"tillvaxt", name:"Grön tillväxt", emoji:"🌱", mean:"Öhälsa upp — grönt val, eldsjäl."},
+    {id:"industri", name:"Industri-skada",emoji:"🏭", mean:"Öhälsa ner — smutsigt bygge, klimatregister."},
+  ],
+  "grid-handling":[
+    {id:"byt",   name:"Byt valutor",  emoji:"🔁", mean:"Byteshandel — du ger din valuta, får den andra."},
+    {id:"rosta", name:"Lägg förslag", emoji:"🗳", mean:"Röstning — ett förslag/runda, 3 av 4 JA."},
+  ],
+  "grid-markning":[
+    {id:"krona",   name:"Ekonomisk ledare", emoji:"👑", mean:"Rikast just nu — på Börsens etta.", badge:"#C9A94F"},
+    {id:"trofe",   name:"Årets ledande företag", emoji:"🏆", mean:"Bokslutets award för bäst resultat.", badge:"#C9A94F"},
+    {id:"varning", name:"Värsta boven",     emoji:"⚠", mean:"Mest ackumulerad öskada — i Klimatregistret.", badge:"#F5C518"},
+    {id:"sabotor", name:"Årets sabotör",    emoji:"💀", mean:"Bokslutets award för störst skada.", badge:"#F0564B"},
+  ],
+  "grid-register":[
+    {id:"borsen", name:"Börsen", emoji:"💰", mean:"Rank på förmögenhet (pengar + material)."},
+  ],
+  "grid-lagen":[
+    {id:"lage1", name:"Superdåligt", emoji:"🤢", mean:"0–20 · smog, hosta."},
+    {id:"lage2", name:"Dåligt",      emoji:"😟", mean:"20–40 · ansträngt."},
+    {id:"lage3", name:"Neutralt",    emoji:"😐", mean:"40–60 · balans."},
+    {id:"lage4", name:"Bra",         emoji:"🙂", mean:"60–80 · fågelkvitter."},
+    {id:"lage5", name:"Mycket bra",  emoji:"😄", mean:"80–100 · feststämning."},
+  ],
+};
+
+Object.keys(SETS).forEach(function(gridId){
+  var host = document.getElementById(gridId);
+  if(!host) return;
+  SETS[gridId].forEach(function(it){
+    var cell = document.createElement("div");
+    cell.className = "cell";
+    cell.innerHTML =
+      '<div class="glyphs">'+
+        '<div class="glyph-big">'+svg(it.id,72,it.badge)+'</div>'+
+        '<div class="glyph-sm-wrap"><div class="glyph-sm">'+svg(it.id,24,it.badge)+'</div><span>24px</span></div>'+
+      '</div>'+
+      '<div class="meta">'+
+        '<div class="name">'+it.name+'<span class="emoji">ersätter '+it.emoji+'</span></div>'+
+        '<div class="mean">'+it.mean+'</div>'+
+      '</div>';
+    host.appendChild(cell);
+  });
+});
+
+/* Kontext-ikoner + header-ö */
+document.querySelectorAll('svg[data-icon]').forEach(function(el){
+  var key = el.getAttribute('data-icon');
+  var map = {pengar:["pengar",null], material:["material",null], industri:["industri",null],
+             tillvaxt:["tillvaxt",null], "krona-plain":["krona",null]};
+  var spec = map[key]; if(!spec) return;
+  var w = el.getAttribute('width')||el.clientWidth||26;
+  el.outerHTML = svg(spec[0], w, spec[1]);
+});
+document.getElementById('hdr-island').outerHTML = svg('on',34,null);
+</script>
+</body>
+</html>
