@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eco Loco — Spelledarpult (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;700;800&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  /* House-tokens ur spel.html — panelen hör till samma kontrollbord. LIGGANDE skärm. */
+  :root{
+    --bg:#121009; --panel:#211E17; --panel2:#2A261D; --panel3:#0C0B07;
+    --edge:#4A443A; --edge2:#5C5547; --gold:#C9A94F; --text:#F2ECDD; --dim:#B8AF9A;
+    --led:#F0B33C; --led-red:#F0564B; --led-green:#3DD68C;
+    --oh-red:#F0564B; --oh-yellow:#F5C518; --oh-green:#3DD68C;
+    --aker:#D4A53C; --skog:#1F6E57; --tundra:#C96F2E; --stad:#7E8794;
+    --font-disp:"Oxanium","Avenir Next",system-ui,sans-serif;
+    --font-num:"Chakra Petch",ui-monospace,Menlo,monospace;
+    --ease:cubic-bezier(.23,1,.32,1);
+    --tap:64px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#0E0D0A;color:var(--text);font-family:var(--font-disp)}
+  body{padding:0 0 84px;max-width:1360px;margin:0 auto}
+  .num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+
+  /* ── Statusfält (hela toppen) ── */
+  .status{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px 26px;
+    padding:12px 22px;background:var(--panel3);border-bottom:3px solid var(--edge)}
+  .status .dot{width:12px;height:12px;border-radius:50%;background:var(--led-green);box-shadow:0 0 10px var(--led-green)}
+  .status .s{display:flex;flex-direction:column;line-height:1.05}
+  .status .s small{font-size:11px;letter-spacing:2px;color:var(--dim);font-weight:700}
+  .status .s b{font-size:22px;font-weight:800}
+  .status .s b.num{font-size:24px}
+  .spacer{flex:1}
+  .mode-ind{display:flex;gap:8px}
+  .pill{font-size:13px;font-weight:800;letter-spacing:1px;padding:7px 14px;border-radius:999px;border:2px solid var(--edge2);color:var(--dim)}
+  .pill.on{background:var(--gold);border-color:var(--gold);color:#1a1710}
+  .paused-banner{display:none;background:#3d2320;color:var(--led-red);border-bottom:3px solid #5e332c;
+    text-align:center;font-weight:800;letter-spacing:3px;padding:8px}
+  body.paused .paused-banner{display:block}
+
+  /* ── Flikar (botten, nås med tummarna även liggande) ── */
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;gap:2px;max-width:1360px;margin:0 auto;
+    background:var(--panel3);border-top:3px solid var(--edge)}
+  .tabs button{flex:1;min-height:var(--tap);background:transparent;border:none;color:var(--dim);
+    font-family:var(--font-disp);font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer}
+  .tabs button.sel{background:var(--panel2);color:var(--gold);box-shadow:inset 0 3px 0 var(--gold)}
+
+  main{padding:16px 22px}
+  .view{display:none}
+  .view.sel{display:block}
+  /* Liggande: 3 kolumner */
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start}
+  @media(max-width:860px){.grid3{grid-template-columns:1fr}}
+  .span{grid-column:1/-1}
+
+  /* ── Sektion/kort ── */
+  .card{background:var(--panel);border:2px solid var(--edge);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .card h2{margin:0;font-size:13px;letter-spacing:3px;color:var(--dim);font-weight:800}
+  .card h2 .hint{color:var(--edge2);letter-spacing:1px;font-weight:700}
+
+  /* ── Knappar ── */
+  .btn{min-height:var(--tap);width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    background:var(--panel2);color:var(--text);border:2px solid var(--edge2);border-radius:12px;
+    font-family:var(--font-disp);font-size:18px;font-weight:800;letter-spacing:.5px;cursor:pointer;
+    transition:transform 140ms var(--ease),background 140ms var(--ease),border-color 140ms var(--ease);padding:12px 14px}
+  .btn:active{transform:scale(.97)}
+  .btn[disabled]{opacity:.38;cursor:not-allowed}
+  .btn.primary{background:var(--gold);border-color:var(--gold);color:#1a1710;font-size:22px;min-height:88px}
+  .btn.ja{background:#20372a;border-color:#2c5e3d;color:var(--led-green)}
+  .btn.nej{background:#3d2320;border-color:#5e332c;color:var(--led-red)}
+  .btn.danger{background:#3a1f1c;border-color:#6a2f28;color:var(--led-red)}
+  .btn.safe{border-style:dashed}
+  .btn small{font-size:12px;letter-spacing:1px;color:inherit;opacity:.72;font-weight:700}
+  .btn .prog{font-family:var(--font-num);font-size:16px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.25)}
+  .row{display:grid;gap:12px}
+  .row.two{grid-template-columns:1fr 1fr}
+  .row.auto{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+
+  /* ── Stort lägesreglage ── */
+  .masterbar{display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:14px;
+    border:2px solid var(--edge2);background:var(--panel2);transition:all 160ms var(--ease);cursor:pointer}
+  .masterbar .label b{font-size:20px;font-weight:800;display:block}
+  .masterbar .label span{font-size:13px;color:var(--dim)}
+  .switch{margin-left:auto;width:112px;height:56px;border-radius:999px;border:2px solid var(--edge2);
+    background:var(--panel3);position:relative;flex:0 0 auto;transition:all 160ms var(--ease)}
+  .switch::after{content:"";position:absolute;top:4px;left:4px;width:44px;height:44px;border-radius:50%;
+    background:var(--dim);transition:transform 180ms var(--ease),background 180ms var(--ease)}
+  .switch .txt{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-weight:800;letter-spacing:1px;color:var(--dim)}
+  .switch .txt.off{right:12px}.switch .txt.on{left:14px;display:none;color:#1a1710}
+  .masterbar.on-state{background:#2a2410;border-color:var(--gold)}
+  .masterbar.on-state .switch{background:var(--gold);border-color:var(--gold)}
+  .masterbar.on-state .switch::after{transform:translateX(56px);background:#1a1710}
+  .masterbar.on-state .switch .txt.off{display:none}.masterbar.on-state .switch .txt.on{display:block}
+  .masterbar.rig.on-state{background:#3a1f1c;border-color:var(--led-red)}
+  .masterbar.rig.on-state .switch{background:var(--led-red);border-color:var(--led-red)}
+
+  /* ── Händelsekort ── */
+  .eventbox{background:var(--panel3);border:2px solid var(--edge);border-radius:12px;padding:14px}
+  .eventbox h3{margin:0 0 6px;font-size:18px;color:var(--gold)}
+  .eventbox p{margin:0;color:var(--dim);font-size:14px;line-height:1.5}
+  .muted{color:var(--dim);font-size:14px;margin:0}
+
+  /* CUE-knappar (ljud+ljus) */
+  .cue{min-height:84px}
+  .cue .ic{font-size:22px}
+  .cue.kris{color:var(--led-red)}
+  .cue.fanfar{color:var(--led-green)}
+
+  /* spots i lagfärg */
+  .spot{min-height:92px}
+  .spot .chipdot{width:26px;height:26px;border-radius:7px;border:2px solid rgba(0,0,0,.35)}
+  .spot[data-team=aker] .chipdot{background:var(--aker)}
+  .spot[data-team=skog] .chipdot{background:var(--skog)}
+  .spot[data-team=tundra] .chipdot{background:var(--tundra)}
+  .spot[data-team=stad] .chipdot{background:var(--stad)}
+  .btn.active{border-color:var(--gold);background:#2a2410}
+
+  details.look summary{cursor:pointer;color:var(--dim);font-weight:800;letter-spacing:2px;font-size:13px;padding:8px 0}
+  .note{font-size:13px;color:var(--dim);line-height:1.5;margin:0}
+  .badge{display:inline-block;font-size:11px;letter-spacing:1px;font-weight:800;color:#1a1710;background:var(--gold);
+    padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:8px}
+  .seclabel{font-size:11px;letter-spacing:2px;color:var(--led-green);font-weight:800}
+  .seclabel.nosound{color:var(--dim)}
+
+  #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(16px);z-index:9;
+    background:var(--panel2);border:2px solid var(--gold);color:var(--gold);font-weight:800;padding:12px 20px;
+    border-radius:12px;opacity:0;pointer-events:none;transition:opacity 180ms var(--ease),transform 180ms var(--ease)}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="status">
+  <div class="dot" title="Ansluten"></div>
+  <div class="s"><small>SERVER</small><b>Ansluten</b></div>
+  <div class="s"><small>RUNDA</small><b class="num">4/8</b></div>
+  <div class="s"><small>ÖHÄLSA</small><b class="num" style="color:var(--oh-green)">62 ▲</b></div>
+  <div class="s"><small>TIMER</small><b class="num">01:12</b></div>
+  <div class="spacer"></div>
+  <div class="mode-ind">
+    <span class="pill on" id="pill-gm">GM PÅ</span>
+    <span class="pill on" id="pill-sl">MED SPELLEDARE</span>
+  </div>
+</div>
+<div class="paused-banner">⏸ PAUSAD — spelmotorn fryst</div>
+
+<main>
+  <!-- ── VY: SPEL (grupp A) — 3 kolumner liggande ── -->
+  <section class="view sel" data-view="spel">
+    <div class="grid3">
+      <div class="card">
+        <h2>PRISUTDELNING</h2>
+        <button class="btn primary" onclick="toast('Stegar prisutdelningen (award_next)')">
+          NÄSTA PRIS <span class="prog">2 / 3</span>
+        </button>
+        <p class="note">🏆 Ledande: <b>Björnen</b> · nästa: 🌱 Eldsjäl. Skärm + rigg i takt.</p>
+      </div>
+
+      <div class="card">
+        <h2>RUNDANS HÄNDELSE</h2>
+        <div class="eventbox">
+          <h3>Höststormen är här</h3>
+          <p>Kusten tar emot. De som byggt mot havet får bära vädrets kostnad.</p>
+        </div>
+        <div class="row two">
+          <button class="btn ja" onclick="toast('Kör händelsen (event: ja)')">KÖR · JA</button>
+          <button class="btn nej" onclick="toast('Hoppar händelsen (event: nej)')">HOPPA · NEJ</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>TEMPO</h2>
+        <button class="btn" id="pausbtn" onclick="togglePaus()">⏸ PAUSA SPELET</button>
+        <h2 style="margin-top:4px">LIVLINA <span class="badge">BEKRÄFTA</span></h2>
+        <button class="btn safe" onclick="confirmAct(this,'Pengasläpp skickat (+10/+10 till alla)')">
+          💸 PENGASLÄPP<small>+10 pengar &amp; +10 material till alla lag</small>
+        </button>
+      </div>
+
+      <div class="masterbar on-state span" id="gm-switch" onclick="toggleGm()">
+        <div class="label"><b>SPELLEDARLÄGE</b><span>styr awards + händelser själv, och driver riggen manuellt</span></div>
+        <div class="switch"><span class="txt off">AV</span><span class="txt on">PÅ</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── VY: RIGG (grupp B) ── -->
+  <section class="view" data-view="rigg">
+    <div class="grid3">
+      <div class="card span">
+        <h2>CUES <span class="hint">— ljud + ljus tillsammans</span></h2>
+        <div class="row auto">
+          <button class="btn cue" onclick="toast('CUE Happening: ljud happening + ljussvep')"><span class="ic">🎉</span>HAPPENING</button>
+          <button class="btn cue kris" onclick="toast('CUE Kris: larm-ljud + rött blink + blandare')"><span class="ic">🚨</span>KRIS / LARM</button>
+          <button class="btn cue" onclick="toast('CUE Nedräkning: vita sidor + fx + countdown-ljud')"><span class="ic">⏱</span>NEDRÄKNING</button>
+          <button class="btn cue" onclick="toast('CUE Startceremoni: riser + chase → vitt ljus')"><span class="ic">✨</span>STARTCEREMONI</button>
+          <button class="btn cue fanfar" onclick="toast('CUE Fanfar: seger-ljud + festgrönt')"><span class="ic">🏆</span>FANFAR</button>
+        </div>
+      </div>
+
+      <div class="card span">
+        <h2>INDIVIDUELLT LJUS <span class="hint">— helt utan ljud · fungerar alltid</span></h2>
+        <div class="row auto">
+          <button class="btn spot" data-team="aker" onclick="toggleSpot(this)"><span class="chipdot"></span>SPOT 1<small>Åker</small></button>
+          <button class="btn spot" data-team="skog" onclick="toggleSpot(this)"><span class="chipdot"></span>SPOT 2<small>Skog</small></button>
+          <button class="btn spot" data-team="tundra" onclick="toggleSpot(this)"><span class="chipdot"></span>SPOT 3<small>Tundra</small></button>
+          <button class="btn spot" data-team="stad" onclick="toggleSpot(this)"><span class="chipdot"></span>SPOT 4<small>Stad</small></button>
+          <button class="btn" onclick="toggleGeneric(this,'Saftblandaren')">🔌 BLANDARE</button>
+          <button class="btn" style="color:var(--led-green)" onclick="toast('gm/alla_grona 1')">ALLA GRÖNA</button>
+          <button class="btn" onclick="toast('scen slut — släck allt')">SLÄCK ALLT</button>
+        </div>
+      </div>
+
+      <div class="masterbar rig span" id="rig-master" onclick="toggleMaster()">
+        <div class="label"><b>TA ÖVER RIGGEN (MASTER)</b><span>nödhandtag för "utan spelledare" — tystar spelets cues så du regisserar fritt</span></div>
+        <div class="switch"><span class="txt off">AV</span><span class="txt on">PÅ</span></div>
+      </div>
+
+      <div class="card span">
+        <details class="look">
+          <summary>REGISSERA LOOK (semantiska cues, utan ljud)</summary>
+          <div class="row auto" style="margin-top:10px">
+            <button class="btn" onclick="toast('scen attract')">ATTRACT</button>
+            <button class="btn" onclick="toast('scen runda')">RUNDA</button>
+            <button class="btn" onclick="toast('scen awards')">AWARDS</button>
+            <button class="btn" onclick="toast('wave 1/0')">WAVE</button>
+            <button class="btn" onclick="toast('öhälsa-look (1–100)')">ÖHÄLSA-LOOK</button>
+          </div>
+          <p class="note" style="margin-top:10px">Används t.ex. för att återställa looken efter en KRIS-cue. Rena ljus-cues — inget ljud.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── VY: SLUTDEL ── -->
+  <section class="view" data-view="slutdel">
+    <div class="grid3">
+      <div class="card">
+        <h2>SLUTDEL <span class="badge">EFTER PARTISLUT</span></h2>
+        <button class="btn safe" onclick="confirmAct(this,'Slutdel startad')">STARTA SLUTDEL</button>
+      </div>
+      <div class="card">
+        <h2>STEGA</h2>
+        <button class="btn primary" onclick="toast('slutdel_next')">NÄSTA STEG <span class="prog">4 / 9</span></button>
+        <p class="note">Nästa: <b>Fråga 4</b> — "När erbjudandet kom — vad styrde ert ja eller nej?"</p>
+      </div>
+      <div class="card">
+        <h2>LIVE-FÖRDELNING (fråga 3)</h2>
+        <p class="muted">Motståndare ●● · Grannar ● · Det växlade ● — markörer färgas per lagfärg, inga rätta svar.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── VY: ADMIN ── -->
+  <section class="view" data-view="admin">
+    <div class="grid3">
+      <div class="card">
+        <h2>PARTI</h2>
+        <button class="btn primary" onclick="confirmAct(this,'Spel startat')">STARTA SPEL</button>
+        <p class="note">Tomma lag fylls av datorn. Startar om först när ett parti är slut (känd lucka: ingen omstart mitt i parti i nuvarande server).</p>
+      </div>
+      <div class="card">
+        <h2>MED / UTAN SPELLEDARE</h2>
+        <div class="row two">
+          <button class="btn" onclick="toast('startGame utan spelledare')">UTAN</button>
+          <button class="btn primary" onclick="toast('startGame MED spelledare')">MED</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>SKÄRMLÄGE (config.mode)</h2>
+        <p class="note">Aktivt: <b>gm</b> · sätts per skärm i <code>assets.json</code> eller <code>?mode=</code> i skärmens URL — går inte att fjärrväxla i nuvarande bygge.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button class="sel" data-go="spel">SPEL</button>
+  <button data-go="rigg">RIGG</button>
+  <button data-go="slutdel">SLUTDEL</button>
+  <button data-go="admin">ADMIN</button>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+  const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+  $$('.tabs button').forEach(b=>b.onclick=()=>{
+    $$('.tabs button').forEach(x=>x.classList.toggle('sel',x===b));
+    $$('.view').forEach(v=>v.classList.toggle('sel',v.dataset.view===b.dataset.go));
+  });
+  let tTimer;
+  function toast(msg){const t=$('#toast');t.textContent='✓ '+msg;t.classList.add('show');
+    clearTimeout(tTimer);tTimer=setTimeout(()=>t.classList.remove('show'),1700);}
+  function togglePaus(){const on=document.body.classList.toggle('paused');
+    $('#pausbtn').textContent=on?'▶ FORTSÄTT':'⏸ PAUSA SPELET';toast(on?'Spelet pausat':'Spelet fortsätter');}
+  function toggleGm(){const el=$('#gm-switch'),on=el.classList.toggle('on-state');
+    $('#pill-gm').classList.toggle('on',on);$('#pill-gm').textContent=on?'GM PÅ':'GM AV';
+    $('#pill-sl').classList.toggle('on',on);$('#pill-sl').textContent=on?'MED SPELLEDARE':'UTAN SPELLEDARE';
+    toast('Spelledarläge '+(on?'PÅ (gm+spelledare)':'AV'));}
+  function toggleMaster(){const on=$('#rig-master').classList.toggle('on-state');
+    toast(on?'Riggen övertagen (master 1) — spelets cues tysta':'Riggen släppt (master 0)');}
+  function toggleSpot(b){const on=b.classList.toggle('active');toast('spot/'+b.dataset.team+' '+(on?'1':'0'));}
+  function toggleGeneric(b,n){const on=b.classList.toggle('active');toast(n+' '+(on?'PÅ':'AV'));}
+  let armed;
+  function confirmAct(b,msg){
+    if(armed===b){clearTimeout(b._t);b.classList.remove('danger');b.innerHTML=b._orig;armed=null;toast(msg);return;}
+    if(armed){clearTimeout(armed._t);armed.classList.remove('danger');armed.innerHTML=armed._orig;}
+    b._orig=b.innerHTML;b.classList.add('danger');b.textContent='TRYCK IGEN FÖR ATT BEKRÄFTA';armed=b;
+    b._t=setTimeout(()=>{b.classList.remove('danger');b.innerHTML=b._orig;armed=null;},2500);
+  }
+</script>
+</body>
+</html>
