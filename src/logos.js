@@ -8,7 +8,7 @@ export const TEAM_LOGOS = {
   aker:   { djur: 'Oxen',    farg: '#E7C24C', ljus: '#F2DA8A', mork: '#B08F2B' },
   skog:   { djur: 'Björnen', farg: '#3F8F4A', ljus: '#7FBF87', mork: '#28632F' },
   tundra: { djur: 'Räven',   farg: '#D98A3C', ljus: '#EDB47C', mork: '#A5601F' },
-  stad:   { djur: 'Örnen',   farg: '#A9AEB5', ljus: '#D3D7DC', mork: '#70767E' },
+  stad:   { djur: 'Örnen',   farg: '#8A8F96', ljus: '#BFC3C9', mork: '#5F646C' },
 };
 
 // Fasetterade huvud-silhuetter i profil (100×100-box). Två toner per djur för djup.

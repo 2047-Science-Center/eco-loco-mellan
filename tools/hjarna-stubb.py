@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # hjarna-stubb.py — DIRIGENTEN (Blocks-ersättare, kastas när Blocks tar över).
-# Lyssnar på semantiska cues (ecoloco/rigg/scen|ohalsa|award|wave|countdown|gm/#),
+# Lyssnar på semantiska cues (ecoloco/rigg/scen|ohalsa|award|wave|countdown|ceremoni|gm/#),
 # översätter till granulärt (ecoloco/rigg/out/led|fx|spot) + spelar ljud.
 # Mappningstabellerna nedan ÄR specen som Blocks sen implementerar (se RIGG-KONTRAKT.md).
 #
@@ -196,6 +196,29 @@ def handle_gm(sub, payload):
     elif sub == "ljud":
         play(payload if "." in payload else payload + ".wav")
 
+# ---- MAPPNING: startceremoni (tutorial→runda 1) -> LED-chase 1–4 → vitt ljus 3 s ----
+# Semantik: 'countdown' = spelstart-riser + chase (OBS skild från ecoloco/rigg/countdown = 10 s kvar i rundan).
+ceremoni_stop = threading.Event()
+def _chase_worker():
+    while not ceremoni_stop.is_set():
+        for n in (1, 2, 3, 4):
+            set_side(n, {"h": 0, "s": 0, "v": 100})
+            for m in (1, 2, 3, 4):
+                if m != n: set_side(m, {"h": 0, "s": 0, "v": 22})
+            if ceremoni_stop.wait(0.33): return
+def apply_ceremoni(payload):
+    global ceremoni_stop
+    if payload == "countdown":        # spelstart: riser-soundscape + LED-chase (kulminerar i climax)
+        stop_ambience(); play("spanning")
+        ceremoni_stop = threading.Event()
+        threading.Thread(target=_chase_worker, daemon=True).start()
+    elif payload == "climax":         # vitt ljus i 3 s, sedan rundans look
+        ceremoni_stop.set()
+        set_fx("none"); set_all({"h": 0, "s": 0, "v": 100})
+        threading.Timer(3.0, lambda: (apply_scen("runda"), play("round_start"))).start()
+    elif payload == "runda1":         # skärmen bytte till runda 1 — säkra att chase är stoppad (vita ljuset hålls av climax-timern)
+        ceremoni_stop.set()
+
 def on_semantic(topic, payload):
     print(f"[hjarna] {topic}  {payload}")
     if topic.startswith("ecoloco/rigg/gm/"):
@@ -213,11 +236,12 @@ def on_semantic(topic, payload):
             stop_ambience(); set_all({"h": 0, "s": 0, "v": 80}); set_fx("countdown"); play("countdown.wav")
         else:
             set_fx("none")   # awards följer direkt → ambience startar om efter ceremonin
+    elif topic == "ecoloco/rigg/ceremoni":  apply_ceremoni(payload)
 
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
-              "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/blandare",
-              "ecoloco/rigg/ljud", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
+              "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")
