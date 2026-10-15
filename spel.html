@@ -322,6 +322,17 @@
   .lobbyteam .st.du .dot { background: var(--gold); border-color: #8a742f; }
   .startnote { margin-top: 10px; color: var(--dim); font-size: 15px; display: none; }
 
+  /* Motion-polish: award-entré, timer-brådska, röd-zon-larm */
+  .overlay.open .award { animation: popin 240ms cubic-bezier(.22,1,.36,1); }
+  @keyframes popin { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .endwrap.urgent .endtime { color: var(--led-red); }
+  .endwrap.urgent #timerring { stroke: var(--oh-red); }
+  .endwrap.urgent { animation: urgentpuls .9s ease-in-out infinite; }
+  @keyframes urgentpuls { 50% { box-shadow: 0 0 24px rgba(240,86,75,.55); } }
+  #stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 30; box-shadow: inset 0 0 160px 40px rgba(240,86,75,0); }
+  #stage.alarm::after { animation: redalarm .7s ease; }
+  @keyframes redalarm { 0%,100% { box-shadow: inset 0 0 160px 40px rgba(240,86,75,0); } 35% { box-shadow: inset 0 0 160px 55px rgba(240,86,75,.5); } }
+
   /* Publik kiosk: respektera reducerad rörelse (åksjuke-skydd) */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }

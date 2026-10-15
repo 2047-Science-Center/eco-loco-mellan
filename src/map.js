@@ -45,6 +45,34 @@ export const OH_MODES = {
   mycketbra:   { filter: 'saturate(1.3) brightness(1.08)',  overlay: '#000000', op: 0,    smoke: 0,   spark: 1 },
 };
 
+// — Seating: håll byggnadsfoten innanför ön (clamp mot silhuetten) —
+const ISLAND_CENTROID = (() => {
+  const s = OUTLINE.reduce((a, [x, y]) => [a[0] + x, a[1] + y], [0, 0]);
+  return [s[0] / OUTLINE.length, s[1] / OUTLINE.length];
+})();
+const SHRUNK = OUTLINE.map(([x, y]) => [
+  ISLAND_CENTROID[0] + (x - ISLAND_CENTROID[0]) * 0.86,
+  ISLAND_CENTROID[1] + (y - ISLAND_CENTROID[1]) * 0.86,
+]);
+function pointInPoly(px, py, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+// Rör inte slots som redan ligger på ön; dra bara in sådana som hamnat i havet.
+function clampToIsland(x, y) {
+  if (pointInPoly(x, y, OUTLINE)) return { x, y };
+  for (let t = 0.08; t <= 1; t += 0.08) {
+    const nx = x + (ISLAND_CENTROID[0] - x) * t;
+    const ny = y + (ISLAND_CENTROID[1] - y) * t;
+    if (pointInPoly(nx, ny, SHRUNK)) return { x: nx, y: ny };
+  }
+  return { x: ISLAND_CENTROID[0], y: ISLAND_CENTROID[1] };
+}
+
 const pts = p => p.map(q => q.join(',')).join(' ');
 const S = 'http://www.w3.org/2000/svg';
 function el(tag, attrs = {}) {
@@ -66,7 +94,8 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
       <stop offset="62%" stop-color="#256579"/>
       <stop offset="100%" stop-color="#1C4E60"/>
     </radialGradient>
-    <clipPath id="islandClip"><polygon points="${pts(OUTLINE)}"/></clipPath>`;
+    <clipPath id="islandClip"><polygon points="${pts(OUTLINE)}"/></clipPath>
+    <filter id="bshadow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>`;
   svg.appendChild(defs);
 
   const world = el('g'); // allt som tonas av öhälso-filtret
@@ -184,15 +213,21 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   function placeBuilding(area, slotIndex, href, size = 135) {
     const s = (slots[area] || [])[slotIndex];
     if (!s) return null;
-    const img = el('image', {
-      href, x: s.x - size / 2, y: s.y - size * 0.82, width: size, height: size,
+    const foot = clampToIsland(s.x, s.y);
+    const g = el('g', { 'data-building': `${area}-${slotIndex}`, 'data-y': foot.y });
+    // kontaktskugga: grundar den grövre tilen mot den (nu texturerade) ytan
+    g.appendChild(el('ellipse', {
+      cx: foot.x, cy: foot.y + size * 0.06, rx: size * 0.34, ry: size * 0.14,
+      fill: '#000', opacity: 0.3, filter: 'url(#bshadow)',
+    }));
+    g.appendChild(el('image', {
+      href, x: foot.x - size / 2, y: foot.y - size * 0.82, width: size, height: size,
       class: 'ecoloco-drop',
-      'data-building': `${area}-${slotIndex}`,
-    });
+    }));
     // måla i y-ordning så främre byggnader hamnar över bakre
-    const after = [...buildLayer.children].find(c => +c.getAttribute('y') > +img.getAttribute('y'));
-    buildLayer.insertBefore(img, after || null);
-    return img;
+    const after = [...buildLayer.children].find(c => +c.getAttribute('data-y') > foot.y);
+    buildLayer.insertBefore(g, after || null);
+    return g;
   }
 
   return {

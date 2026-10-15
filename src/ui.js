@@ -411,6 +411,7 @@ game.on('timer', ({ left, full }) => {
   $('timertxt').textContent = `${m}:${String(s).padStart(2, '0')}`;
   const skala = full || E().cfg.timerSec;
   $('timerring').style.strokeDashoffset = 414.7 * (1 - Math.max(0, left) / skala);
+  $('endwrap').classList.toggle('urgent', left > 0 && left <= 15);
 });
 
 // ——— Online-specifika events ———
@@ -450,8 +451,19 @@ function animateCount(el, to, ms = 650) {
   requestAnimationFrame(step);
 }
 
+// Röd-zon-larm: en röd vinjett-puls när ön faller (i eller in i röda zonen).
+let _alarmTmo = null;
+function stageAlarm() {
+  const st = $('stage');
+  st.classList.remove('alarm'); void st.offsetWidth;   // starta om animationen
+  st.classList.add('alarm');
+  clearTimeout(_alarmTmo);
+  _alarmTmo = setTimeout(() => st.classList.remove('alarm'), 750);
+}
+
 function updateOh({ value, mode, delta }) {
   const c = E().cfg;
+  if (value < c.redZone && delta < 0) stageAlarm();
   $('ohfill').style.width = `calc(${value}% - 6px)`;
   $('ohfill').style.background = value < c.redZone ? 'var(--oh-red)' : value > c.greenZone ? 'var(--oh-green)' : 'var(--oh-yellow)';
   $('ohneedle').style.left = `${value}%`;
