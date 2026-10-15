@@ -197,7 +197,7 @@ function initIcons() {
   set('#btn-trade', `${ico('byt', 22)} BYT VALUTOR`);
   set('#btn-prop', `${ico('rosta', 22)} LÄGG FÖRSLAG`);
   set('#toplist-h', `${ico('borsen', 18)} TOPPLISTA`);
-  set('#ov-start h1', `${ico('on', 46)} ECO LOCO`);
+  set('#ov-start h1', `${ico('on', 46)} MAKTSPELET`);
   set('#ov-trade h2', `${ico('byt', 24)} BYT VALUTOR`);
   set('#ov-choose h2', `${ico('rosta', 24)} LÄGG ETT FÖRSLAG`);
   set('#ov-vote h2', `${ico('rosta', 24)} OMRÖSTNING`);
@@ -993,7 +993,7 @@ function makeTutorial(myLag) {
     engine.on(ev, p => em.emit(ev, p));
   engine.on('roundStart', p => { if (p.round === 1) em.emit('roundStart', { round: 0 }); });  // runda 2 skickas aldrig — övningen är slut
   engine.on('roundEnd', () => em.emit('roundEnd', { round: 0 }));
-  engine.on('award', p => em.emit('award', { round: 0, led: null, eld: null, sab: p.sab }));  // exakt EN popup i övningen
+  engine.on('award', p => em.emit('award', { round: 0, led: p.led, eld: p.eld, sab: p.sab }));  // övningen visar alla tre priserna
   return {
     online: false, me: myLag, E: () => engine,
     on: em.on,
@@ -1067,27 +1067,76 @@ async function tutBarrier(beat) {
   bar.style.display = 'none';
 }
 
-// Konsekvens-beat ("SE"): visar en coachmark som highlightar en BEFINTLIG UI-del
-// och auto-advancerar efter ms (eller på tryck). Ingen handling krävs — spelet talar.
-function tutSay({ ix, txt, x, y, focus, ms = 2800 }) {
+// Konsekvens-beat ("SE"): spelaren läser i egen takt och trycker NÄSTA för att gå vidare.
+function tutSay({ ix, txt, x, y, focus }) {
   return new Promise(res => {
     tutFocus(focus);
     const b = $('tutbox');
     b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.display = 'block';
     $('tut-txt').innerHTML = txt;
     [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
+    const next = $('tut-next'); next.style.display = 'inline-block';
     audio.play('ui_tap');
     let done = false;
     const finish = () => {
       if (done) return; done = true;
-      document.removeEventListener('pointerdown', onTap, true);
-      clearTimeout(tmo); b.style.display = 'none'; tutFocus(null); res();
+      next.onclick = null; clearTimeout(tmo);
+      next.style.display = 'none'; b.style.display = 'none'; tutFocus(null); res();
     };
-    const onTap = () => finish();
-    const tmo = setTimeout(finish, ms);
-    // liten fördröjning så trycket som utlöste föregående beat inte direkt stänger denna
-    setTimeout(() => document.addEventListener('pointerdown', onTap, true), 350);
+    next.onclick = finish;
+    const tmo = setTimeout(finish, 45000);   // kiosk-säkring: aldrig fast för alltid
   });
+}
+
+// Syntetiserat klick-/klockljud på skärmen (ingen asset) — soundscape/riser ligger på riggen.
+function tick(freq = 880, dur = 0.05) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ac = (window._ecoAC ||= new AC());
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'square'; o.frequency.value = freq;
+    o.connect(g); g.connect(ac.destination);
+    const t = ac.currentTime;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur + 0.02);
+  } catch { /* ljud ej kritiskt */ }
+}
+
+// Startceremoni: ÄR DU REDO? → (vänta in alla lag) → nedräkning 10→0 → vitt ljus → RUNDA 1.
+// Riggen (LED-chase, riser-soundscape, vitt ljus 3 s) styrs av semantiska cues: ecoloco/rigg/ceremoni.
+async function startCeremony() {
+  $('ov-ready').classList.add('open');
+  await new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_tap'); res(); }; });
+  $('ov-ready').classList.remove('open');
+  await tutBarrier(5);                       // online: vänta in de andra lagen; solo: direkt
+  realGame.net?.rigCue?.('countdown');        // rigg: riser + LED-chase 1–4 + klockljud (hjärnan)
+  $('ov-countdown').classList.add('open');
+  for (let n = 10; n >= 1; n--) {
+    const el = $('cd-num');
+    el.textContent = n;
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';   // starta om pop
+    $('ov-countdown').classList.toggle('hot', n <= 3);
+    tick(n <= 3 ? 1320 : 880);
+    await delay(1000);
+  }
+  realGame.net?.rigCue?.('climax');           // rigg: vitt ljus i 3 s
+  $('ov-countdown').classList.remove('open');
+  $('whiteflash').classList.add('on');
+  tick(1760, 0.3);
+  await delay(850);
+  $('whiteflash').classList.remove('on');
+  realGame.net?.rigCue?.('runda1');           // rigg: fade in till rundans ljus/ljud
+  $('tutveil').style.display = 'none';
+  await banner('RUNDA 1', false, 1500);
+  game.attach(realGame);
+  game.startGame();
+  if (ONLINE) {
+    await delay(400);
+    const S = realGame.E()?.getState();
+    if (S && S.round >= 1 && !S.over) rebuildFromState(S);
+  }
 }
 
 async function runTutorial() {
@@ -1147,7 +1196,9 @@ async function runTutorial() {
   await delay(500);
   const getBox = getCur === 'pengar' ? '#box-pengar' : '#box-material';
   await tutSay({ ix: 1, focus: getBox, x: 300, y: 300,
-    txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b> — nu räcker det.`, ms: 2800 });
+    txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b> — nu räcker det.` });
+  await tutSay({ ix: 1, focus: null, x: 1140, y: 150,
+    txt: `På riktigt förhandlar ni med de andra lagen genom <b>telefonen på arbetsbordet</b>.` });
   await tutBarrier(2);
 
   // ——— 4) RÖSTA → se den delade mätaren svara ———
@@ -1164,25 +1215,19 @@ async function runTutorial() {
     txt: `3 av 4 sa ja — <b>ön andas ut ${ico('tillvaxt', 18)}</b>. Din röst flyttade den delade mätaren.`, ms: 3200 });
   await tutBarrier(3);
 
-  // ——— 5) AVSLUTA & BOKSLUT: en award-popup, sedan på riktigt ———
+  // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
+  await tutSay({ ix: 3, focus: '#endwrap', x: 1020, y: 540,
+    txt: `Sista steget: avsluta rundan. Efter <b>varje runda</b> delas tre priser ut — årets ledande företag, årets eldsjäl och årets sabotör.` });
   const roundEndP = tutOnce('roundEnd');
   await tutBeat({ ix: 3, txt: 'Klar? Tryck här. Annars räknas det av självt.', x: 1040, y: 760, focus: '#endwrap',
     until: roundEndP,
     autoDo: () => $('btn-end').click() });
   await delay(1200);
-  await tutWaitP(() => !running);                    // vänta ut bokslutsscenerna + award-popupen
-  await banner('NU KÖR VI PÅ RIKTIGT — RUNDA 1', false, 1700);
+  await tutWaitP(() => !running);                    // vänta ut bokslutsscenerna + award-popuparna
   await tutBarrier(4);
 
-  // Övningen kastas — tillbaka till det riktiga spelet
-  $('tutveil').style.display = 'none';
-  game.attach(realGame);
-  game.startGame();                                   // online: servern ignorerar dubbletter — först klar startar
-  if (ONLINE) {
-    await delay(800);
-    const S = realGame.E()?.getState();
-    if (S && S.round >= 1 && !S.over) rebuildFromState(S);   // någon annan hann starta — hoppa in i läget
-  }
+  // Övningen klar → tydlig startceremoni (redo → nedräkning → vitt ljus → RUNDA 1) → riktiga spelet
+  await startCeremony();
 }
 
 $('btn-start').addEventListener('click', async () => {

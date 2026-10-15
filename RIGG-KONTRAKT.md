@@ -22,6 +22,7 @@ Migration A→B och Python→Blocks är osynlig nedåt: båda lagren nedan är f
 | `ecoloco/rigg/award` | vid varje prisuppläsning | `{"typ":"sabotor\|foretagare\|eldsjal","lag":"aker\|skog\|tundra\|stad"}` | nej |
 | `ecoloco/rigg/wave` | bokslut börjar (`resolveStart`) | `1` = starta wave, `0` = stopp | nej |
 | `ecoloco/rigg/countdown` | 10 s kvar | `1` = starta, `0` = stopp | nej |
+| `ecoloco/rigg/ceremoni` | startceremonin (tutorial→runda 1), skickas från skärmen | `countdown` = riser-soundscape + LED-chase 1–4 + klockljud · `climax` = vitt ljus i 3 s · `runda1` = fade till rundans look | nej |
 | `ecoloco/rigg/blandare` | spelet vill köra blandaren (valfri cue, ej inkopplad i rigg.js än) | `1` = på, `0` = av | nej |
 | `ecoloco/rigg/ljud` | central "show"-ljud (ej på skärmen) | ljud-id/filnamn, t.ex. `round_start`, `win`, `lose`, `relief`, `proposal_open`, `event_storm.mp3` | nej |
 | `ecoloco/rigg/eventforslag` | GM-läge, vid rundstart: rundans dragna händelse (för spelledarpanelen) | `{"id":...,"namn":...,"text":...}` | nej |

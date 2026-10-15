@@ -379,6 +379,8 @@ wss.on('connection', ws => {
         broadcast({ type: 'event', event: 'slutdelDist', payload: slutdelDistribution(m.questionId) });
         break;
       }
+      // Startceremonin: skärmen ber riggen köra riser/LED-chase/vitt ljus (hjärnan mappar).
+      case 'rigCue': { if (m.phase) riggPublish('ecoloco/rigg/ceremoni', String(m.phase)); break; }
       // ——— SLUTDEL/GM: sekundär kontrollkanal över WS (webb-spelledarpanel + headless-test) ———
       // MQTT-kanalen ecoloco/spel/gm är oförändrad; detta är ett ADDITIV alternativ med samma payload.
       case 'gmcmd': { try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid WS-kommando: ${e.message}`); } break; }

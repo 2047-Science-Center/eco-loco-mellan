@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Eco Loco</title>
+<title>Maktspelet</title>
 <link rel="stylesheet" href="./assets/fonts/fonts.css">
 <style>
   :root {
@@ -254,7 +254,9 @@
   .tut-focus { position: relative; z-index: 9; }
   .hand-locked .card.tut-vagg { opacity: 1; }
   #tutbox { position: absolute; z-index: 13; display: none; max-width: 560px; background: var(--panel);
-      border: 4px solid var(--gold); border-radius: 18px; padding: 20px 24px; box-shadow: 0 10px 50px rgba(0,0,0,.7); }
+      border: 4px solid var(--gold); border-radius: 18px; padding: 20px 24px; box-shadow: 0 10px 50px rgba(0,0,0,.7);
+      animation: tutpulse 1.9s ease-in-out infinite; }
+  @keyframes tutpulse { 0%,100% { box-shadow: 0 10px 50px rgba(0,0,0,.7), 0 0 0 0 rgba(201,169,79,0); } 50% { box-shadow: 0 10px 50px rgba(0,0,0,.7), 0 0 26px 3px rgba(201,169,79,.55); } }
   #tutbox .txt { font-size: 30px; font-weight: 800; line-height: 1.35; }
   #tutbox .footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
   #tutbox .beatdots { display: flex; gap: 10px; }
@@ -262,6 +264,10 @@
   #tutbox .beatdots i.on { background: var(--gold); border-color: var(--gold); }
   #tutbox .skip { background: none; border: none; color: var(--dim); font: inherit; font-size: 15px;
       font-weight: 800; letter-spacing: 1px; cursor: pointer; text-decoration: underline; }
+  #tutbox .fbtns { display: flex; align-items: center; gap: 16px; }
+  #tutbox .tut-next { display: none; background: var(--gold); color: #241E0F; border: 0; border-radius: 10px;
+      font: inherit; font-size: 20px; font-weight: 800; letter-spacing: 1px; padding: 12px 26px; cursor: pointer; }
+  #tutbox .tut-next:active { transform: scale(0.96); }
   #tutbarrier { position: absolute; inset: 0; background: rgba(10, 9, 7, .85); z-index: 14; display: none;
       align-items: center; justify-content: center; flex-direction: column; gap: 18px; }
   #tutbarrier .t { font-size: 34px; font-weight: 800; letter-spacing: 2px; }
@@ -321,6 +327,15 @@
   .lobbyteam .st.du { color: var(--gold); }
   .lobbyteam .st.du .dot { background: var(--gold); border-color: #8a742f; }
   .startnote { margin-top: 10px; color: var(--dim); font-size: 15px; display: none; }
+
+  /* Start-ceremoni: redo → nedräkning → vitt ljus → RUNDA 1 */
+  #ov-ready .ready-q { font-size: 84px; font-weight: 800; letter-spacing: 4px; text-shadow: 0 4px 30px #000; }
+  #ov-countdown .cd-lbl { font-size: 28px; letter-spacing: 6px; color: var(--dim); font-weight: 800; margin-bottom: 8px; }
+  #ov-countdown .cd-num { font-family: var(--font-num); font-size: 220px; font-weight: 800; line-height: 1; color: var(--gold); text-shadow: 0 0 60px rgba(201,169,79,.5); animation: cdpop .9s ease; }
+  #ov-countdown.hot .cd-num { color: var(--oh-red); text-shadow: 0 0 70px rgba(240,86,75,.6); }
+  @keyframes cdpop { from { transform: scale(1.45); opacity: .25; } to { transform: scale(1); opacity: 1; } }
+  #whiteflash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; transition: opacity .3s ease; }
+  #whiteflash.on { opacity: 1; }
 
   /* Motion-polish: award-entré, timer-brådska, röd-zon-larm */
   .overlay.open .award { animation: popin 240ms cubic-bezier(.22,1,.36,1); }
@@ -427,10 +442,21 @@
 
   <div id="toasts"></div>
   <div id="banner"><div class="bt" id="bannertxt"></div></div>
+  <div id="whiteflash"></div>
+
+  <!-- Start-ceremoni: redo → nedräkning → RUNDA 1 -->
+  <div class="overlay" id="ov-ready" style="background:rgba(8,7,5,.93);z-index:16;flex-direction:column;gap:30px">
+    <div class="ready-q">ÄR DU REDO?</div>
+    <button class="bigbtn gold" id="btn-ready" style="font-size:30px;padding:22px 64px;width:auto">JA, KÖR!</button>
+  </div>
+  <div class="overlay" id="ov-countdown" style="background:rgba(8,7,5,.96);z-index:17;flex-direction:column">
+    <div class="cd-lbl">SPELET BÖRJAR OM</div>
+    <div class="cd-num" id="cd-num">10</div>
+  </div>
 
   <!-- Startskärm / lobby -->
   <div class="overlay open" id="ov-start"><div class="modal">
-    <h1>🏝 ECO LOCO</h1>
+    <h1>🏝 MAKTSPELET</h1>
     <div class="tag" id="lobbytag">Bli rikast — utan att sänka ön ni delar.</div>
     <div id="connstatus" style="display:none"></div>
     <div class="pdots" id="pdots"></div>
@@ -517,7 +543,10 @@
     <div class="txt" id="tut-txt"></div>
     <div class="footer">
       <div class="beatdots" id="tut-dots"><i></i><i></i><i></i><i></i></div>
-      <button class="skip" id="tut-skip">HOPPA ÖVER ›</button>
+      <div class="fbtns">
+        <button class="skip" id="tut-skip">HOPPA ÖVER ›</button>
+        <button class="tut-next" id="tut-next">NÄSTA ›</button>
+      </div>
     </div>
   </div>
   <div id="tutbarrier">
