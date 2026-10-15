@@ -1088,23 +1088,7 @@ function tutSay({ ix, txt, x, y, focus }) {
   });
 }
 
-// Syntetiserat klick-/klockljud på skärmen (ingen asset) — soundscape/riser ligger på riggen.
-function tick(freq = 880, dur = 0.05) {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const ac = (window._ecoAC ||= new AC());
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = 'square'; o.frequency.value = freq;
-    o.connect(g); g.connect(ac.destination);
-    const t = ac.currentTime;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.16, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.start(t); o.stop(t + dur + 0.02);
-  } catch { /* ljud ej kritiskt */ }
-}
-
-// Startceremoni: ÄR DU REDO? → (vänta in alla lag) → nedräkning 10→0 → vitt ljus → RUNDA 1.
+// Startceremoni: ÄR DU REDO? → (vänta in alla lag) → nedräkning 10→0 → RUNDA 1.
 // Riggen (LED-chase, riser-soundscape, vitt ljus 3 s) styrs av semantiska cues: ecoloco/rigg/ceremoni.
 async function startCeremony() {
   $('ov-ready').classList.add('open');
@@ -1118,15 +1102,12 @@ async function startCeremony() {
     el.textContent = n;
     el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';   // starta om pop
     $('ov-countdown').classList.toggle('hot', n <= 3);
-    tick(n <= 3 ? 1320 : 880);
+    audio.play('ui_tap');                       // befintligt klick-ljud — inget nytt generiskt ljud
     await delay(1000);
   }
-  realGame.net?.rigCue?.('climax');           // rigg: vitt ljus i 3 s
+  realGame.net?.rigCue?.('climax');           // rigg: vitt ljus sköts av LED-listerna (ej på skärmen)
   $('ov-countdown').classList.remove('open');
-  $('whiteflash').classList.add('on');
-  tick(1760, 0.3);
-  await delay(850);
-  $('whiteflash').classList.remove('on');
+  await delay(300);
   realGame.net?.rigCue?.('runda1');           // rigg: fade in till rundans ljus/ljud
   $('tutveil').style.display = 'none';
   await banner('RUNDA 1', false, 1500);
