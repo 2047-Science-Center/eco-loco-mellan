@@ -923,6 +923,8 @@ if (ONLINE) {
 // Allt ska fungera UTAN videoklipp: saknas/felar filen visas placeholder-vyn i stället.
 const ONB = manifest.onboarding || {};
 const MODE = params.get('mode') || manifest.config?.mode || 'selfplay';   // 'tutorial' | 'selfplay' | 'gm'
+// Tutorial lär genom att GÖRA → göm regel-boxen (Bygg/Byt/Rösta) i lobbyn i det läget.
+if (MODE === 'tutorial') { const ht = document.getElementById('howto'); if (ht) ht.style.display = 'none'; }
 
 function videoEllerFallback(videoId, fallbackId, src) {
   const v = $(videoId);
@@ -1015,7 +1017,7 @@ async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 12000 }) 
   tutFocus(focus);
   const b = $('tutbox');
   b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.display = 'block';
-  $('tut-txt').textContent = txt;
+  $('tut-txt').innerHTML = txt;
   [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
   audio.play('ui_tap');
   let tmo = null;
@@ -1050,6 +1052,29 @@ async function tutBarrier(beat) {
   bar.style.display = 'none';
 }
 
+// Konsekvens-beat ("SE"): visar en coachmark som highlightar en BEFINTLIG UI-del
+// och auto-advancerar efter ms (eller på tryck). Ingen handling krävs — spelet talar.
+function tutSay({ ix, txt, x, y, focus, ms = 2800 }) {
+  return new Promise(res => {
+    tutFocus(focus);
+    const b = $('tutbox');
+    b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.display = 'block';
+    $('tut-txt').innerHTML = txt;
+    [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
+    audio.play('ui_tap');
+    let done = false;
+    const finish = () => {
+      if (done) return; done = true;
+      document.removeEventListener('pointerdown', onTap, true);
+      clearTimeout(tmo); b.style.display = 'none'; tutFocus(null); res();
+    };
+    const onTap = () => finish();
+    const tmo = setTimeout(finish, ms);
+    // liten fördröjning så trycket som utlöste föregående beat inte direkt stänger denna
+    setTimeout(() => document.addEventListener('pointerdown', onTap, true), 350);
+  });
+}
+
 async function runTutorial() {
   const myLag = ONLINE ? realGame.me : (manifest.config?.humanTeam || 'aker');
   const tut = makeTutorial(myLag);
@@ -1059,52 +1084,72 @@ async function runTutorial() {
   tut.startGame();
   await delay(500);
   $('timertxt').textContent = '–:––';
-  await banner('ÖVNING — RUNDA 0', false, 1500);
+  await banner('ÖVNING — RUNDA 0', false, 1400);
 
-  // B1 — BYGG (tidig vinst)
-  await tutBeat({ ix: 0, txt: 'Bygg något. Tryck på ett kort.', x: 540, y: 560, focus: '.handbar',
+  // ——— 1) BYGG (gör) — det billiga lockar ———
+  const dirtyTier = E().getState().banDirtyThisRound ? 'standard' : 'smutsig';
+  await tutBeat({ ix: 0, txt: 'Bygg en byggnad. Tryck på ett kort.', x: 520, y: 560, focus: '.handbar',
     until: tutOnce('build', p => p.teamId === myLag),
-    autoDo: () => buyCard(E().getState().banDirtyThisRound ? 'standard' : 'smutsig') });
-  await delay(900);
+    autoDo: () => buyCard(dirtyTier) });
+  await delay(650);
+
+  // ——— 2) SE KONSEKVENSEN: du tjänar + ön betalar (Josefs kärna) ———
+  const built = handFor(myLag).find(c => c.tier === picked) || handFor(myLag)[0];
+  const prodCur = mySector;
+  const prodBox = prodCur === 'pengar' ? '#box-pengar' : '#box-material';
+  const inc = prodCur === 'pengar' ? built.gp : built.gm;
+  await tutSay({ ix: 0, focus: prodBox, x: 300, y: 300,
+    txt: `Byggt! Den ger dig <b>+${inc}${ico(prodCur === 'pengar' ? 'pengar' : 'material', 18)}</b> varje år.`, ms: 3000 });
+  await tutSay({ ix: 0, focus: '.topbar', x: 520, y: 150,
+    txt: built.oh < 0
+      ? `Men det billiga <b>sänker ön ${built.oh}${ico('industri', 18)}</b> — notan delar ni fyra.`
+      : `Och det <b>lyfter ön +${built.oh}${ico('tillvaxt', 18)}</b>.`, ms: 3400 });
   await tutBarrier(1);
 
-  // B2 — VÄGGEN & BYTET (svårast): visa "saknar → BYT" på ett kort du inte har råd med
+  // ——— 3) SLÅ I VÄGGEN → BYT (beroendet upptäcks genom att fastna) ———
   const mig = E().team(myLag);
   const vagg = handFor(myLag).find(c => c.tier !== picked && (mig.pengar < c.kp || mig.material < c.km));
   if (vagg) {
     const el = document.querySelector(`#cards .card[data-tier="${vagg.tier}"]`);
     const brist = [];
-    if (mig.pengar < vagg.kp) brist.push(`${vagg.kp - mig.pengar} 🪙`);
-    if (mig.material < vagg.km) brist.push(`${vagg.km - mig.material} 🧱`);
+    if (mig.pengar < vagg.kp) brist.push(`${vagg.kp - mig.pengar}${ico('pengar', 13)}`);
+    if (mig.material < vagg.km) brist.push(`${vagg.km - mig.material}${ico('material', 13)}`);
     el?.classList.add('tut-vagg', 'poor');
-    el && (el.querySelector('.saknas').textContent = `saknar ${brist.join(' + ')} → BYT`);
+    if (el) el.querySelector('.saknas').innerHTML = `saknar ${brist.join(' + ')} → BYT`;
   }
+  await tutSay({ ix: 1, focus: '#me-sektor', x: 300, y: 330,
+    txt: `Du gör bara <b>${prodCur === 'pengar' ? 'pengar' : 'material'}</b>. Den andra valutan <b>saknas</b> — därför måste du byta med de andra.`, ms: 3600 });
   const partner = E().getState().teams.find(x => x.id !== myLag && x.sektor !== mySector)?.id;
   openTrade(partner);
-  await tutBeat({ ix: 1, txt: `Du gör bara ${CUR_ICON[giveCur]}. Byt till dig ${CUR_ICON[getCur]} av de andra.`,
+  await tutBeat({ ix: 1, txt: `Byt till dig ${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}. Tryck <b>FÖRESLÅ BYTET</b>.`,
     x: 1180, y: 150, focus: null,
     until: tutOnce('trade', p => p.from === myLag || p.to === myLag),
     autoDo: () => $('btn-trade-go').click() });
   document.querySelectorAll('#cards .card.tut-vagg').forEach(el => {
     el.classList.remove('tut-vagg', 'poor');
-    el.querySelector('.saknas').textContent = '';
+    el.querySelector('.saknas').innerHTML = '';
   });
-  await delay(600);
+  await delay(500);
+  const getBox = getCur === 'pengar' ? '#box-pengar' : '#box-material';
+  await tutSay({ ix: 1, focus: getBox, x: 300, y: 300,
+    txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b> — nu räcker det.`, ms: 2800 });
   await tutBarrier(2);
 
-  // B3 — RÖSTA (svårast): deterministiskt förslag, fyra prickar som fylls
+  // ——— 4) RÖSTA → se den delade mätaren svara ———
   const resolvedP = tutOnce('proposalResolved');
   tut.script.oppnaForslag();
   await delay(700);
-  await tutBeat({ ix: 2, txt: 'Ska vi hjälpa ön? Tryck JA.', x: 1180, y: 120, focus: null,
+  await tutBeat({ ix: 2, txt: 'Ön behöver hjälp. Rösta <b>JA</b>.', x: 1180, y: 120, focus: null,
     until: tutWaitP(() => tut.E().getState().proposal?.votes[myLag] !== undefined),
     autoDo: () => $('btn-ja').click() });
-  for (const b of tut.script.bots) { await delay(650); tut.script.botRosta(b); }
+  for (const b of tut.script.bots) { await delay(600); tut.script.botRosta(b); }
   await Promise.race([resolvedP, delay(3000)]);
-  await delay(900);
+  await delay(500);
+  await tutSay({ ix: 2, focus: '.topbar', x: 520, y: 150,
+    txt: `3 av 4 sa ja — <b>ön andas ut ${ico('tillvaxt', 18)}</b>. Din röst flyttade den delade mätaren.`, ms: 3200 });
   await tutBarrier(3);
 
-  // B4 — AVSLUTA & BOKSLUT: timer-ringen förklaras, mätaren rör sig, en award-popup
+  // ——— 5) AVSLUTA & BOKSLUT: en award-popup, sedan på riktigt ———
   const roundEndP = tutOnce('roundEnd');
   await tutBeat({ ix: 3, txt: 'Klar? Tryck här. Annars räknas det av självt.', x: 1040, y: 760, focus: '#endwrap',
     until: roundEndP,
