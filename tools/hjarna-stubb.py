@@ -34,6 +34,7 @@ MODE_SOUND   = {"superdaligt": "kris.wav"}          # edge-triggat vid inträde 
 ATTRACT_LOOK = {"h": 200, "s": 60, "v": 20, "puls": 25}
 GREEN_LOOK   = {"h": 120, "s": 100, "v": 90}
 OFF          = {"h": 0, "s": 0, "v": 0}
+PAUS_LOOK    = {"h": 210, "s": 70, "v": 14, "puls": 0}   # lugn, nersläckt blå bas ("fryst") — wave sveper över
 
 # ---- MAPPNING: award -> vinnarsidans look + ljud ----
 AWARD = {
@@ -172,6 +173,16 @@ def apply_scen(payload):
     elif payload == "slut":
         set_fx("none"); set_all(OFF); spots_off(); stop_ambience()
 
+# Paus (systemsignal, kringgår master): lugn blå bas + långsam wave = "fryst/väntar".
+# Hålls tills paus=0. Ambiencen rörs INTE (soundscapet loopar vidare under pausen).
+def apply_paus(payload):
+    if payload == "1":
+        set_all(PAUS_LOOK); set_fx("wave", 15); spots_off(); play("paus")
+    else:
+        set_fx("none")
+        if last_oh is not None: set_all(MODE_LOOK[oh_mode(last_oh)])   # tillbaka till rundans look
+        else: set_all(ATTRACT_LOOK)
+
 def apply_award(payload):
     d = json.loads(payload)
     a = AWARD.get(d.get("typ")); side = LAG_SIDE.get(d.get("lag"))
@@ -223,6 +234,8 @@ def on_semantic(topic, payload):
     print(f"[hjarna] {topic}  {payload}")
     if topic.startswith("ecoloco/rigg/gm/"):
         handle_gm(topic[len("ecoloco/rigg/gm/"):], payload); return
+    if topic == "ecoloco/rigg/paus":   # systemsignal: visas även i spelledar-/master-läge
+        apply_paus(payload); return
     if master:
         return                      # GM har tagit över — ignorera spelets cues
     if   topic == "ecoloco/rigg/ohalsa":    apply_ohalsa(payload)
@@ -241,7 +254,7 @@ def on_semantic(topic, payload):
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
               "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
-              "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")

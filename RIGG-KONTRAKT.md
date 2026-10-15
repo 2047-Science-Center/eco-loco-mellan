@@ -21,6 +21,7 @@ Migration A→B och Python→Blocks är osynlig nedåt: båda lagren nedan är f
 | `ecoloco/rigg/ohalsa` | vid ändring under runda | `1`–`100` (heltal) | ja |
 | `ecoloco/rigg/award` | vid varje prisuppläsning | `{"typ":"sabotor\|foretagare\|eldsjal","lag":"aker\|skog\|tundra\|stad"}` | nej |
 | `ecoloco/rigg/wave` | bokslut börjar (`resolveStart`) | `1` = starta wave, `0` = stopp | nej |
+| `ecoloco/rigg/paus` | spelet pausas/fortsätter (skärmknapp / arkadknapp / Blocks) | `1` = pausad (lugn blå bas + långsam wave + paus-ljud, hålls tills `0`), `0` = återgå till rundans look | nej |
 | `ecoloco/rigg/countdown` | 10 s kvar | `1` = starta, `0` = stopp | nej |
 | `ecoloco/rigg/ceremoni` | startceremonin (tutorial→runda 1), skickas från skärmen | `countdown` = riser-soundscape + LED-chase 1–4 + klockljud · `climax` = vitt ljus i 3 s · `runda1` = fade till rundans look | nej |
 | `ecoloco/rigg/blandare` | spelet vill köra blandaren (valfri cue, ej inkopplad i rigg.js än) | `1` = på, `0` = av | nej |
@@ -77,6 +78,7 @@ Sida→punktintervall är en **konstant i firmwaren** (t.ex. `LAG_A = 0..34`), b
 | `foretagare` | mest total förmögenhet (`richest`/`bors[0]`) | h110 s90 v90 (ljusgrön) | v0 | vinnarens | företagar-ljud |
 | `eldsjal` | högst `impactPos` | h135 s100 v70 (mörkgrön) | v0 | vinnarens | eldsjäls-ljud |
 
+Paus = systemsignal: `paus/1` → alla sidor `h210 s70 v14` + `fx {wave speed15}` (hålls), `paus/0` → `fx none` + rundans öhälso-look. Går ut även i spelledarläge och kringgår GM-master (riggen ska alltid visa paus). Ambiencen rörs ej.
 Wave = `ecoloco/rigg/out/fx {wave}` under `resolveStart`→första award. Countdown = `ecoloco/rigg/out/fx {countdown}` + alla sidor vitt (h0 s0 v80) vid 10 s kvar.
 GM `alla_grona` = alla sidor h120 v90, spots släckta. GM master-flagga → hjärnan ignorerar spelets cues tills `0`.
 

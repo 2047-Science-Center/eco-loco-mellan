@@ -30,8 +30,9 @@ const RIGG_BROKER = process.env.RIGG_BROKER || 'localhost';
 const RIGG_PORT   = process.env.RIGG_PORT   || '1883';
 let riggWarned = false;
 let riggSilent = false;   // "med spelledare": spelet skickar INGA rigg-cues (spelledaren driver riggen manuellt)
-const riggPublish = (t, m) => {
-  if (riggSilent) return;
+// riggSend = lågnivå (alltid). riggPublish = spel-cues (gatade av riggSilent i spelledarläge).
+// Systemsignaler som paus använder riggSend direkt → de når riggen även i spelledarläge.
+const riggSend = (t, m) => {
   console.log(`[rigg→] ${t} ${m}`);
   execFile('mosquitto_pub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-t', t, '-m', String(m)], (err) => {
     if (err && !riggWarned) {
@@ -40,6 +41,7 @@ const riggPublish = (t, m) => {
     }
   });
 };
+const riggPublish = (t, m) => { if (riggSilent) return; riggSend(t, m); };
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'spec', 'assets.json')));
 const basename = s => String(s).split('/').pop();   // 'assets/audio/rigg/x.mp3' → 'x.mp3' (rigg-ljud-id)
@@ -157,14 +159,16 @@ function stopTimer() {
   clearTimeout(awardsFailsafe); awardsFailsafe = null; awardsVantar = new Set();
 }
 
-// Paus: fryser BARA spelmotorn (nedräkning + bokslut). Skickar inget till riggen, så
-// soundscape/ambience loopar vidare. Utlöses av skärmknapp (WS), GM-kommando eller
-// fysisk knapp/Blocks (ecoloco/spel/pause). Gäller i både auto- och spelledarläge.
+// Paus: fryser BARA spelmotorn (nedräkning + bokslut). Soundscape/ambience loopar vidare.
+// Utlöses av skärmknapp (WS), GM-kommando eller fysisk knapp/Blocks (ecoloco/spel/pause).
+// Skickar ecoloco/rigg/paus (1/0) som SYSTEMSIGNAL (riggSend, ej gatad) → riggen visar paus-
+// wave även i spelledarläge, tills paus släpps. Gäller i både auto- och spelledarläge.
 function setPaused(on) {
   on = !!on;
   if (on === paused || !started) return;
   paused = on;
   broadcast({ type: 'paused', paused, left: timerLeft });
+  riggSend('ecoloco/rigg/paus', paused ? 1 : 0);
   console.log(`[spel] paus = ${paused}`);
 }
 
