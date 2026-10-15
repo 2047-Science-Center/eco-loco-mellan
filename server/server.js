@@ -19,6 +19,8 @@ import { EcoLoco, AREAS, timerSecFor } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { attachMqtt } from '../src/mqtt.js';
 import { attachRigg } from '../src/rigg.js';
+import { newSession } from './persist.js';
+import { buildSlutdel } from '../spec/slutdel.js';
 import { execFile, spawn } from 'node:child_process';
 
 const PORT = parseInt(process.env.PORT) || 8765;
@@ -38,6 +40,7 @@ const riggPublish = (t, m) => {
 };
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'spec', 'assets.json')));
+const basename = s => String(s).split('/').pop();   // 'assets/audio/rigg/x.mp3' → 'x.mp3' (rigg-ljud-id)
 
 // ——— Statiska filer (så iPad/NUC bara behöver en URL) ———
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json',
@@ -56,8 +59,14 @@ const httpServer = http.createServer((req, res) => {
 // ——— Spelvärd ———
 const TEAMS = ['aker', 'skog', 'tundra', 'stad'];
 const NAMN = Object.fromEntries(AREAS.map(a => [a.id, a.namn]));
+const FARG = Object.fromEntries(AREAS.map(a => [a.id, a.farg]));   // lag-id → lagfärg (för podie-marker)
 let engine = null, rigg = null;
 let started = false;
+// Persistens + slutdel (fas 4-grund + spelledarstegad slutdel). Allt fire-and-forget / fas-gardat.
+let session = null;            // persist-session (newEngine → ny session, ny JSONL + summary)
+let version = 'A';             // slutdel-version (default 'A' = PODIUM + Newfoundland)
+let slutdel = null;            // { steps, i, answers:{questionId:{lag:option}} } — null utanför slutdelen
+let lastGameEnd = null;        // motorns senaste gameEnd-payload (för summary efter slutdelen)
 // GM-flaggan bor i SERVERN (drift), inte i motorn (regler): den styr DRIFT-flödet — om händelser
 // triggas via spelledarens ja/nej (GM PÅ) eller slumpas automatiskt med chansPerRunda (GM AV),
 // och om award-ceremonin stegas för hand eller av 10 s-klockan. Motorn får bara veta av/på via setGm().
@@ -86,12 +95,21 @@ function lobbyMsg() {
 function newEngine() {
   engine = new EcoLoco(manifest.config || {});
   engine.setGm(gmMode);   // spegla serverns GM-läge in i den nya motorn
-  lastAwards = null; cer = null;
+  lastAwards = null; cer = null; slutdel = null; lastGameEnd = null;
+  // Persistens: ny session (sessionId = tidsstämpel) med metadata-startrad. Fire-and-forget, data/ gitignorerad.
+  session = newSession(ROOT, { config: engine.cfg, gmMode, version, claims });
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
   rigg = attachRigg(engine, { publish: riggPublish, gm: gmMode });  // förstärkningsriggen: semantiska cues
   const relay = ev => payload => broadcast({ type: 'event', event: ev, payload });
   for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'roundEnd', 'gameEnd'])
     engine.on(ev, relay(ev));
+  // Persistens-tap: SAMMA eventström som relä-broadcastas → en JSONL-rad per motorhändelse (payloads oförändrade).
+  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'roundEnd', 'award', 'gameEnd'])
+    engine.on(ev, p => session?.logEvent(ev, p));
+  // Härledda tal för summaryn: öhälsa per runda, händelser som slog, och summary vid gameEnd.
+  engine.on('roundEnd', p => session?.noteOhRound(p.round, engine.getState().oh));
+  engine.on('event', p => session?.noteEvent(engine.getState().round, p));
+  engine.on('gameEnd', p => { lastGameEnd = p; session?.writeSummary(engine.getState(), p); });
   // Award: SELFPLAY skickar hela paketet → skärmen stegar själv. GM-läge: servern dirigerar
   // ceremonin (awardCeremony → awardStep×N → awardDone) så skärm + rigg kliver i exakt takt.
   engine.on('award', p => { lastAwards = p; if (!gmMode) broadcast({ type: 'event', event: 'award', payload: p }); });
@@ -211,6 +229,19 @@ function botAccepts(bot, get, getCur, give) {
   if (bot[getCur] < get + 6) return { ok: false, why: `${bot.namn} har inte ${get} att avvara` };
   if (give < get * 0.8) return { ok: false, why: `${bot.namn} tyckte bytet var för snålt` };
   return { ok: true };
+}
+
+// ——— Slutdelen: live podie-fördelning ———
+// Räkna ihop svaren för en fråga: counts {option:antal} + tokens [{team, farg, option}]
+// (ett svar per lag/skärm, sista vinner tills frågan stegas vidare). Markerna färgas efter lagfärg.
+function slutdelDistribution(questionId) {
+  const ans = (slutdel && slutdel.answers[questionId]) || {};
+  const counts = {}, tokens = [];
+  for (const [lag, option] of Object.entries(ans)) {
+    counts[option] = (counts[option] || 0) + 1;
+    tokens.push({ team: lag, farg: FARG[lag] || '#8A8F96', option });
+  }
+  return { questionId, counts, tokens };
 }
 
 // ——— WebSocket ———
@@ -334,6 +365,23 @@ wss.on('connection', ws => {
         send(o.fromWs, { type: 'tradeResult', reqId: o.reqId, res: res.ok ? { ok: true } : { ok: false, why: res.reason } });
         break;
       }
+
+      // ——— SLUTDEL: skärm-svar på podiefråga ———
+      // Ett svar per lag/skärm per fråga (sista vinner tills GM stegar vidare). Live-fördelning till ALLA.
+      case 'podiumAnswer': {
+        if (!slutdel) break;
+        const step = slutdel.steps[slutdel.i];
+        if (!step || step.kind !== 'question' || step.id !== m.questionId) break;   // bara den fråga som visas nu
+        const voter = lag || ws._lag;
+        if (!voter || !Array.isArray(step.options) || !step.options.includes(m.option)) break;
+        (slutdel.answers[m.questionId] ||= {})[voter] = m.option;
+        session?.logEvent('podiumAnswer', { questionId: m.questionId, team: voter, option: m.option });
+        broadcast({ type: 'event', event: 'slutdelDist', payload: slutdelDistribution(m.questionId) });
+        break;
+      }
+      // ——— SLUTDEL/GM: sekundär kontrollkanal över WS (webb-spelledarpanel + headless-test) ———
+      // MQTT-kanalen ecoloco/spel/gm är oförändrad; detta är ett ADDITIV alternativ med samma payload.
+      case 'gmcmd': { try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid WS-kommando: ${e.message}`); } break; }
     }
   });
   ws.on('close', () => {
@@ -363,11 +411,15 @@ function handleGmCmd(m) {
       if (!started || !engine || engine.getState().over || resolvingNow) break;
       engine.pengaslapp();
       break;
-    case 'event':   // {beslut:'ja'|'nej'} → kör/hoppa rundans händelseförslag (en gång/runda, idempotent via pendingEvent)
+    case 'event': {   // {beslut:'ja'|'nej'} → kör/hoppa rundans händelseförslag (en gång/runda, idempotent via pendingEvent)
       if (!gmMode || !started || !engine || engine.getState().over) break;
-      if (!engine.getState().pendingEvent) break;
-      engine.resolveEventDecision(m.beslut === 'ja' ? 'ja' : 'nej');
+      const pe = engine.getState().pendingEvent;
+      if (!pe) break;
+      const beslut = m.beslut === 'ja' ? 'ja' : 'nej';
+      session?.noteGmDecision(engine.getState().round, pe.id, beslut);   // logga GM-beslutet till summaryn
+      engine.resolveEventDecision(beslut);
       break;
+    }
     case 'award_next': {   // GM: stega prisutdelningen ett pris — skärm + rigg i exakt takt
       if (!gmMode || !cer) break;
       cer.i++;
@@ -381,6 +433,39 @@ function handleGmCmd(m) {
         broadcast({ type: 'event', event: 'awardDone', payload: { over } });
         cer = null;
         if (!over) startTimer();                                         // rundan återupptas
+      }
+      break;
+    }
+
+    // ——— SLUTDEL: spelledarstegad slutdel (podium + reveal). Fas-gardat + idempotent, som award_next. ———
+    case 'slutdel_start': {   // guard: partiet måste vara SLUT. Bygg ordnad steglista [q1..q6, nf1..nf3] (version A).
+      if (!engine || engine.getState().over !== true) break;
+      slutdel = { steps: buildSlutdel(version), i: -1, answers: {} };
+      rigg?.beginSlutdel?.();
+      broadcast({ type: 'event', event: 'slutdelStart', payload: { total: slutdel.steps.length, version } });
+      break;
+    }
+    case 'slutdel_next': {   // stega ETT steg. Fråge-steg → fråga+knappar. Reveal-steg → kort (+ ev. ljud-cue).
+      if (!slutdel) break;
+      const leaving = slutdel.steps[slutdel.i];
+      if (leaving && leaving.kind === 'question') {   // lås föregående frågas svar → faller in i summaryn
+        const d = slutdelDistribution(leaving.id);
+        session?.notePodium(leaving.id, leaving.fraga, d.counts, d.tokens.length);
+      }
+      slutdel.i++;
+      if (slutdel.i >= slutdel.steps.length) {         // efter sista steget → klart, uppdatera summaryn
+        rigg?.endSlutdel?.(engine.getState().over);
+        broadcast({ type: 'event', event: 'slutdelDone', payload: {} });
+        session?.writeSummary(engine.getState(), lastGameEnd);
+        slutdel = null;
+        break;
+      }
+      const step = slutdel.steps[slutdel.i];
+      if (step.kind === 'question') {
+        broadcast({ type: 'event', event: 'slutdelQuestion', payload: { id: step.id, fraga: step.fraga, options: step.options, bild: step.bild } });
+      } else {
+        if (step.ljud) rigg?.slutdelReveal?.(step);   // ev. ljud-cue på centralhögtalaren via src/rigg.js
+        broadcast({ type: 'event', event: 'slutdelReveal', payload: { kort: step } });
       }
       break;
     }

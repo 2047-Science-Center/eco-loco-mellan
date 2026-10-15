@@ -127,6 +127,7 @@ async function makeOnline() {
     playAgain: () => net.startGame(),
     claim: lag => net.claim(lag),
     tradeAnswer: (id, a) => net.tradeAnswer(id, a),
+    podiumAnswer: (q, o) => net.podiumAnswer(q, o),   // slutdelen
     _first: first,
   };
 }
@@ -141,7 +142,8 @@ function makeProxy() {
                'income', 'ohalsa', 'award', 'awardCeremony', 'awardStep', 'awardDone',
                'event', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
-               'disconnected', 'reconnected'];
+               'disconnected', 'reconnected',
+               'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone'];
   return {
     attach(b) {
       cur = b;
@@ -163,6 +165,7 @@ function makeProxy() {
     playAgain: (...a) => cur.playAgain(...a),
     claim: (...a) => cur.claim?.(...a),
     tradeAnswer: (...a) => cur.tradeAnswer?.(...a),
+    podiumAnswer: (...a) => cur.podiumAnswer?.(...a),   // slutdelen
   };
 }
 
@@ -1200,3 +1203,77 @@ $('btn-start').addEventListener('click', async () => {
     game.startGame();
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ═══ SLUTDEL — spelledarstegad slutdel (podium + reveal). Självbärande block. ═══
+// All slutdels-DOM ligger i #ov-slutdel (spel.html); logiken här. Rör ingen befintlig vy.
+// Servern dirigerar (SLUTDEL START + NÄSTA via ecoloco/spel/gm); skärmen är en ren vy:
+//   slutdelStart    → öppna slutdels-overlay (tar över slutskärmen)
+//   slutdelQuestion → stor frågetext + bild + touch-knappar + tom live-fördelning
+//   slutdelDist     → lag-färgade marker landar på valt svar, i realtid på varje skärm
+//   slutdelReveal   → reveal-kort (rubrik/text/bild · regi-text visas men läses ej automatiskt)
+//   slutdelDone     → stäng, tillbaka till slutskärmen (SPELA IGEN)
+// Ingen rätt/fel-markering — bara fördelning.
+// ═══════════════════════════════════════════════════════════════════════════
+let sdQuestion = null;   // aktuell fråga {id, fraga, options, bild}
+
+function sdShow(which) {
+  $('ov-slutdel').classList.add('open');
+  $('sd-question').style.display = which === 'question' ? 'flex' : 'none';
+  $('sd-reveal').style.display = which === 'reveal' ? 'flex' : 'none';
+}
+function renderSdDist(p) {
+  if (!sdQuestion) return;
+  const byOpt = {};
+  (p.tokens || []).forEach(t => (byOpt[t.option] ||= []).push(t));
+  $('sd-q-dist').innerHTML = (sdQuestion.options || []).map(o => {
+    const toks = byOpt[o] || [];
+    const markers = toks.map(t => `<i class="sd-marker" style="background:${t.farg}"></i>`).join('');
+    return `<div class="sd-distrow"><span class="sd-distlbl">${o}</span><span class="sd-markers">${markers}</span><span class="sd-distn">${toks.length || ''}</span></div>`;
+  }).join('');
+}
+
+game.on('slutdelStart', () => run(async () => {
+  $('ov-slut').classList.remove('open');     // slutdelen tar över slutskärmen
+  sdQuestion = null;
+  sdShow('question');
+  $('sd-q-img').style.display = 'none';
+  $('sd-q-fraga').textContent = 'Spelledaren startar slutdelen…';
+  $('sd-q-options').innerHTML = '';
+  $('sd-q-dist').innerHTML = '';
+}));
+
+game.on('slutdelQuestion', p => run(async () => {
+  sdQuestion = p;
+  sdShow('question');
+  if (p.bild) { $('sd-q-img').src = p.bild; $('sd-q-img').style.display = ''; } else $('sd-q-img').style.display = 'none';
+  $('sd-q-fraga').textContent = p.fraga || '';
+  $('sd-q-dist').innerHTML = '';
+  $('sd-q-options').innerHTML = (p.options || []).map((o, i) => `<button class="sd-opt" data-opt="${i}">${o}</button>`).join('');
+  document.querySelectorAll('#sd-q-options .sd-opt').forEach(b => b.addEventListener('click', () => {
+    audio.play('ui_tap');
+    document.querySelectorAll('#sd-q-options .sd-opt').forEach(x => x.classList.toggle('sel', x === b));
+    game.podiumAnswer?.(p.id, p.options[+b.dataset.opt]);
+  }));
+  renderSdDist({ questionId: p.id, tokens: [] });
+}));
+
+game.on('slutdelDist', p => run(async () => { if (sdQuestion && p.questionId === sdQuestion.id) renderSdDist(p); }));
+
+game.on('slutdelReveal', p => run(async () => {
+  const k = p.kort || {};
+  sdShow('reveal');
+  if (k.bild) { $('sd-r-img').src = k.bild; $('sd-r-img').style.display = ''; } else $('sd-r-img').style.display = 'none';
+  $('sd-r-rubrik').textContent = k.rubrik || '';
+  $('sd-r-rubrik').style.display = k.rubrik ? '' : 'none';
+  $('sd-r-text').textContent = k.text || '';
+  $('sd-r-text').style.display = k.text ? '' : 'none';
+  if (k.spelledartext) { $('sd-r-regi').textContent = k.spelledartext; $('sd-r-regi').style.display = ''; }   // regi — läses ej automatiskt
+  else $('sd-r-regi').style.display = 'none';
+}));
+
+game.on('slutdelDone', () => run(async () => {
+  $('ov-slutdel').classList.remove('open');
+  sdQuestion = null;
+  $('ov-slut').classList.add('open');   // tillbaka till slutskärmen
+}));
