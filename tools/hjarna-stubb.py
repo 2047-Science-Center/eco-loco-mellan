@@ -48,17 +48,23 @@ LAG_SIDE = {"aker": 1, "skog": 2, "tundra": 3, "stad": 4}   # lag -> sida/spot
 master  = False     # GM-master: ignorera spelets cues tills den släpps
 cur_mode = None
 last_oh  = None
+last_sides = {1: None, 2: None, 3: None, 4: None}    # senaste look per sida (för exakt paus-återställning)
+last_spots = {1: False, 2: False, 3: False, 4: False}
+prev_sides = None   # snapshot vid paus (vad som visades innan) → återställs vid fortsätt
+prev_spots = None
 
 # ---- granulär ut (till firmware) ----
 def pub(topic, msg):
     subprocess.run(["mosquitto_pub", "-h", BROKER, "-p", PORT, "-t", topic, "-m", str(msg)])
 def set_all(look):
-    for n in (1, 2, 3, 4): pub(f"ecoloco/rigg/out/led/{n}", json.dumps(look))
+    for n in (1, 2, 3, 4): set_side(n, look)
 def set_side(n, look):
+    last_sides[n] = look                       # spåra för exakt paus-återställning
     pub(f"ecoloco/rigg/out/led/{n}", json.dumps(look))
 def set_fx(fx, speed=50):
     pub("ecoloco/rigg/out/fx", json.dumps({"fx": fx, "speed": speed}))
 def set_spot(n, on):
+    last_spots[n] = bool(on)
     pub(f"ecoloco/rigg/out/spot/{n}", "1" if on else "0")
 def spots_off():
     for n in (1, 2, 3, 4): set_spot(n, False)
@@ -176,12 +182,21 @@ def apply_scen(payload):
 # Paus (systemsignal, kringgår master): lugn blå bas + långsam wave = "fryst/väntar".
 # Hålls tills paus=0. Ambiencen rörs INTE (soundscapet loopar vidare under pausen).
 def apply_paus(payload):
+    global prev_sides, prev_spots
     if payload == "1":
+        prev_sides = dict(last_sides); prev_spots = dict(last_spots)   # spara exakt vad som visas nu (pris/runda)
         set_all(PAUS_LOOK); set_fx("wave", 15); spots_off(); play("paus")
     else:
         set_fx("none")
-        if last_oh is not None: set_all(MODE_LOOK[oh_mode(last_oh)])   # tillbaka till rundans look
-        else: set_all(ATTRACT_LOOK)
+        if prev_sides and any(v is not None for v in prev_sides.values()):
+            for n in (1, 2, 3, 4):              # lägg tillbaka exakt det som visades före pausen
+                if prev_sides[n] is not None: set_side(n, prev_sides[n])
+                set_spot(n, prev_spots.get(n, False))
+        elif last_oh is not None:
+            set_all(MODE_LOOK[oh_mode(last_oh)])
+        else:
+            set_all(ATTRACT_LOOK)
+        prev_sides = prev_spots = None
 
 def apply_award(payload):
     d = json.loads(payload)

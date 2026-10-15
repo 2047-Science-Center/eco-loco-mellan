@@ -9,7 +9,6 @@
 let publish = (topic, msg) => console.log(`[rigg] ${topic} <- ${msg}`);
 export function setPublisher(fn) { publish = fn; }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
 const P = (t, m) => publish(t, typeof m === 'object' ? JSON.stringify(m) : String(m));
 
 const base = s => String(s).split('/').pop();   // 'assets/audio/rigg/event_storm.mp3' -> 'event_storm.mp3'
@@ -19,6 +18,18 @@ export function attachRigg(engine, opts = {}) {
   const waveMs  = opts.waveMs  ?? 3000;
   const awardMs = opts.awardMs ?? 8750;    // per pris — matchar skärmens popup-takt (används bara när GM är AV)
   const redZone = engine.cfg?.redZone ?? 30;
+  const isPaused = opts.isPaused ?? (() => false);   // paus fryser award-ceremonins takt (auto-läget)
+
+  // Paus-medveten sleep: nedräkningen stannar medan spelet är pausat (riggen visar paus-wave så länge).
+  const pausableSleep = ms => new Promise(resolve => {
+    let remaining = ms;
+    const step = 100;
+    const tick = () => {
+      if (!isPaused()) remaining -= step;
+      if (remaining <= 0) resolve(); else setTimeout(tick, step);
+    };
+    setTimeout(tick, step);
+  });
 
   let gm = opts.gm ?? false;               // GM PÅ → SERVERN dirigerar ceremonin (ett pris per NÄSTA AWARD)
   let lastOh = engine.cfg?.ohStart ?? 50;
@@ -46,10 +57,10 @@ export function attachRigg(engine, opts = {}) {
   // GM-läge: servern dirigerar i stället via beginAwards/showAward/endAwards nedan.
   async function runCeremony() {
     P('ecoloco/rigg/scen', 'awards');
-    await sleep(500);                    // kort paus (matchar skärmens pre-award); ambience redan tyst
+    await pausableSleep(500);             // kort paus (matchar skärmens pre-award); ambience redan tyst
     for (const a of awardSeq()) {
       P('ecoloco/rigg/award', a);        // sida + spot + ljud (hjärnan) — samma lag/ordning som skärmen
-      await sleep(awardMs);
+      await pausableSleep(awardMs);       // fryser medan spelet är pausat → nästa pris väntar in fortsätt
     }
     if (over) {
       P('ecoloco/rigg/scen', 'slut');

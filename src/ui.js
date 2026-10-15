@@ -310,9 +310,17 @@ game.on('event', p => run(async () => {
 }));
 
 // Award-popup: tryck går vidare; auto-fortsätter efter 8 s så självspelande läge aldrig fastnar.
+// Paus fryser auto-nedräkningen (uiPaused) → skärmens prisutdelning håller i takt med riggen.
+let uiPaused = false;
 function clickOrTimeout(el, ms) {
   return new Promise(res => {
-    const t = setTimeout(done, ms);
+    let remaining = ms;
+    const step = 100;
+    let t = setTimeout(tick, step);
+    function tick() {
+      if (!uiPaused) remaining -= step;
+      if (remaining <= 0) done(); else t = setTimeout(tick, step);
+    }
     function done() { clearTimeout(t); el.removeEventListener('pointerdown', done); res(); }
     el.addEventListener('pointerdown', done);
   });
@@ -1225,6 +1233,7 @@ document.querySelectorAll('#modeseg .seg').forEach(b => b.addEventListener('clic
 $('btn-paus')?.addEventListener('click', () => game.pause());
 $('ov-paus')?.addEventListener('click', () => game.pause());
 game.on('paused', m => {
+  uiPaused = !!m.paused;                      // fryser award-popupens auto-nedräkning
   $('ov-paus')?.classList.toggle('open', !!m.paused);
   $('btn-paus')?.classList.toggle('aktiv', !!m.paused);
 });

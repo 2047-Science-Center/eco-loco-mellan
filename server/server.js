@@ -104,7 +104,7 @@ function newEngine() {
   // Persistens: ny session (sessionId = tidsstämpel) med metadata-startrad. Fire-and-forget, data/ gitignorerad.
   session = newSession(ROOT, { config: engine.cfg, gmMode, version, claims });
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
-  rigg = attachRigg(engine, { publish: riggPublish, gm: gmMode });  // förstärkningsriggen: semantiska cues
+  rigg = attachRigg(engine, { publish: riggPublish, gm: gmMode, isPaused: () => paused });  // förstärkningsriggen: semantiska cues (paus fryser award-takten)
   const relay = ev => payload => broadcast({ type: 'event', event: ev, payload });
   for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'roundEnd', 'gameEnd'])
     engine.on(ev, relay(ev));
