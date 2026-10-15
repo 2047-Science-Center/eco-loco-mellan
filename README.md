@@ -1,5 +1,7 @@
 # Eco Loco — Mellan · byggpaket för Fable 5
 
+> **Se [`RAMVERK.md`](RAMVERK.md) först** — invarianter, palett/ikon/typsnitt-konventioner och konflikt-checklista innan du utvecklar vidare i Maktspelet (fd Eco Loco).
+
 Det här är underlaget för att bygga **mellanversionen** av Eco Loco: en självständig, självfacilerande webbversion (~15 min) som behåller kärnkonflikten men skär bort krånglet. Den ska kunna köras med spelledare + Blocks-lager ovanpå, och senare i skarp drift som multiplayer mellan flera NUC-datorer med samma MQTT-söm som den fysiska riggen redan använder.
 
 Du (Fable) bygger detta **i fyra faser, i ordning**. Stäm av med Josef mellan fas 1→2 och fas 2→3.

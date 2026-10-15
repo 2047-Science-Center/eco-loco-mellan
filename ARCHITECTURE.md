@@ -1,5 +1,7 @@
 # Arkitektur — från mock till skarp drift
 
+> **Se [`RAMVERK.md`](RAMVERK.md) först** — invarianter, konventioner och konflikt-checklista för vidareutveckling av Maktspelet.
+
 ## Princip
 `engine.js` är en **ren, deterministisk motor utan DOM och utan nätverk**. Samma fil kör i webbläsaren (fas 3) och server-side i Node (fas 4). Allt runt om — vy, mock-motståndare, nätverk, MQTT — kopplas via motorns *actions* (in) och *events* (ut). Byt lager utan att röra reglerna.
 
