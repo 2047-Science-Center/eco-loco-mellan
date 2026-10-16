@@ -275,7 +275,11 @@
 
   /* ——— Onboarding: attract + narrativ ——— */
   #ov-attract, #ov-narrativ, #ov-trailer { background: #000; z-index: 15; }
-  #ov-attract video, #ov-narrativ video, #ov-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #ov-attract video, #ov-narrativ video, #ov-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Bakgrundsvideon är liggande (ultrabred) → contain visar hela bilden utan beskärning (svarta fält fylls av #000). */
+  #ov-attract video { object-fit: contain; }
+  /* Berättar-/trailerfilm spelas helskärm; cover om skärmen matchar, annars byt till contain här med. */
+  #ov-narrativ video, #ov-trailer video { object-fit: cover; }
   .vid-fallback { position: absolute; inset: 0; background:
       radial-gradient(1200px 600px at 50% 30%, #1C4E60 0%, #14323E 45%, #0E0D0A 100%); }
   .vid-fallback .note { position: absolute; bottom: 36px; left: 0; right: 0; text-align: center;
