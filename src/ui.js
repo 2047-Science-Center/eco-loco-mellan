@@ -145,6 +145,7 @@ function makeProxy() {
                'event', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
                'disconnected', 'reconnected', 'paused',
+               'trailer', 'trailerDone',
                'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone'];
   return {
     attach(b) {
@@ -990,6 +991,32 @@ function oppnaNarrativ() {
     skip.classList.add('visas');  // placeholder med punktmanus → VIDARE direkt
   }
 }
+
+// ═══════════════ KOPPLING 2 — intro-trailer (servern äger ljuset) ═══════════════
+// Servern broadcastar 'trailer' när alla anslutit (före tutorial) eller via spelledarens
+// kommando. Skärmen spelar BARA videon i #ov-trailer; ljus-cuesen fyras från EN källa
+// (servern), aldrig härifrån. Döljs vid 'trailerDone' ELLER video-'ended' — och senast
+// efter dur (failsafe) så det normala flödet (attract/lobby/tutorial) ALDRIG fastnar.
+let trailerFailsafe = null;
+function doljTrailer() {
+  clearTimeout(trailerFailsafe); trailerFailsafe = null;
+  const v = $('trailer-video');
+  try { v.pause?.(); } catch {}
+  $('ov-trailer').classList.remove('open');
+}
+game.on('trailer', p => {
+  const v = videoEllerFallback('trailer-video', 'trailer-fallback', p?.src);   // saknas klippet → placeholder
+  $('ov-trailer').classList.add('open');
+  if (v) {
+    v.addEventListener('ended', doljTrailer, { once: true });
+    try { v.currentTime = 0; } catch {}
+    v.play?.().catch(() => {});   // autoplay nekad → ljussekvensen körs ändå, failsafe/trailerDone döljer
+  }
+  const dur = (p && p.dur) ? p.dur : 30;
+  clearTimeout(trailerFailsafe);
+  trailerFailsafe = setTimeout(doljTrailer, (dur + 1) * 1000);   // dölj senast efter dur även om trailerDone/ended uteblir
+});
+game.on('trailerDone', () => doljTrailer());
 
 // ═══════════════ Runda 0 — tutorial (mode='tutorial') ═══════════════
 // En skriptad övningsrunda på en EGEN kastmotor bakom samma UI: deterministiska botar,

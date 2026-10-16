@@ -86,6 +86,9 @@ let awardsFailsafe = null;     // timeout som startar timern även om någon kli
 let lastAwards = null;         // senaste rundans prisvinnare (motorns 'award'-event)
 let cer = null;                // GM-prisutdelning som servern dirigerar: { steps:[{typ,w}], i }
 let resolvingNow = false;
+// KOPPLING 2 — intro-trailer: trailerPlaying = kör just nu (gardar både command- och auto-vägen
+// mot dubbelstart). trailerPlayedAuto = auto-vägen har fyrat denna lobby-cykel (nollas vid startGame).
+let trailerPlaying = false, trailerPlayedAuto = false, trailerTimers = [];
 let offerSeq = 0;
 const offers = new Map();      // offerId → { from, to, give, giveCur, get, getCur }
 
@@ -97,6 +100,71 @@ function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, claims: Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])) };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KOPPLING 2 — intro-trailer. Servern äger ljuset: skärmarna spelar bara videon,
+// ljus-cuesen fyras EN gång härifrån (ej 4× från fyra skärmar). TRAILER_CUES
+// speglar EXAKT trailer.html:s CUES (samma tider + out/*-payloads; led/* = samma
+// payload till /1../4; lagfärgerna = trailer.html:s TEAM-HSV). riggSend String():ar
+// payloaden, så objekt JSON.stringify:as här (strängar '1'/'0' skickas som de är).
+// ─────────────────────────────────────────────────────────────────────────────
+const TR = 'ecoloco/rigg/out/';
+// Lagfärger (HSV) ur motorns AREAS: 1 åker gul · 2 skog grön · 3 tundra orange · 4 stad grå
+const TR_TEAM = { 1: { h: 46, s: 67, v: 91 }, 2: { h: 128, s: 56, v: 56 }, 3: { h: 30, s: 72, v: 85 }, 4: { h: 215, s: 8, v: 59 } };
+const trLed  = v  => [1, 2, 3, 4].map(n => ({ topic: TR + 'led/' + n, payload: v }));
+const trTeam = () => [1, 2, 3, 4].map(n => ({ topic: TR + 'led/' + n, payload: TR_TEAM[n] }));
+const trFx   = v  => [{ topic: TR + 'fx', payload: v }];
+const trBl   = v  => [{ topic: TR + 'blandare', payload: v }];
+const TRAILER_CUES = [
+  { t: 0.0,  label: 'Kall blå bas',             cmds: trLed({ h: 210, s: 70, v: 18, puls: 20 }) },
+  { t: 12.0, label: 'Chase-svep in',            cmds: [...trLed({ h: 210, s: 60, v: 28 }), ...trFx({ fx: 'chase', speed: 32 })] },
+  { t: 16.0, label: 'FYRA LAGEN i lagfärg',     cmds: [...trFx({ fx: 'none' }), ...trTeam()] },
+  { t: 20.2, label: 'Guld-puls',                cmds: trLed({ h: 46, s: 90, v: 60, puls: 45 }) },
+  { t: 24.0, label: 'KRIS — rött + blandare',   cmds: [...trLed({ h: 0, s: 100, v: 100, blink: 80 }), ...trBl('1')] },
+  { t: 27.0, label: 'Vitt climax',              cmds: [...trBl('0'), ...trLed({ h: 0, s: 0, v: 100 })] },
+  { t: 29.5, label: 'Släck',                    cmds: [...trFx({ fx: 'none' }), ...trLed({ h: 0, s: 0, v: 0 })] },
+];
+const TRAILER_DUR = 30;   // skärmens failsafe-längd (payload.dur) — flödet fastnar aldrig
+
+function fireTrailerCue(cmds) {
+  for (const c of cmds) {
+    const payload = (c.payload && typeof c.payload === 'object') ? JSON.stringify(c.payload) : c.payload;
+    riggSend(c.topic, payload);   // lågnivå, ungated — trailern är en systemceremoni (som paus)
+  }
+}
+function stopTrailer() {
+  for (const t of trailerTimers) clearTimeout(t);
+  trailerTimers = [];
+  trailerPlaying = false;
+}
+// playTrailer: broadcasta 'trailer' till skärmarna, schemalägg varje ljus-cue vid sin tid,
+// och efter sista cuen broadcasta 'trailerDone'. Fas-gardat (en flagga) + rör aldrig motorn.
+function playTrailer() {
+  if (trailerPlaying) return;              // kör aldrig två trailrar samtidigt
+  trailerPlaying = true;
+  trailerPlayedAuto = true;                // auto-vägen fyrar bara en gång per lobby-cykel
+  const src = manifest.onboarding?.trailer || '';
+  console.log(`[trailer] start — ${TRAILER_CUES.length} ljus-cues från servern (EN källa)`);
+  broadcast({ type: 'event', event: 'trailer', payload: { src, dur: TRAILER_DUR } });
+  stopTrailer(); trailerPlaying = true;    // stopTrailer nollar flaggan — sätt tillbaka
+  trailerTimers = TRAILER_CUES.map(cue => setTimeout(() => {
+    fireTrailerCue(cue.cmds);
+    console.log(`[trailer] cue ${cue.t.toFixed(1)}s · ${cue.label}`);
+  }, Math.round(cue.t * 1000)));
+  const endMs = Math.round((TRAILER_CUES[TRAILER_CUES.length - 1].t + 1) * 1000);
+  trailerTimers.push(setTimeout(() => {
+    trailerPlaying = false;
+    broadcast({ type: 'event', event: 'trailerDone' });
+    console.log('[trailer] klar');
+  }, endMs));
+}
+// AUTO: alla fyra lag MÄNNISKO-claimade i lobbyn, spelet ej startat, trailern ej körd → en gång.
+// Konservativ: kräver fyra LEVANDE människo-anslutningar. Command-vägen ({cmd:'trailer'}) är huvudväg.
+function maybeAutoTrailer() {
+  if (started || trailerPlaying || trailerPlayedAuto) return;
+  const allaManniskor = TEAMS.every(id => claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1);
+  if (allaManniskor) playTrailer();
 }
 
 function newEngine() {
@@ -294,6 +362,7 @@ wss.on('connection', ws => {
         }
         send(ws, { type: 'hello-ack', lag: ws._lag ?? null, started, config: engine?.cfg ?? new EcoLoco(manifest.config || {}).cfg });
         broadcast(lobbyMsg());
+        maybeAutoTrailer();   // alla fyra lag anslutna i lobbyn → auto-trailer en gång
         break;
       }
       case 'claim': {
@@ -306,6 +375,7 @@ wss.on('connection', ws => {
         }
         send(ws, { type: 'claimAck', lag: ws._lag ?? null });
         broadcast(lobbyMsg());
+        maybeAutoTrailer();   // sista mänskliga claim i lobbyn → auto-trailer en gång
         break;
       }
       case 'tutBeat': {
@@ -318,6 +388,7 @@ wss.on('connection', ws => {
       case 'startGame': {
         console.log(`[spel] startGame från ${lag || 'bänk utan lag'}${started && !engine.getState().over ? ' — ignorerad (pågår)' : ''}`);
         if (started && !engine.getState().over) break;
+        stopTrailer(); trailerPlayedAuto = false;   // partiet startar → stoppa ev. trailer, nollställ auto för nästa lobby-cykel
         for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
         started = true;
         riggSilent = !!m.spelledare;   // "med spelledare" → spelet tyst mot riggen (manuell styrning)
@@ -441,6 +512,9 @@ function handleGmCmd(m) {
     case 'spelledare':   // {on:bool} → med/utan spelledare (on = spelet tyst mot riggen)
       riggSilent = !!m.on;
       console.log(`[spel] läge: ${riggSilent ? 'MED' : 'UTAN'} spelledare (rigg-cues ${riggSilent ? 'AV' : 'PÅ'})`);
+      break;
+    case 'trailer':      // KOPPLING 2 (huvudväg): spela intro-trailern (video på skärmar + ljussekvens från servern)
+      playTrailer();
       break;
     case 'pengaslapp':   // +10 pengar & +10 material till alla lag — bara under en pågående runda
       if (!started || !engine || engine.getState().over || resolvingNow) break;

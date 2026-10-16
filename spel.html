@@ -274,8 +274,8 @@
   #tutbarrier .pdots { display: flex; margin: 0; }
 
   /* ——— Onboarding: attract + narrativ ——— */
-  #ov-attract, #ov-narrativ { background: #000; z-index: 15; }
-  #ov-attract video, #ov-narrativ video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #ov-attract, #ov-narrativ, #ov-trailer { background: #000; z-index: 15; }
+  #ov-attract video, #ov-narrativ video, #ov-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .vid-fallback { position: absolute; inset: 0; background:
       radial-gradient(1200px 600px at 50% 30%, #1C4E60 0%, #14323E 45%, #0E0D0A 100%); }
   .vid-fallback .note { position: absolute; bottom: 36px; left: 0; right: 0; text-align: center;
@@ -605,6 +605,16 @@
     </div>
     <div class="onb-dots"><i class="on"></i><i></i><i></i><i></i></div>
     <button class="onb-skip" id="btn-narr-skip">VIDARE ›</button>
+  </div>
+
+  <!-- KOPPLING 2: intro-trailer (30 s). Servern broadcastar 'trailer' när alla anslutit (före
+       tutorial) eller via spelledarens kommando; skärmen spelar bara videon. Ljussekvensen körs
+       från servern (EN källa) — skärmen skickar INGA rigg-cues. Döljs vid 'trailerDone'/ended/dur. -->
+  <div class="overlay" id="ov-trailer">
+    <video id="trailer-video" playsinline></video>
+    <div class="vid-fallback" id="trailer-fallback" style="display:none">
+      <div class="note">INTRO-TRAILER 30 s — ljussekvensen körs från servern</div>
+    </div>
   </div>
 
   <!-- ═══ SLUTDEL (podium + reveal) — självbärande block, parallellt bygge ═══ -->

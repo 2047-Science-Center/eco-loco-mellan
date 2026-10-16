@@ -255,6 +255,11 @@
         <p class="note">Tomma lag fylls av datorn. Startar om först när ett parti är slut (ingen omstart mitt i parti i nuvarande server).</p>
       </div>
       <div class="card">
+        <h2>INTRO-TRAILER</h2>
+        <button class="btn" id="trailer-btn">SPELA TRAILER</button>
+        <p class="note">Spelar intro-klippet på alla skärmar och kör ljussekvensen från servern (EN källa). Startar även automatiskt när alla fyra lag anslutit i lobbyn.</p>
+      </div>
+      <div class="card">
         <h2>MED / UTAN SPELLEDARE <span class="hint">(gäller nästa start)</span></h2>
         <div class="row two">
           <button class="btn" id="sl-utan">UTAN</button>
@@ -441,6 +446,7 @@ $('#slutdel-next').onclick  = () => { net.gmcmd({ cmd: 'slutdel_next' }); if (sl
 
 // ——— ADMIN ———
 $('#start-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.startGame({ spelledare: withSpelledare }); toast('Spel startat (' + (withSpelledare ? 'med' : 'utan') + ' spelledare)'); });
+$('#trailer-btn').onclick = () => { net.gmcmd({ cmd: 'trailer' }); toast('Spelar intro-trailer'); };
 $('#sl-utan').onclick = () => { withSpelledare = false; render(); toast('Nästa start: UTAN spelledare'); };
 $('#sl-med').onclick  = () => { withSpelledare = true;  render(); toast('Nästa start: MED spelledare'); };
 </script>
