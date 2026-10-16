@@ -41,7 +41,10 @@ const riggSend = (t, m) => {
     }
   });
 };
-const riggPublish = (t, m) => { if (riggSilent) return; riggSend(t, m); };
+// Ambient kopplat till öns mående (öhälsa-soundscape + grundljus via scen) ska ALLTID nå riggen,
+// även "med spelledare" — spelledaren regisserar bara show-momenten (award m.m.), inte ambienten.
+const AMBIENT_TOPICS = new Set(['ecoloco/rigg/ohalsa', 'ecoloco/rigg/scen']);
+const riggPublish = (t, m) => { if (riggSilent && !AMBIENT_TOPICS.has(t)) return; riggSend(t, m); };
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'spec', 'assets.json')));
 const basename = s => String(s).split('/').pop();   // 'assets/audio/rigg/x.mp3' → 'x.mp3' (rigg-ljud-id)
@@ -147,9 +150,7 @@ function playTrailer() {
   const src = manifest.onboarding?.trailer || '';
   console.log(`[trailer] start — ${TRAILER_CUES.length} ljus-cues från servern (EN källa)`);
   broadcast({ type: 'event', event: 'trailer', payload: { src, dur: TRAILER_DUR } });
-  // Trailer-ljudet går BARA på centralhögtalaren (skärmarna är mutade): dirigenten spelar
-  // assets/audio/rigg/trailer.mp3. riggSend = ogatat → ljudet spelas även "med spelledare".
-  riggSend('ecoloco/rigg/ljud', 'trailer');
+  // Trailern spelas med sitt EGET ljud på skärmarna (inget separat central-ljud-cue → ingen dubbel).
   stopTrailer(); trailerPlaying = true;    // stopTrailer nollar flaggan — sätt tillbaka
   trailerTimers = TRAILER_CUES.map(cue => setTimeout(() => {
     fireTrailerCue(cue.cmds);
