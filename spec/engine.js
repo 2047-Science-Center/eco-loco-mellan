@@ -14,18 +14,19 @@ export const DEFAULT_CONFIG = {
   timerSec: 90,
   timerSecEarly: 120, // rundtid för de första rundorna (inlärning)
   earlyRounds: 3,     // så många rundor körs med timerSecEarly
-  startPengar: 40,
-  startMaterial: 30,
+  startPengar: 35,   // OMBALANSERING: symmetrisk start (var 40) — se design/REBALANSERING-FORSLAG.md §7 för nuläge
+  startMaterial: 35, // OMBALANSERING: symmetrisk start (var 30); summan 70 oförändrad
   ohStart: 50,
   ohMax: 100,
   threshold: 60,     // öhälsa som måste nås vid slutet
-  redZone: 30,       // under detta = kris (event kan slå)
+  redZone: 35,       // OMBALANSERING: kris-zon biter tidigare (var 30); röd-zons-spiralen slår under detta
+  redZonePenalty: 3, // OMBALANSERING (ny): extra öhälso-fall/runda i röd zon (mjuk spiral, räddningsbar)
   greenZone: 70,
   slotsPerArea: 10,
-  eventLoss: 10,     // pengar + material som förloras vid katastrof
-  gronCost: 10,      // "grön satsning": kostnad per ja-röst
-  gronGain: 8,       // "grön satsning": öhälsa +
-  taxAmount: 15,     // "miljöskatt": belopp värsta boven betalar
+  eventLoss: 4,      // OMBALANSERING: allmänningens nota i röd zon (var 10, oanvänd) — lågt pga resurs-svält-risk
+  gronCost: 8,       // OMBALANSERING: billigare grön satsning (var 10)
+  gronGain: 14,      // OMBALANSERING: kollektiv satsning kan VÄNDA en kris (var 8)
+  taxAmount: 20,     // OMBALANSERING: vassare maktmedel mot boven (var 15)
   humanTeam: 'aker', // vilket område människan styr i mock/fas 3
 };
 
@@ -47,7 +48,7 @@ export const AREAS = [
 // traffar: 'alla' | 'rikaste' | 'greenaste' | 'sektorPengar' | 'sektorMaterial' | 'omrade:<id>'
 // pengar/material = förändring per träffat lag. egenValuta = förändring i lagets egen sektorvaluta.
 // oh = öhälsoförändring (auto: alltid; rost: hela ön, om minst ett ja). ljud = central-rigg-ljud.
-export const EVENT_CONFIG = { chansPerRunda: 0.5, utanAterlaggning: true };
+export const EVENT_CONFIG = { chansPerRunda: 0.6, utanAterlaggning: true };   // OMBALANSERING: mer yttre press (var 0.5; endast auto/selfplay, GM-läge opåverkat)
 export const EVENTS = [
   { id:'storm', typ:'auto', traffar:'sektorPengar', pengar:-12, material:0, oh:-5, rubrik:'Höststormen är här', text:'Centralmyndigheten meddelar: kusten tar emot. De som byggt mot havet får bära vädrets kostnad — resten av ön önskar er lycka till.', ljud:'assets/audio/rigg/event_storm.mp3' },
   { id:'skogsbrand', typ:'auto', traffar:'omrade:skog', pengar:0, material:-15, oh:-8, rubrik:'Det brinner i Björnens skogar', text:'Elden frågade inte om lov. Björnens lager går upp i rök, och röken lägger sig över hela ön. Tack för er förståelse.', ljud:'assets/audio/rigg/event_skogsbrand.mp3' },
@@ -65,15 +66,18 @@ export const timerSecFor = (cfg, round) =>
 
 // Händer per område. Samma balans-siffror per sektor; bara namn/asset skiljer.
 // kp/km = engångskostnad (pengar/material). gp/gm = passiv inkomst/runda. oh = engångseffekt på öhälsa.
-const MATERIAL_HAND = [
-  { tier: 'smutsig',  kp: 10, km: 0,  gp: 0, gm: 8, oh: -4 },
-  { tier: 'standard', kp: 15, km: 5,  gp: 0, gm: 6, oh: -2 },
-  { tier: 'gron',     kp: 25, km: 10, gp: 0, gm: 5, oh:  1 },
+// OMBALANSERING: speglade, symmetriska händer (var osymmetriska → pengar-sektorn dominerade ~100%).
+// Smutsigt billigast + högst avkastning + värst för ön; grönt dyrast + lägst avk. + enda som bygger upp.
+// Standard inte längre gratis/läkande (oh −3). Spännvidd −6…+3. Se §3.1 + §7 (nuläge) i förslaget.
+const MATERIAL_HAND = [            // own = material (gm), opp = pengar (kp)
+  { tier: 'smutsig',  kp: 8,  km: 0,  gp: 0, gm: 9, oh: -6 },
+  { tier: 'standard', kp: 8,  km: 6,  gp: 0, gm: 7, oh: -3 },
+  { tier: 'gron',     kp: 14, km: 10, gp: 0, gm: 5, oh:  3 },
 ];
-const PENGAR_HAND = [
-  { tier: 'smutsig',  kp: 0,  km: 8,  gp: 10, gm: 0, oh: -2 },
-  { tier: 'standard', kp: 6,  km: 6,  gp: 7,  gm: 0, oh:  1 },
-  { tier: 'gron',     kp: 10, km: 8,  gp: 6,  gm: 0, oh:  3 },
+const PENGAR_HAND = [              // own = pengar (gp), opp = material (km) — exakt spegel av MATERIAL_HAND
+  { tier: 'smutsig',  kp: 0,  km: 8,  gp: 9, gm: 0, oh: -6 },
+  { tier: 'standard', kp: 6,  km: 8,  gp: 7, gm: 0, oh: -3 },
+  { tier: 'gron',     kp: 10, km: 14, gp: 5, gm: 0, oh:  3 },
 ];
 const NAMES = {
   aker:   { smutsig: 'Industrijordbruk', standard: 'Jordbruk',        gron: 'Ekologiskt jordbruk' },
@@ -257,6 +261,17 @@ export class EcoLoco {
 
     // öhälsa
     const before = this.S.oh;
+    // OMBALANSERING: röd-zons-spiral — är ön i kris (under redZone) faller den EXTRA varje runda
+    // (exponentiell nedförsbacke) och alla lag betalar allmänningens nota. Vänds bara genom samarbete.
+    // Mjuk (−redZonePenalty) så en djup kris är RÄDDNINGSBAR. Se §3.4 + §7 (nuläge) i förslaget.
+    const provisional = before + delta;
+    if (provisional > 0 && provisional < c.redZone) {
+      delta -= (c.redZonePenalty || 0);
+      this.S.teams.forEach(t => {
+        t.pengar   = Math.max(0, t.pengar   - (c.eventLoss || 0));
+        t.material = Math.max(0, t.material - (c.eventLoss || 0));
+      });
+    }
     this.S.oh = Math.max(0, Math.min(c.ohMax, this.S.oh + delta));
     this.S.lastDelta = this.S.oh - before;
     this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: this.S.lastDelta });
