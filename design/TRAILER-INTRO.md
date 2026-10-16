@@ -103,48 +103,54 @@
 
 ---
 
-## Rigg-cue-spår (förstärkning i rummet, parallellt med de 8 shotsen)
+## Rigg-cue-spår (LJUS BARA — förstärkning i rummet, parallellt med de 8 shotsen)
 
-Trailern skickar **semantiska Lager-1-cues** (`ecoloco/rigg/*`) medan den spelar, så förstärkningsriggen (LED/spot/blandare) förstärker effekterna synkront i rummet. Hjärnan (`tools/hjarna-stubb.py` → Blocks sen) översätter som vanligt till Lager 2. **Bara riktiga topics ur RIGG-KONTRAKT.md används — inga nya hittas på.** Spelet/trailern pratar aldrig Lager 2 direkt.
+Trailern förstärker effekterna i rummet med **enbart ljus/mekanik** medan den spelar. **Riggen spelar INGET eget ljud** — trailerns egen ljudbild äger centralhögtalaren, och riggens ljud skulle krocka. Därför går cue-spåret via de **ljudlösa, granulära Lager-2-topicsen** `ecoloco/rigg/out/*`, som ESP:n (`firmware/rigg_arduino/rigg_arduino.ino`) renderar direkt — hjärnan spelar **inget** ljud för dessa. (De semantiska Lager-1-cuesen undviks medvetet: verifierat i `tools/hjarna-stubb.py` triggar `scen=attract` → `set_ambience`, `ohalsa` → `set_ambience`+`play`, och `ceremoni countdown/climax` → `play`.)
 
-| Shot · tid | Rigg-cue (Lager 1) | Payload | Rummet gör |
+Firmwarens byggstenar (frusna, ur `rigg_arduino.ino`):
+- `ecoloco/rigg/out/led/<1-4>` — `{"h":0-360,"s":0-100,"v":0-100,"puls":0-100,"blink":0-100}`. `puls` = mjuk sinus på v; `blink` = hård av/på (högre = snabbare). Sida 1–4 = bison/björn/varg/örn (åker/skog/tundra/stad).
+- `ecoloco/rigg/out/fx` — `{"fx":"none|wave|countdown|chase","speed":0-100}`. `chase` = långsamt, läsbart spännings-svep över sidorna.
+- `ecoloco/rigg/out/spot/<1-4>` — `0`/`1` (spot-relä).
+- `ecoloco/rigg/out/blandare` — `0`/`1` (saftblandar-relä; `ecoloco/rigg/gm/blandare` är den ljudlösa Lager-1-motsvarigheten).
+
+| Shot · tid | Ljus-cue (ljudlös) | Payload | Rummet gör |
 |---|---|---|---|
-| 1–2 · 0:00 | `ecoloco/rigg/scen` | `attract` | Kall, nedsläckt blå bas (ATTRACT_LOOK, svag puls) + attract-ambiens på centralhögtalaren. Trailern startar ur viloläget. |
+| 1–2 · 0:00 | `out/led/<1-4>` | `{"h":210,"s":70,"v":18,"puls":20}` | Kall, nedsläckt blå bas med svag andning på alla fyra sidor. Etablerar is/mörker. |
 | 3 · 0:08 | *(ingen ny cue — håll den kalla basen)* | — | Mörkret vilar; rösten bär. |
-| 4 · 0:12 | `ecoloco/rigg/ceremoni` | `countdown` | Riser-ljud (`spanning`) på centralen + LED-chase som sveper sida **1→2→3→4** (bison/björn/varg/örn). "Företagen tar över" — spänningen byggs. |
-| 5 · 0:16 | *(chasen från 0:12 fortsätter)* | — | De fyra sidorna tänds i tur och ordning = de fyra företagen. |
-| 6 · 0:20 | `ecoloco/rigg/ceremoni` → `ecoloco/rigg/ohalsa` | `runda1` → `55` | `runda1` stoppar chasen; `ohalsa 55` sätter alla sidor i **pulserande guld/gult** (neutralt-look h50 puls40) = guld-puls kring ö-mätaren. |
-| 7 · 0:24 | `ecoloco/rigg/ohalsa` + `ecoloco/rigg/blandare` | `15` + `1` | Alla sidor **rött alarm-blink** (superdaligt h0 s100 v100 blink80) + kris-sting + **saftblandaren går** = kris-beaten. |
-| 8 · 0:27 | `ecoloco/rigg/blandare` → `ecoloco/rigg/ceremoni` | `0` → `climax` | Blandaren av; **vitt climax-ljus i 3 s** på alla sidor = titel-hit. Climax fyrar sen *själv* `scen=runda` + `round_start` → spelet tar vid. Sömlös övergång till runda 1. |
+| 4 · 0:12 | `out/led/<1-4>` + `out/fx` | `{"h":210,"s":60,"v":28}` + `{"fx":"chase","speed":32}` | Chase-svep vandrar över sida **1→2→3→4** = "företagen tar över", spänning byggs — utan ljud. |
+| 5 · 0:16 | *(chase fortsätter från 0:12)* | — | De fyra sidorna sveps i tur och ordning = de fyra företagen. |
+| 6 · 0:20 | `out/fx` → `out/led/<1-4>` | `{"fx":"none"}` → `{"h":46,"s":90,"v":60,"puls":45}` | Chase av; alla sidor **pulserande guld** (≈ `--gold #C9A94F`) = guld-puls kring ö-mätaren. |
+| 7 · 0:24 | `out/led/<1-4>` + `out/blandare` | `{"h":0,"s":100,"v":100,"blink":80}` + `1` | Alla sidor **rött alarm-blink** + **saftblandaren går** = kris-beaten. Fortfarande ljudlöst från riggen. |
+| 8 · 0:27 | `out/blandare` → `out/led/<1-4>` | `0` → `{"h":0,"s":0,"v":100}` | Blandaren av; **vitt climax-ljus** på alla sidor = titel-hit. |
+| slut · 0:29.5 | `out/fx` + `out/led/<1-4>` | `{"fx":"none"}` + `{"h":0,"s":0,"v":0}` | Mjuk släckning. När spelet startar repaintar dess första `scen=runda`/`ohalsa`-cue looken via hjärnan — riggen tar över som vanligt. |
 
-**Not (ärlig):** `ohalsa` i hjärnan byter även soundscape-loop (`set_ambience`), så en rigg-ambiens vill lägga sig under shot 6–7. Låt trailerns eget ljud dominera central-sinken (se nedan); light-effekten är det som räknas. Chasen från shot 4 körs tills den stoppas — därför `ceremoni runda1` innan shot 6.
+**Not:** chase/blink/puls och HSV-värdena ovan är exakt det firmwaren renderar (`SideLook` + `fxMode`); inga ljud-cues finns i spåret, så riggen kan aldrig krocka med trailerns ljud.
 
-### Ljudet går på CENTRAL-HÖGTALAREN (inte skärmen)
+### Ljudet går på CENTRAL-HÖGTALAREN (men riggen skickar inget eget ljud)
 
-Trailerns VO + musik spelas på **centralhögtalaren — samma identitet och samma ljudväg som spelets "show"-ljud** ("Institutet för öns framtid"), aldrig på bänk-/skärmhögtalarna. Två vägar, båda redan byggda:
-- **(a)** spela trailer-ljudet som ett rigg-ljud via `ecoloco/rigg/ljud <trailer-ljudfil>` → hjärnan spelar det på central-sinken (`AUDIO_SINK`, t.ex. Anker-högtalaren på NUC 1); eller
-- **(b)** låt trailer-spelaren mata **samma `AUDIO_SINK`** direkt.
-
-Skärmens egna klick-/UI-ljud ligger kvar på skärm-sinken och rörs inte — samma uppdelning som `hjarna-stubb.py` redan gör.
+Trailerns VO + musik spelas på **centralhögtalaren — samma sink/identitet som spelets "show"-ljud** ("Institutet för öns framtid"), aldrig på bänk-/skärmhögtalarna: antingen via trailer-spelarens utgång till samma `AUDIO_SINK` (t.ex. Anker-högtalaren på NUC 1), eller som en central ljuduppspelning. Men **cue-spåret ovan skickar inga ljud-cues** (inga `ecoloco/rigg/ljud`, ingen `scen`/`ohalsa`/`ceremoni`) — riggen bidrar bara med ljus/mekanik. Säkerställ att eventuell viloläges-ambiens (attract) tystnar när trailern tar centralsinken, så ljudbilden blir ren. Skärmens egna klick-/UI-ljud rörs inte.
 
 ### Hur cue-listan triggas i takt
 
-Den som startar trailern (**spelledarappen eller `server.js`**) äger en liten **tidsstämplad cue-lista** och publicerar varje rad till MQTT när trailerns klocka passerar `t` — exakt samma mönster som riggens Option B-sekvenserare (RIGG-KONTRAKT.md). Inga nya topics; hjärnan/Blocks översätter oförändrat.
+Den som startar trailern (**spelledarappen eller `server.js`**) äger en tidsstämplad cue-lista och publicerar varje rad till MQTT när trailerns klocka passerar `t` — samma mönster som riggens Option B-sekvenserare (RIGG-KONTRAKT.md). `out/led/*` betyder: publicera **samma payload till `/1`, `/2`, `/3`, `/4`**.
 
 ```json
 [
-  { "t": 0.0,  "topic": "ecoloco/rigg/scen",     "payload": "attract" },
-  { "t": 12.0, "topic": "ecoloco/rigg/ceremoni", "payload": "countdown" },
-  { "t": 20.0, "topic": "ecoloco/rigg/ceremoni", "payload": "runda1" },
-  { "t": 20.2, "topic": "ecoloco/rigg/ohalsa",   "payload": "55" },
-  { "t": 24.0, "topic": "ecoloco/rigg/ohalsa",   "payload": "15" },
-  { "t": 24.0, "topic": "ecoloco/rigg/blandare", "payload": "1" },
-  { "t": 27.0, "topic": "ecoloco/rigg/blandare", "payload": "0" },
-  { "t": 27.0, "topic": "ecoloco/rigg/ceremoni", "payload": "climax" }
+  { "t": 0.0,  "topic": "ecoloco/rigg/out/led/*",    "payload": {"h":210,"s":70,"v":18,"puls":20} },
+  { "t": 12.0, "topic": "ecoloco/rigg/out/led/*",    "payload": {"h":210,"s":60,"v":28} },
+  { "t": 12.0, "topic": "ecoloco/rigg/out/fx",       "payload": {"fx":"chase","speed":32} },
+  { "t": 20.0, "topic": "ecoloco/rigg/out/fx",       "payload": {"fx":"none"} },
+  { "t": 20.2, "topic": "ecoloco/rigg/out/led/*",    "payload": {"h":46,"s":90,"v":60,"puls":45} },
+  { "t": 24.0, "topic": "ecoloco/rigg/out/led/*",    "payload": {"h":0,"s":100,"v":100,"blink":80} },
+  { "t": 24.0, "topic": "ecoloco/rigg/out/blandare", "payload": "1" },
+  { "t": 27.0, "topic": "ecoloco/rigg/out/blandare", "payload": "0" },
+  { "t": 27.0, "topic": "ecoloco/rigg/out/led/*",    "payload": {"h":0,"s":0,"v":100} },
+  { "t": 29.5, "topic": "ecoloco/rigg/out/fx",       "payload": {"fx":"none"} },
+  { "t": 29.5, "topic": "ecoloco/rigg/out/led/*",    "payload": {"h":0,"s":0,"v":0} }
 ]
 ```
 
-*Alternativ per-sida-färg (gul/grön/orange/grå samtidigt) finns inte i Lager 1 — det kräver Lager 2 `out/led/<n>` och ska inte skickas av trailern. Chase (`ceremoni countdown`) är den byggda vägen att presentera de fyra sidorna.*
+*Eftersom `out/led/<n>` sätts per sida går det nu även att tända de fyra företagen i sina **egna lagfärger** i shot 5 i stället för chase — led/1 gul, led/2 grön, led/3 orange, led/4 grå. Chase är den enklare, mer "spända" vägen.*
 
 ---
 
