@@ -147,6 +147,9 @@ function playTrailer() {
   const src = manifest.onboarding?.trailer || '';
   console.log(`[trailer] start — ${TRAILER_CUES.length} ljus-cues från servern (EN källa)`);
   broadcast({ type: 'event', event: 'trailer', payload: { src, dur: TRAILER_DUR } });
+  // Trailer-ljudet går BARA på centralhögtalaren (skärmarna är mutade): dirigenten spelar
+  // assets/audio/rigg/trailer.mp3. riggSend = ogatat → ljudet spelas även "med spelledare".
+  riggSend('ecoloco/rigg/ljud', 'trailer');
   stopTrailer(); trailerPlaying = true;    // stopTrailer nollar flaggan — sätt tillbaka
   trailerTimers = TRAILER_CUES.map(cue => setTimeout(() => {
     fireTrailerCue(cue.cmds);

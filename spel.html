@@ -614,8 +614,11 @@
   <!-- KOPPLING 2: intro-trailer (30 s). Servern broadcastar 'trailer' när alla anslutit (före
        tutorial) eller via spelledarens kommando; skärmen spelar bara videon. Ljussekvensen körs
        från servern (EN källa) — skärmen skickar INGA rigg-cues. Döljs vid 'trailerDone'/ended/dur. -->
+  <!-- muted: skärmarna visar BARA bilden — trailer-ljudet går på centralhögtalaren (servern fyrar
+       ecoloco/rigg/ljud 'trailer' → dirigenten spelar assets/audio/rigg/trailer.mp3). muted gör också
+       att webbläsarens autoplay inte blockeras. -->
   <div class="overlay" id="ov-trailer">
-    <video id="trailer-video" playsinline></video>
+    <video id="trailer-video" muted playsinline></video>
     <div class="vid-fallback" id="trailer-fallback" style="display:none">
       <div class="note">INTRO-TRAILER 30 s — ljussekvensen körs från servern</div>
     </div>

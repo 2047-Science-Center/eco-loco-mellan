@@ -7,7 +7,7 @@
   "onboarding": {
     "_readme": "Onboarding-lagrets videoklipp. Saknas filen visas en placeholder - allt funkar utan klipp. attract = bakgrundsvideo pa entre/attract-skarmen (loop, bakom MAKTSPELET-titeln). trailer = 30 s intro som spelas nar alla anslutit, fore tutorial (ljussekvens via server playTrailer / trailer.html). narrativ = 45 s berattarklipp (scenario A).",
     "attract": "assets/Maktspelet background video.mp4",
-    "trailer": "assets/video/maktspelet-trailer.mp4",
+    "trailer": "assets/Maktspelet trailer.mp4",
     "narrativ": "assets/video/narrativ.mp4"
   },
   "areas": [
