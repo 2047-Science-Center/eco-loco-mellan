@@ -103,6 +103,51 @@
 
 ---
 
+## Rigg-cue-spår (förstärkning i rummet, parallellt med de 8 shotsen)
+
+Trailern skickar **semantiska Lager-1-cues** (`ecoloco/rigg/*`) medan den spelar, så förstärkningsriggen (LED/spot/blandare) förstärker effekterna synkront i rummet. Hjärnan (`tools/hjarna-stubb.py` → Blocks sen) översätter som vanligt till Lager 2. **Bara riktiga topics ur RIGG-KONTRAKT.md används — inga nya hittas på.** Spelet/trailern pratar aldrig Lager 2 direkt.
+
+| Shot · tid | Rigg-cue (Lager 1) | Payload | Rummet gör |
+|---|---|---|---|
+| 1–2 · 0:00 | `ecoloco/rigg/scen` | `attract` | Kall, nedsläckt blå bas (ATTRACT_LOOK, svag puls) + attract-ambiens på centralhögtalaren. Trailern startar ur viloläget. |
+| 3 · 0:08 | *(ingen ny cue — håll den kalla basen)* | — | Mörkret vilar; rösten bär. |
+| 4 · 0:12 | `ecoloco/rigg/ceremoni` | `countdown` | Riser-ljud (`spanning`) på centralen + LED-chase som sveper sida **1→2→3→4** (bison/björn/varg/örn). "Företagen tar över" — spänningen byggs. |
+| 5 · 0:16 | *(chasen från 0:12 fortsätter)* | — | De fyra sidorna tänds i tur och ordning = de fyra företagen. |
+| 6 · 0:20 | `ecoloco/rigg/ceremoni` → `ecoloco/rigg/ohalsa` | `runda1` → `55` | `runda1` stoppar chasen; `ohalsa 55` sätter alla sidor i **pulserande guld/gult** (neutralt-look h50 puls40) = guld-puls kring ö-mätaren. |
+| 7 · 0:24 | `ecoloco/rigg/ohalsa` + `ecoloco/rigg/blandare` | `15` + `1` | Alla sidor **rött alarm-blink** (superdaligt h0 s100 v100 blink80) + kris-sting + **saftblandaren går** = kris-beaten. |
+| 8 · 0:27 | `ecoloco/rigg/blandare` → `ecoloco/rigg/ceremoni` | `0` → `climax` | Blandaren av; **vitt climax-ljus i 3 s** på alla sidor = titel-hit. Climax fyrar sen *själv* `scen=runda` + `round_start` → spelet tar vid. Sömlös övergång till runda 1. |
+
+**Not (ärlig):** `ohalsa` i hjärnan byter även soundscape-loop (`set_ambience`), så en rigg-ambiens vill lägga sig under shot 6–7. Låt trailerns eget ljud dominera central-sinken (se nedan); light-effekten är det som räknas. Chasen från shot 4 körs tills den stoppas — därför `ceremoni runda1` innan shot 6.
+
+### Ljudet går på CENTRAL-HÖGTALAREN (inte skärmen)
+
+Trailerns VO + musik spelas på **centralhögtalaren — samma identitet och samma ljudväg som spelets "show"-ljud** ("Institutet för öns framtid"), aldrig på bänk-/skärmhögtalarna. Två vägar, båda redan byggda:
+- **(a)** spela trailer-ljudet som ett rigg-ljud via `ecoloco/rigg/ljud <trailer-ljudfil>` → hjärnan spelar det på central-sinken (`AUDIO_SINK`, t.ex. Anker-högtalaren på NUC 1); eller
+- **(b)** låt trailer-spelaren mata **samma `AUDIO_SINK`** direkt.
+
+Skärmens egna klick-/UI-ljud ligger kvar på skärm-sinken och rörs inte — samma uppdelning som `hjarna-stubb.py` redan gör.
+
+### Hur cue-listan triggas i takt
+
+Den som startar trailern (**spelledarappen eller `server.js`**) äger en liten **tidsstämplad cue-lista** och publicerar varje rad till MQTT när trailerns klocka passerar `t` — exakt samma mönster som riggens Option B-sekvenserare (RIGG-KONTRAKT.md). Inga nya topics; hjärnan/Blocks översätter oförändrat.
+
+```json
+[
+  { "t": 0.0,  "topic": "ecoloco/rigg/scen",     "payload": "attract" },
+  { "t": 12.0, "topic": "ecoloco/rigg/ceremoni", "payload": "countdown" },
+  { "t": 20.0, "topic": "ecoloco/rigg/ceremoni", "payload": "runda1" },
+  { "t": 20.2, "topic": "ecoloco/rigg/ohalsa",   "payload": "55" },
+  { "t": 24.0, "topic": "ecoloco/rigg/ohalsa",   "payload": "15" },
+  { "t": 24.0, "topic": "ecoloco/rigg/blandare", "payload": "1" },
+  { "t": 27.0, "topic": "ecoloco/rigg/blandare", "payload": "0" },
+  { "t": 27.0, "topic": "ecoloco/rigg/ceremoni", "payload": "climax" }
+]
+```
+
+*Alternativ per-sida-färg (gul/grön/orange/grå samtidigt) finns inte i Lager 1 — det kräver Lager 2 `out/led/<n>` och ska inte skickas av trailern. Chase (`ceremoni countdown`) är den byggda vägen att presentera de fyra sidorna.*
+
+---
+
 ## Så gör du
 
 1. **Generera** de 8 stillbilderna i ChatGPT (16:9, en bildprompt per shot ovan — utan text i bilden).
