@@ -373,7 +373,7 @@ wss.on('connection', ws => {
         }
         send(ws, { type: 'hello-ack', lag: ws._lag ?? null, started, config: engine?.cfg ?? new EcoLoco(manifest.config || {}).cfg });
         broadcast(lobbyMsg());
-        maybeAutoTrailer();   // alla fyra lag anslutna i lobbyn → auto-trailer en gång
+        // (trailern triggas nu av STARTA-knappen, inte av anslutning — se playTrailer + klientens startEfterTrailer)
         break;
       }
       case 'claim': {
@@ -386,7 +386,7 @@ wss.on('connection', ws => {
         }
         send(ws, { type: 'claimAck', lag: ws._lag ?? null });
         broadcast(lobbyMsg());
-        maybeAutoTrailer();   // sista mänskliga claim i lobbyn → auto-trailer en gång
+        // (trailern triggas nu av STARTA-knappen, inte av anslutning)
         break;
       }
       case 'tutBeat': {
@@ -526,6 +526,10 @@ function handleGmCmd(m) {
       break;
     case 'trailer':      // KOPPLING 2 (huvudväg): spela intro-trailern (video på skärmar + ljussekvens från servern)
       playTrailer();
+      break;
+    case 'trailerSkip':  // hoppa över trailern (tap på skärmen) → stoppa ljussekvensen + säg "klart" till alla skärmar
+      stopTrailer();
+      broadcast({ type: 'event', event: 'trailerDone' });
       break;
     case 'pengaslapp':   // +10 pengar & +10 material till alla lag — bara under en pågående runda
       if (!started || !engine || engine.getState().over || resolvingNow) break;

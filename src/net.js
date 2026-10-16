@@ -75,4 +75,6 @@ export class ServerNet {
   // ——— Spelledarpanel ———
   gmcmd(cmd) { this._send({ type: 'gmcmd', ...cmd }); }                         // grupp A → handleGmCmd
   rigcmd(topic, payload) { this._send({ type: 'rigcmd', topic, payload }); }    // grupp B → riggSend (riggen)
+  playTrailer() { this._send({ type: 'gmcmd', cmd: 'trailer' }); }              // STARTA → spela intro-trailern på alla skärmar
+  skipTrailer() { this._send({ type: 'gmcmd', cmd: 'trailerSkip' }); }          // tap på trailern → hoppa över (alla skärmar)
 }

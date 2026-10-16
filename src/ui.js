@@ -138,6 +138,8 @@ async function makeOnline() {
     klar: () => net.klar(),
     awardsKlara: () => net.awardsKlara(),
     playAgain: () => net.startGame(),
+    playTrailer: () => net.playTrailer(),
+    skipTrailer: () => net.skipTrailer(),
     claim: lag => net.claim(lag),
     tradeAnswer: (id, a) => net.tradeAnswer(id, a),
     podiumAnswer: (q, o) => net.podiumAnswer(q, o),   // slutdelen
@@ -178,6 +180,8 @@ function makeProxy() {
     awardsKlara: (...a) => cur.awardsKlara?.(...a),
     pause: (...a) => cur.pause?.(...a),
     playAgain: (...a) => cur.playAgain(...a),
+    playTrailer: (...a) => cur.playTrailer?.(...a),
+    skipTrailer: (...a) => cur.skipTrailer?.(...a),
     claim: (...a) => cur.claim?.(...a),
     tradeAnswer: (...a) => cur.tradeAnswer?.(...a),
     podiumAnswer: (...a) => cur.podiumAnswer?.(...a),   // slutdelen
@@ -1035,6 +1039,7 @@ function doljTrailer() {
   $('ov-trailer').classList.remove('open');
 }
 game.on('trailer', p => {
+  trailerVisad = true;   // denna skärm har sett trailern → STARTA ska inte trigga en ny
   const v = videoEllerFallback('trailer-video', 'trailer-fallback', p?.src);   // saknas klippet → placeholder
   $('ov-trailer').classList.add('open');
   if (v) {
@@ -1046,7 +1051,31 @@ game.on('trailer', p => {
   clearTimeout(trailerFailsafe);
   trailerFailsafe = setTimeout(doljTrailer, (dur + 1) * 1000);   // dölj senast efter dur även om trailerDone/ended uteblir
 });
-game.on('trailerDone', () => doljTrailer());
+game.on('trailerDone', () => { doljTrailer(); korEfterTrailer(); });
+
+// Trailern spelas EN gång när STARTA trycks (efter att alla anslutit), sedan fortsätter flödet
+// (tutorial → riktiga spelet) när den är klar. Servern broadcastar 'trailer' till ALLA skärmar.
+let efterTrailer = null, trailerVisad = false, efterTrailerFailsafe = null;
+function startEfterTrailer(fn) {
+  if (trailerVisad || !game.playTrailer) { fn(); return; }    // redan sedd, eller lokalt läge utan server → kör direkt
+  trailerVisad = true;
+  efterTrailer = fn;
+  game.playTrailer();                                         // → servern: broadcast 'trailer' + ljussekvens (en källa)
+  clearTimeout(efterTrailerFailsafe);
+  efterTrailerFailsafe = setTimeout(korEfterTrailer, 33000);  // failsafe: fastna aldrig om 'trailerDone' uteblir
+}
+function korEfterTrailer() {
+  clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
+  if (!efterTrailer) return;
+  const f = efterTrailer; efterTrailer = null;
+  f();
+}
+// Tap på trailern → hoppa över (servern stoppar ljussekvensen + säger "klart" till alla skärmar).
+$('ov-trailer').addEventListener('click', () => {
+  if (game.skipTrailer) game.skipTrailer(); else { doljTrailer(); korEfterTrailer(); }
+});
+// Nytt parti (replay) → tillåt att trailern spelas igen vid nästa STARTA.
+game.on('gameEnd', () => { trailerVisad = false; });
 
 // ═══════════════ Runda 0 — tutorial (mode='tutorial') ═══════════════
 // En skriptad övningsrunda på en EGEN kastmotor bakom samma UI: deterministiska botar,
@@ -1302,13 +1331,16 @@ $('btn-start').addEventListener('click', async () => {
   audio.play('ui_tap');
   if (ONLINE) {
     if (gamePhase() === 'pagar') return;
+    let fortsatt;   // vad som ska hända EFTER trailern (tutorial eller riktiga spelet)
     if (MODE === 'tutorial' && gamePhase() === 'lobby') {
       if (!game.me) await delay(1500);             // kiosk-claim (?lag=) kan vara på väg in
       if (!game.me) { toast('Tryck på ett lag först!', true); return; }   // i tutorial-läge startar man inte spelet utan lag
-      runTutorial(); return;
+      fortsatt = () => runTutorial();
+    } else {
+      if (game.me) initSector();   // utan lag: starta ändå — alla lag körs av datorn, du tittar på
+      fortsatt = () => game.startGame({ spelledare: medSpelledare });
     }
-    if (game.me) initSector();   // utan lag: starta ändå — alla lag körs av datorn, du tittar på
-    game.startGame({ spelledare: medSpelledare });
+    startEfterTrailer(fortsatt);   // spela intro-trailern FÖRST (en gång, på alla skärmar), fortsätt när den är klar
   } else {
     $('ov-start').classList.remove('open');
     if (MODE === 'tutorial') { runTutorial(); return; }
