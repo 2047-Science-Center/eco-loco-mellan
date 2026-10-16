@@ -48,7 +48,8 @@ const basename = s => String(s).split('/').pop();   // 'assets/audio/rigg/x.mp3'
 
 // ——— Statiska filer (så iPad/NUC bara behöver en URL) ———
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.css': 'text/css' };
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.css': 'text/css',
+  '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm' };
 const httpServer = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (p === '/') p = '/spel.html';
@@ -408,7 +409,7 @@ wss.on('connection', ws => {
       case 'pause': { setPaused(m.on !== undefined ? m.on : !paused); break; }   // skärmknapp → pausa/fortsätt
       case 'gmcmd': { try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid WS-kommando: ${e.message}`); } break; }
       // Spelledarpanel → riggen (grupp B): publicera en rigg-topic direkt. Bara ecoloco/rigg/* släpps igenom.
-      case 'rigcmd': { if (typeof m.topic === 'string' && m.topic.startsWith('ecoloco/rigg/')) riggSend(m.topic, m.payload ?? ''); break; }
+      case 'rigcmd': { if (typeof m.topic === 'string' && m.topic.startsWith('ecoloco/rigg/')) riggSend(m.topic, (m.payload && typeof m.payload === 'object') ? JSON.stringify(m.payload) : (m.payload ?? '')); break; }
     }
   });
   ws.on('close', () => {

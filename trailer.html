@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maktspelet — Intro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;700;800&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#121009; --gold:#C9A94F; --text:#F2ECDD; --dim:#B8AF9A; --led-green:#3DD68C; --led-red:#F0564B;
+    --font-disp:"Oxanium",system-ui,sans-serif; --font-num:"Chakra Petch",ui-monospace,monospace; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#000;color:var(--text);font-family:var(--font-disp);overflow:hidden}
+  #stage{position:fixed;inset:0;display:grid;place-items:center}
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  #fallback{position:absolute;inset:0;display:none;place-items:center;
+    background:radial-gradient(1000px 600px at 50% 20%, #1a2a3a, #070707 70%)}
+  #fallback.show{display:grid}
+  #fallback .fb{color:var(--dim);font-size:14px;letter-spacing:2px}
+
+  .overlay{position:relative;z-index:2;text-align:center;padding:24px;
+    text-shadow:0 4px 24px rgba(0,0,0,.6)}
+  .overlay h1{margin:0;font-size:clamp(40px,9vw,120px);font-weight:800;letter-spacing:2px}
+  .overlay .exp{margin-top:6px;font-size:clamp(13px,2vw,20px);letter-spacing:6px;color:var(--gold);font-weight:700}
+  .startbtn{margin-top:34px;min-height:72px;padding:0 48px;border:3px solid var(--gold);border-radius:14px;
+    background:transparent;color:var(--gold);font:inherit;font-size:22px;font-weight:800;letter-spacing:2px;cursor:pointer;
+    transition:transform 150ms cubic-bezier(.23,1,.32,1),background 150ms}
+  .startbtn:hover{background:rgba(201,169,79,.12)} .startbtn:active{transform:scale(.97)}
+  .playing .overlay{display:none}
+  .replay{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:4;display:none}
+  .ended .replay{display:block}
+
+  /* Diskret bygg-/matcha-panel (dölj i drift med ?debug=0) */
+  #dbg{position:fixed;left:12px;bottom:12px;z-index:5;font-family:var(--font-num);font-size:12px;color:var(--dim);
+    background:rgba(0,0,0,.55);border:1px solid #333;border-radius:8px;padding:8px 12px;max-width:46ch;line-height:1.5}
+  #dbg b{color:var(--gold)} #dbg .c{color:var(--led-green)}
+  #dbg .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--led-red);margin-right:6px}
+  #dbg.live .dot{background:var(--led-green)}
+  #dbg.off{display:none}
+  .btn2{margin-top:6px;background:#1b1811;border:1px solid var(--gold);color:var(--gold);border-radius:7px;
+    padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="vid" playsinline preload="auto"></video>
+  <div id="fallback"><div class="fb">— ingen videofil hittades · ljussekvensen körs ändå på klocka —</div></div>
+  <div class="overlay" id="overlay">
+    <h1>MAKTSPELET</h1>
+    <div class="exp">– THE EXPERIENCE –</div>
+    <button class="startbtn" id="start">STARTA</button>
+  </div>
+</div>
+<button class="startbtn replay" id="replay">SPELA IGEN</button>
+
+<div id="dbg"><span class="dot"></span><span id="dbgconn">ansluter…</span> · <span id="dbgt" class="num">0.0s</span><br>
+  <span id="dbgcue">—</span>
+  <div><button class="btn2" id="testclock">Testa ljus utan video (klocka)</button></div>
+</div>
+
+<script type="module">
+import { ServerNet } from './src/net.js';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CUE-LISTA — ljus bara, kopplat till filmens TID (video.currentTime, sekunder).
+//  Matcha om = ändra t-värdena. Payload-objekt → publiceras som JSON till riggen.
+//  led(hsv) = alla fyra sidor · team() = sidorna i sina LAGFÄRGER · fx/blandare = som firmware.
+// ─────────────────────────────────────────────────────────────────────────────
+const R = 'ecoloco/rigg/out/';
+// Lagfärger (HSV) ur motorns AREAS: 1 åker/Oxen gul · 2 skog/Björnen grön · 3 tundra/Räven orange · 4 stad/Örnen grå
+const TEAM = { 1:{h:46,s:67,v:91}, 2:{h:128,s:56,v:56}, 3:{h:30,s:72,v:85}, 4:{h:215,s:8,v:59} };
+const led = v => [1,2,3,4].map(n => ({ topic:R+'led/'+n, payload:v }));
+const team = () => [1,2,3,4].map(n => ({ topic:R+'led/'+n, payload:TEAM[n] }));
+const fx  = v => [{ topic:R+'fx', payload:v }];
+const bl  = v => [{ topic:R+'blandare', payload:v }];
+
+const CUES = [
+  { t: 0.0,  label:'Kall blå bas',                 cmds: led({h:210,s:70,v:18,puls:20}) },
+  { t:12.0,  label:'Chase-svep in (företagen tar över)', cmds: [...led({h:210,s:60,v:28}), ...fx({fx:'chase',speed:32})] },
+  { t:16.0,  label:'FYRA LAGEN i lagfärg',          cmds: [...fx({fx:'none'}), ...team()] },
+  { t:20.2,  label:'Guld-puls (ö-mätaren)',         cmds: led({h:46,s:90,v:60,puls:45}) },
+  { t:24.0,  label:'KRIS — rött blink + saftblandare', cmds: [...led({h:0,s:100,v:100,blink:80}), ...bl('1')] },
+  { t:27.0,  label:'Vitt climax (titel)',           cmds: [...bl('0'), ...led({h:0,s:0,v:100})] },
+  { t:29.5,  label:'Släck / lämna över till spelet', cmds: [...fx({fx:'none'}), ...led({h:0,s:0,v:0})] },
+];
+
+// TRAILERN = separat 30s-klipp som startar när ALLA spelare anslutit, innan tutorial.
+// (INTE bakgrundsvideon på attract-skärmen — det är en annan loop.) Lägg trailer-klippet här:
+const VIDEO_SRC = 'assets/video/maktspelet-trailer.mp4';   // byt filnamn vid behov; saknas filen → sekvensen körs ändå på klocka
+const DEBUG = new URLSearchParams(location.search).get('debug') !== '0';
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), vid = $('vid'), overlay = $('overlay'), fb = $('fallback'), dbg = $('dbg');
+if (!DEBUG) dbg.classList.add('off');
+
+// ── Nät: skicka ljus-cues till riggen via serverns rigcmd-relä ──
+const net = new ServerNet();
+net.on('disconnected', () => dbg.classList.remove('live'));
+net.on('reconnected', () => dbg.classList.add('live'));
+await net.connect(null);
+dbg.classList.add('live'); $('dbgconn').textContent = 'rigg via server';
+function fire(cmds){ for (const c of cmds) net.rigcmd(c.topic, c.payload); }
+
+// ── Sekvenser: fyra cues när filmens klocka passerar t (en gång var) ──
+let fired = new Set();
+function tick(now){
+  $('dbgt').textContent = now.toFixed(1) + 's';
+  for (let i = 0; i < CUES.length; i++){
+    if (!fired.has(i) && now >= CUES[i].t){
+      fired.add(i); fire(CUES[i].cmds);
+      $('dbgcue').innerHTML = `<b>${CUES[i].t.toFixed(1)}s</b> · <span class="c">${CUES[i].label}</span>`;
+    }
+  }
+}
+function resetCues(){ fired = new Set(); }
+
+// ── Driv av VIDEON ──
+let rafOn = false;
+function rafLoop(){ if (!rafOn) return; tick(vid.currentTime); requestAnimationFrame(rafLoop); }
+vid.addEventListener('ended', () => { tick(1e9); stage.classList.remove('playing'); stage.classList.add('ended'); rafOn = false; });
+
+async function startWithVideo(){
+  resetCues();
+  stage.classList.remove('ended'); stage.classList.add('playing');
+  try { vid.currentTime = 0; await vid.play(); rafOn = true; rafLoop(); fire(CUES[0].cmds); fired.add(0); }
+  catch(e){ startClock(); }   // autoplay nekad / ingen fil → kör på klocka
+}
+
+// ── Driv på KLOCKA (test utan video, eller videofil saknas) ──
+let clockId = null;
+function startClock(){
+  resetCues(); fb.classList.add('show');
+  stage.classList.remove('ended'); stage.classList.add('playing');
+  const t0 = performance.now();
+  clearInterval(clockId);
+  clockId = setInterval(() => {
+    const now = (performance.now() - t0) / 1000;
+    tick(now);
+    if (now >= (CUES[CUES.length-1].t + 1)){ clearInterval(clockId); stage.classList.remove('playing'); stage.classList.add('ended'); }
+  }, 100);
+}
+
+// ── Knappar ──
+$('start').addEventListener('click', startWithVideo);
+$('replay').addEventListener('click', () => { fb.classList.remove('show'); stage.classList.remove('ended'); startWithVideo(); });
+$('testclock').addEventListener('click', () => { vid.pause(); startClock(); });
+
+// Ladda videon (om filen saknas visar vi fallback men sekvensen funkar ändå)
+vid.src = VIDEO_SRC;
+vid.addEventListener('error', () => fb.classList.add('show'));
+</script>
+</body>
+</html>
