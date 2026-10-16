@@ -91,7 +91,8 @@ const offers = new Map();      // offerId → { from, to, give, giveCur, get, ge
 const humanIds = () => TEAMS.filter(id => claims[id] && claims[id] !== 'bot');
 const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 
-function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, state: engine?.getState() ?? null })); }
+// State bär även serverns driftflaggor (gmMode/riggSilent) så spelledarpanelen kan spegla dem auktoritativt.
+function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, state: engine ? { ...engine.getState(), gmMode, riggSilent } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, claims: Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])) };
@@ -406,6 +407,8 @@ wss.on('connection', ws => {
       // MQTT-kanalen ecoloco/spel/gm är oförändrad; detta är ett ADDITIV alternativ med samma payload.
       case 'pause': { setPaused(m.on !== undefined ? m.on : !paused); break; }   // skärmknapp → pausa/fortsätt
       case 'gmcmd': { try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid WS-kommando: ${e.message}`); } break; }
+      // Spelledarpanel → riggen (grupp B): publicera en rigg-topic direkt. Bara ecoloco/rigg/* släpps igenom.
+      case 'rigcmd': { if (typeof m.topic === 'string' && m.topic.startsWith('ecoloco/rigg/')) riggSend(m.topic, m.payload ?? ''); break; }
     }
   });
   ws.on('close', () => {

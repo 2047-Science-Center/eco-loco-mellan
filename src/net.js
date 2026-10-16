@@ -72,4 +72,7 @@ export class ServerNet {
   tutBeat(beat) { this._send({ type: 'tutBeat', beat }); }
   podiumAnswer(questionId, option) { this._send({ type: 'podiumAnswer', questionId, option }); }   // slutdelen
   rigCue(phase) { this._send({ type: 'rigCue', phase }); }   // startceremonin → rigg (hjärnan)
+  // ——— Spelledarpanel ———
+  gmcmd(cmd) { this._send({ type: 'gmcmd', ...cmd }); }                         // grupp A → handleGmCmd
+  rigcmd(topic, payload) { this._send({ type: 'rigcmd', topic, payload }); }    // grupp B → riggSend (riggen)
 }
