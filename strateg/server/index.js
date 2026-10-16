@@ -22,6 +22,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { buildNumbersBlock } from './game-numbers.js'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // Ladda server/.env oavsett från vilken katalog servern startas.
 dotenv.config({ path: path.join(__dirname, '.env') })
@@ -30,8 +32,13 @@ const PORT = process.env.PORT || 8790
 const MODEL = process.env.STRATEG_MODEL || 'gpt-5-mini'
 const API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY
 
-// System-prompt = den destillerade spel-kunskapsbasen. Byt text = byt fil, ingen kodändring.
-const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, 'system-prompt.sv.txt'), 'utf8').trim()
+// System-prompt komponeras vid serverstart av TVÅ delar:
+//  1) stabil narrativ/filosofi/roll (handskriven) i system-prompt.sv.txt
+//  2) AUTO-GENERERAT sifferblock importerat ur spec/engine.js (sanningen)
+// → coachen auto-speglar motorn: ändra reglerna i engine.js + starta om servern,
+//   ingen manuell promptredigering. Importerar bara regel-MODULEN, inte spelservern.
+const NARRATIVE = fs.readFileSync(path.join(__dirname, 'system-prompt.sv.txt'), 'utf8').trim()
+const SYSTEM_PROMPT = `${NARRATIVE}\n\n${buildNumbersBlock()}`
 
 if (!API_KEY) {
   console.warn(
@@ -114,4 +121,5 @@ app.post('/chat', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[strateg] Eco Loco-coach igång på http://localhost:${PORT}  (modell: ${MODEL}, keyed: ${Boolean(openai)})`)
+  console.log(`[strateg] System-prompt = narrativ (${NARRATIVE.length} tecken) + auto-genererat sifferblock ur spec/engine.js (${SYSTEM_PROMPT.length - NARRATIVE.length} tecken).`)
 })
