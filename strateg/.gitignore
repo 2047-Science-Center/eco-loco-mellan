@@ -1,0 +1,8 @@
+# Hemligheter — API-nyckeln committas ALDRIG
+server/.env
+
+# Beroenden (installeras med npm install)
+node_modules/
+
+.DS_Store
+*.log
