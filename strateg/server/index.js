@@ -1,5 +1,5 @@
 /**
- * Eco Loco — Strateg-coach · liten backend-proxy (Node/Express).
+ * Maktspelet — Strateg-coach · liten backend-proxy (Node/Express).
  *
  * Fristående från spelet: pratar INTE med server.js eller spelets WebSocket.
  * Bara en AI tränad på spelet. Frontend (index.html) anropar /chat här,
@@ -120,6 +120,6 @@ app.post('/chat', async (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(`[strateg] Eco Loco-coach igång på http://localhost:${PORT}  (modell: ${MODEL}, keyed: ${Boolean(openai)})`)
+  console.log(`[strateg] Maktspelet-coach igång på http://localhost:${PORT}  (modell: ${MODEL}, keyed: ${Boolean(openai)})`)
   console.log(`[strateg] System-prompt = narrativ (${NARRATIVE.length} tecken) + auto-genererat sifferblock ur spec/engine.js (${SYSTEM_PROMPT.length - NARRATIVE.length} tecken).`)
 })

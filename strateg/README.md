@@ -1,6 +1,6 @@
-# Eco Loco — Strategicoach (vänster-station)
+# Maktspelet — Strategicoach (vänster-station)
 
-En **fristående** AI-strategicoach för **spelarna** i Eco Loco. I stationen styr mitten skärmen, höger förhandlar via telefon med andra lag, och **vänster** har den här AI-chatten tränad på spelet. Spelarna diskuterar strategi, får inspel och lär sig reglerna snabbare.
+En **fristående** AI-strategicoach för **spelarna** i Maktspelet. I stationen styr mitten skärmen, höger förhandlar via telefon med andra lag, och **vänster** har den här AI-chatten tränad på spelet. Spelarna diskuterar strategi, får inspel och lär sig reglerna snabbare.
 
 **Helt oberoende av spelet:** pratar INTE med `server.js` eller spelets WebSocket. Det är i grunden bara en AI med en kunskapsbas om spelet. Körs i ett Chrome-fönster på en **liggande surfplatta** (iPad/Android), touch-vänlig (knappar ≥ 64 px).
 
