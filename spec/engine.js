@@ -28,7 +28,32 @@ export const DEFAULT_CONFIG = {
   gronGain: 14,      // OMBALANSERING: kollektiv satsning kan VÄNDA en kris (var 8)
   taxAmount: 20,     // OMBALANSERING: vassare maktmedel mot boven (var 15)
   humanTeam: 'aker', // vilket område människan styr i mock/fas 3
+
+  // ─── DYNAMISK FÖRSLAGSPOOL (design/FORSLAGSPOOL-FORSLAG.md) ───────────────────
+  // Grund-3 (gron/skatt/forbud) ligger ALLTID kvar. Från extraProposalsFromRound
+  // visas dessutom extraProposalsPerRound slumpade extra-förslag/runda (roterar).
+  // Motorn väljer dem server-auktoritativt → S.extraProposals (se _rollExtraProposals).
+  extraProposalsFromRound: 4,  // först fr.o.m. denna runda dyker extra-förslag upp (runda 1–3 = bara grund-3)
+  extraProposalsPerRound: 2,   // exakt så många extra-förslag/runda (utöver grund-3)
+
+  // Belopp för de NYA extra-förslagen. Konservativt satta — Klara/Josef får tuna.
+  // (Grund-3-siffrorna ovan rörs INTE; nya förslag återanvänder dem där det går.)
+  krispaketGain: 28,        // 🆘 Krispaket: öhälso-lyft (≈2×gronGain) vid lyckad kris-satsning; ja-röstare betalar gronCost var
+  sektorskattAmount: 12,    // 🏝 Sektorskatt: 🪙 som VARJE pengar-lag betalar; potten delas lika till materiallagen
+  solidaritetPengar: 15,    // 👑 Solidaritetsskatt: 🪙 som rikaste laget betalar (delas på de tre andra)
+  solidaritetMaterial: 10,  // 👑 Solidaritetsskatt: 🧱 som rikaste laget betalar (delas på de tre andra)
+  lojalitetBonus: 6,        // 🤝 Grön utdelning: 🪙 bonus till VARJE ja-röstare
+  lojalitetBoter: 8,        // 🤝 Grön utdelning: 🪙 böter som VARJE nej-röstare betalar
+  lojalitetOh: 4,           // 🤝 Grön utdelning: litet öhälso-lyft vid lyckat förslag
+  marknadsavtalBonus: 8,    // 📈 Marknadsavtal: 🪙 till ALLA fyra lag — men bara om EXAKT 3 röstade ja
+  marknadsavtalOh: 2,       // 📈 Marknadsavtal: litet öhälso-lyft vid exakt 3 ja
+  // (💊 Riktat grönt stöd återanvänder gronCost som ja-röstarnas insats → ingen egen ratt.)
 };
+
+// Extra-förslagens typ-id (ur design/FORSLAGSPOOL-FORSLAG.md §3, ENBART [BYGG]-märkta —
+// återanvänder primitiverna P1–P6, kräver INGEN ny motor-mekanik). [NY MEK]-förslagen
+// (blockad/utslappstak/katastroffond) är medvetet UTELÄMNADE (kräver nytt state).
+export const EXTRA_PROPOSAL_POOL = ['krispaket', 'sektorskatt', 'solidaritet', 'lojalitet', 'marknadsavtal', 'gronstod'];
 
 // Ett område = ett lag. Områdesfärg = lagfärg. sektor styr valuta-beroendet.
 // id = internt områdesnamn (används i MQTT/rigg — ändra ALDRIG). namn = lagets visningsnamn (djuret).
@@ -118,7 +143,7 @@ export class EcoLoco {
     this.S = {
       round: 1, oh: c.ohStart, lastDelta: 0, over: false,
       banDirtyThisRound: false, banDirtyNextRound: false,
-      proposal: null, gronQueued: 0,
+      proposal: null, gronQueued: 0, extraProposals: [],
       eventPool: EVENTS.map(e => e.id), drawnEvents: [], pendingEvent: null,
       teams: AREAS.map(a => ({
         id: a.id, namn: a.namn, farg: a.farg, sektor: a.sektor,
@@ -129,6 +154,7 @@ export class EcoLoco {
       })),
     };
     this._snapshot();
+    this._rollExtraProposals();                      // runda 1 → [] (extra-förslag öppnar först runda ≥4)
     this._emit('start', { config: c, areas: AREAS });
     this._emit('roundStart', { round: 1 });
     this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: 0 });
@@ -168,8 +194,27 @@ export class EcoLoco {
     return { ok: true };
   }
 
-  // ACTION: politik. Ett förslag/runda. type: 'gron' | 'skatt' | 'forbud'
+  // Rulla rundans extra-förslag. Server-auktoritativt → S.extraProposals, som alla vyer läser
+  // (samma 2 extra på alla skärmar + spelledarpulten). Runda < gate → []; annars N unika ur poolen.
+  _rollExtraProposals() {
+    const fromRound = this.cfg.extraProposalsFromRound ?? 4;
+    const count = this.cfg.extraProposalsPerRound ?? 2;
+    if (!this.S || this.S.round < fromRound) { if (this.S) this.S.extraProposals = []; return; }
+    const pool = [...EXTRA_PROPOSAL_POOL];
+    const pick = [];
+    for (let i = 0; i < count && pool.length; i++) pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    this.S.extraProposals = pick;
+  }
+  // Vilka förslagstyper får öppnas just nu: grund-3 alltid, extra-förslag bara om de ligger i
+  // rundans S.extraProposals (hindrar desync — en stale klient kan inte öppna ett icke-aktuellt extra).
+  _proposalAllowed(type) {
+    if (type === 'gron' || type === 'skatt' || type === 'forbud') return true;
+    return (this.S?.extraProposals || []).includes(type);
+  }
+
+  // ACTION: politik. Ett förslag/runda. type: grund-3 ('gron'|'skatt'|'forbud') + rundans extra (S.extraProposals).
   openProposal(type, byTeamId) {
+    if (!this._proposalAllowed(type)) return;        // icke-aktuellt extra-förslag → ignoreras (server-auktoritativt)
     this.S.proposal = { type, by: byTeamId, votes: {}, resolved: false, passed: false };
     this._emit('proposalOpened', { type, by: byTeamId });
   }
@@ -212,6 +257,54 @@ export class EcoLoco {
         others.forEach(t => t.pengar += share);
       } else if (p.type === 'forbud') {
         this.S.banDirtyNextRound = true;
+
+      // ─── Extra-förslag ur poolen (alla [BYGG] = befintliga primitiver P1–P6) ───
+      } else if (p.type === 'krispaket') {
+        // 🆘 Krispaket (P1+P3+P6): ja-röstare betalar gronCost var; öhälsan lyfts STORT (krispaketGain).
+        // Gratisåkare: nej-röstaren (max 1 vid 3/4) slipper betala men får ändå öhälso-nyttan.
+        this.S.teams.forEach(t => { if (p.votes[t.id]) t.pengar = Math.max(0, t.pengar - this.cfg.gronCost); });
+        this.S.gronQueued += this.cfg.krispaketGain;
+      } else if (p.type === 'sektorskatt') {
+        // 🏝 Sektorskatt (P1+P5): varje pengar-lag betalar sektorskattAmount🪙; potten delas lika till materiallagen.
+        // Delar ön 2-mot-2 längs sektorslinjen (materiallagens maktmedel mot den dominerande pengar-sektorn).
+        const payers = this.S.teams.filter(t => t.sektor === 'pengar');
+        const recips = this.S.teams.filter(t => t.sektor === 'material');
+        let pot = 0;
+        payers.forEach(t => { const pay = Math.min(this.cfg.sektorskattAmount, t.pengar); t.pengar -= pay; pot += pay; });
+        const share = recips.length ? Math.floor(pot / recips.length) : 0;
+        recips.forEach(t => t.pengar += share);
+      } else if (p.type === 'solidaritet') {
+        // 👑 Solidaritetsskatt (P1+P2+P5): rikaste laget betalar solidaritetPengar🪙 + solidaritetMaterial🧱,
+        // delas lika mellan de tre andra (omfördelning från den ekonomiska ledaren).
+        const r = this.richest();
+        const payP = Math.min(this.cfg.solidaritetPengar, r.pengar);
+        const payM = Math.min(this.cfg.solidaritetMaterial, r.material);
+        r.pengar -= payP; r.material -= payM;
+        const others = this.S.teams.filter(t => t.id !== r.id);
+        const shareP = Math.floor(payP / others.length), shareM = Math.floor(payM / others.length);
+        others.forEach(t => { t.pengar += shareP; t.material += shareM; });
+      } else if (p.type === 'lojalitet') {
+        // 🤝 Grön utdelning / Lojalitetstest (P1+P3+P6): ja-röstare får lojalitetBonus🪙, nej-röstare
+        // betalar lojalitetBoter🪙, litet öhälso-lyft (lojalitetOh). Att stå utanför blocket kostar konkret.
+        this.S.teams.forEach(t => {
+          if (p.votes[t.id]) t.pengar += this.cfg.lojalitetBonus;
+          else t.pengar = Math.max(0, t.pengar - this.cfg.lojalitetBoter);
+        });
+        this.S.gronQueued += this.cfg.lojalitetOh;
+      } else if (p.type === 'marknadsavtal') {
+        // 📈 Marknadsavtal (P1+P6): bonus bara vid EXAKT 3 ja (fyra ja → inget). Rent koordinationsproblem
+        // (någon måste frivilligt avstå). Förslagsläggaren auto-röstar ja → "en måste avstå".
+        if (yesCount === 3) {
+          this.S.teams.forEach(t => t.pengar += this.cfg.marknadsavtalBonus);
+          this.S.gronQueued += this.cfg.marknadsavtalOh;
+        }
+      } else if (p.type === 'gronstod') {
+        // 💊 Riktat grönt stöd (P1+P5, pott-variant): ja-röstare betalar gronCost var → hela potten
+        // ges till det grönaste laget (_greenest), så det får råd med dyra gröna kort.
+        let pot = 0;
+        this.S.teams.forEach(t => { if (p.votes[t.id]) { const pay = Math.min(this.cfg.gronCost, t.pengar); t.pengar -= pay; pot += pay; } });
+        const target = this._greenest();
+        if (target) target.pengar += pot;
       }
     }
     this._emit('proposalResolved', { type: p.type, votes: { ...p.votes }, passed: p.passed, yesCount });
@@ -296,6 +389,7 @@ export class EcoLoco {
     }
     this.S.round++;
     this._snapshot();
+    this._rollExtraProposals();                      // rulla rundans extra-förslag (server-auktoritativt) före roundStart
     this._drawEvent();                               // dra rundans händelse (före roundStart → servern ser pendingEvent)
     this._emit('roundStart', { round: this.S.round });
     if (!this.gm && this.S.pendingEvent) this._runEvent(this.S.pendingEvent);   // auto-läge: applicera direkt

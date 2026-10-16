@@ -35,6 +35,19 @@ const CUR_ICON = { pengar: '🪙', material: '🧱' };
 const teamName = id => AREAS.find(a => a.id === id).namn;
 const fmtOh = v => (v > 0 ? '+' + v : v) + (v > 0 ? ' 🌱' : ' 🏭');
 
+// Bot-/auto-val av förslag. Grund-3 öhälso-viktat (som förr). Fr.o.m. runda 4 kan boten även
+// välja ur rundans extra-pool (S.extraProposals) — i kris (låg öhälsa) prioriteras Krispaket.
+function pickBotProposal(S) {
+  const base = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')
+             : Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud');
+  const extra = (S.round >= 4 && Array.isArray(S.extraProposals)) ? S.extraProposals : [];
+  if (extra.length && Math.random() < 0.4) {
+    if (S.oh < 45 && extra.includes('krispaket')) return 'krispaket';
+    return extra[Math.floor(Math.random() * extra.length)];
+  }
+  return base;
+}
+
 // ═══════════════ Spelfasaden ═══════════════
 function makeEmitter() {
   const h = {};
@@ -72,9 +85,7 @@ function makeLocal() {
       if (S.over || S.proposal) return;
       const bots = S.teams.filter(t => t.id !== me);
       const by = bots[Math.floor(Math.random() * bots.length)].id;
-      const type = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')
-                 : Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud');
-      engine.openProposal(type, by);
+      engine.openProposal(pickBotProposal(S), by);
     }, 2500);
   });
   engine.on('proposalOpened', () => { votingOpen = true; });
@@ -729,18 +740,37 @@ function openTradeIncoming(m) {
 }
 
 // ═══════════════ Politik ═══════════════
+// Fullständiga kort-definitioner för ALLA 9 förslagstyper (3 grund + 6 extra ur poolen).
+// Render-logiken (visibleProps) visar grund-3 + de typer motorn lagt i S.extraProposals.
+// Text-mallarna speglar de faktiska config-siffrorna (som grund-korten alltid gjort).
+const GRUND_PROPS = ['gron', 'skatt', 'forbud'];
 function propDefs() {
-  const c = E().cfg, bov = E().worstPolluter();
+  const c = E().cfg, bov = E().worstPolluter(), rik = E().richest(), gron = E()._greenest();
   return [
+    // ── Grund-3 (ligger alltid kvar) ──
     { type: 'gron', pic: '🌱', rubrik: 'Grön satsning', tx: `Alla som röstar JA betalar ${c.gronCost} 🪙.<br>Öns hälsa går <b>upp +${c.gronGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} 🪙` },
     { type: 'skatt', pic: '💸', rubrik: 'Miljöskatt', tx: `Värsta boven (<b>${bov.namn}</b>) betalar ${c.taxAmount} 🪙<br>som delas mellan de andra lagen.`, ja: 'JA — beskatta boven' },
     { type: 'forbud', pic: '🚫', rubrik: 'Förbjud smutsig', tx: `Nästa runda kan <b>ingen</b> bygga det smutsiga kortet.`, ja: 'JA — förbjud smutsig' },
+    // ── Extra-förslag (roterar; visas bara när de ligger i S.extraProposals) ──
+    { type: 'krispaket', pic: '🆘', rubrik: 'Krispaket', tx: `Alla som röstar JA betalar ${c.gronCost} 🪙.<br>Går det igenom lyfts öns hälsa <b>+${c.krispaketGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} 🪙` },
+    { type: 'sektorskatt', pic: '🏝', rubrik: 'Sektorskatt', tx: `Pengar-lagen betalar ${c.sektorskattAmount} 🪙 var<br>som delas mellan material-lagen.`, ja: 'JA — beskatta pengar-sektorn' },
+    { type: 'solidaritet', pic: '👑', rubrik: 'Solidaritetsskatt', tx: `Rikaste laget (<b>${rik.namn}</b>) betalar ${c.solidaritetPengar} 🪙 + ${c.solidaritetMaterial} 🧱<br>som delas mellan de tre andra.`, ja: 'JA — beskatta rikaste' },
+    { type: 'lojalitet', pic: '🤝', rubrik: 'Grön utdelning', tx: `Går det igenom: varje JA-lag får <b>+${c.lojalitetBonus} 🪙</b>,<br>varje NEJ-lag betalar <b>${c.lojalitetBoter} 🪙</b>. Öns hälsa +${c.lojalitetOh}.`, ja: `JA — jag tar +${c.lojalitetBonus} 🪙` },
+    { type: 'marknadsavtal', pic: '📈', rubrik: 'Marknadsavtal', tx: `Bonus <b>+${c.marknadsavtalBonus} 🪙 till alla</b> — men <b>bara om exakt 3 av 4</b> röstar JA.<br>En måste avstå.`, ja: 'JA — jag är med' },
+    { type: 'gronstod', pic: '💊', rubrik: 'Riktat grönt stöd', tx: `Alla som röstar JA betalar ${c.gronCost} 🪙 → hela potten<br>går till grönaste laget (<b>${gron.namn}</b>).`, ja: `JA — jag skänker ${c.gronCost} 🪙` },
   ];
+}
+// Grund-3 + rundans extra (server-auktoritativa i S.extraProposals). INGEN klient-lokal slump här.
+function visibleProps() {
+  const defs = propDefs();
+  const extra = E().getState()?.extraProposals || [];
+  const show = [...GRUND_PROPS, ...extra];
+  return show.map(type => defs.find(d => d.type === type)).filter(Boolean);
 }
 $('btn-prop').addEventListener('click', () => {
   if (E().getState().proposal || resolving) return;
   audio.play('ui_tap');
-  $('proplist').innerHTML = propDefs().map(p => `
+  $('proplist').innerHTML = visibleProps().map(p => `
     <div class="propcard propchoice" data-type="${p.type}">
       <div class="pic">${p.pic}</div>
       <div class="tx"><b style="color:var(--text)">${p.rubrik}</b><br>${p.tx}</div>

@@ -307,8 +307,15 @@ function maybeBotProposal(round) {
     const bots = TEAMS.filter(id => claims[id] === 'bot');
     if (!bots.length) return;
     const by = bots[Math.floor(Math.random() * bots.length)];
-    const type = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')
+    // Grund-3 öhälso-viktat (som förr). Fr.o.m. runda 4: boten kan även välja ur rundans
+    // extra-pool (S.extraProposals); i kris prioriteras Krispaket. Samma logik som src/ui.js pickBotProposal.
+    const base = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')
                : Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud');
+    const extra = (S.round >= 4 && Array.isArray(S.extraProposals)) ? S.extraProposals : [];
+    let type = base;
+    if (extra.length && Math.random() < 0.4) {
+      type = (S.oh < 45 && extra.includes('krispaket')) ? 'krispaket' : extra[Math.floor(Math.random() * extra.length)];
+    }
     engine.openProposal(type, by);
   }, 2500);
 }
