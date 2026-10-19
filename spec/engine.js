@@ -27,6 +27,18 @@ export const DEFAULT_CONFIG = {
   gronCost: 8,       // OMBALANSERING: billigare grön satsning (var 10)
   gronGain: 14,      // OMBALANSERING: kollektiv satsning kan VÄNDA en kris (var 8)
   taxAmount: 20,     // OMBALANSERING: vassare maktmedel mot boven (var 15)
+
+  // ─── KRIS / FÖRLUST-MEKANIK (design/VINST-FORLUST-FORSLAG.md, Alternativ B) ───────────────────
+  // "Blandaren = kris-linjen": en deterministisk, hänvisningsbar kris-gräns som biter MITT i spelet
+  // (dagens enda mitt-i-död = öh ≤ 0 nås i praktiken aldrig av en reagerande grupp). Vinstvillkoret
+  // (öh ≥ threshold på sista rundan → rikaste vinner) och 0-golvet (backstop) är ORÖRDA.
+  krisZon: 20,        // öh ≤ 20 vid bokslut (utan aktiv kris) → KRIS startar. = ohMode 'superdaligt' + hjärnans kris.wav-gräns.
+  krisReset: 35,      // öh ≥ 35 vid bokslut (med aktiv kris) → krisen LÖST. 15 p hysteres (= redZone) hindrar flimmer.
+  krisReplay: true,   // olöst kris vid deadline → rollback + spela OM rundan (false = krisen fortsätter utan omspel).
+  krisMaxReplay: 2,   // tak på antal omspel av samma kris-runda. deadline = 1 runda (implicit av grind-strukturen).
+  // OBS game-over-gränsen: efter krisMaxReplay omspel FORTSÄTTER spelet ändå (ingen hård game-over som default —
+  // spelledaren/gmMode räddar i rummet). Platsen där en hård game-over SKULLE sitta är flaggad i _krisGrind().
+
   humanTeam: 'aker', // vilket område människan styr i mock/fas 3
 
   // ─── DYNAMISK FÖRSLAGSPOOL (design/FORSLAGSPOOL-FORSLAG.md) ───────────────────
@@ -143,6 +155,7 @@ export class EcoLoco {
     this.S = {
       round: 1, oh: c.ohStart, lastDelta: 0, over: false,
       banDirtyThisRound: false, banDirtyNextRound: false,
+      inCrisis: false, krisReplaysLeft: c.krisMaxReplay,   // kris-mekanik: följer med i getState() → klient + spelledarpult
       proposal: null, gronQueued: 0, extraProposals: [],
       eventPool: EVENTS.map(e => e.id), drawnEvents: [], pendingEvent: null,
       teams: AREAS.map(a => ({
@@ -158,12 +171,16 @@ export class EcoLoco {
     this._emit('start', { config: c, areas: AREAS });
     this._emit('roundStart', { round: 1 });
     this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: 0 });
+    this._captureRound();                            // full state-snapshot = det läge spelarna agerar från (för replayRound)
     return this.S;
   }
   reset() { return this.start(); }
 
   team(id) { return this.S.teams.find(t => t.id === id); }
   _snapshot() { this.S.teams.forEach(t => t._roundStartWealth = t.pengar + t.material); }
+  // Full state-snapshot vid rundstart. Lagras på instansen (INTE i this.S) → structuredClone(this.S)
+  // refererar aldrig sig själv. S är ren data (tal/strängar/arrayer/objekt) → strukturklon är exakt.
+  _captureRound() { this._roundSnapshot = structuredClone(this.S); }
   _canAfford(t, card) { return t.pengar >= card.kp && t.material >= card.km; }
 
   // ACTION: välj kort. Emitterar 'build' (rita på slot + kontoanimation + bygg-ljud).
@@ -382,17 +399,71 @@ export class EcoLoco {
 
     this._emit('roundEnd', { round: this.S.round });
 
-    // slut / krasch / nästa runda
+    // slut / krasch / kris / nästa runda
+    // (1) backstop: total kollaps vid 0 — ORÖRT (ligger FÖRE kris-grinden; kris-linjen vid 20 träffar först).
     if (this.S.oh <= 0) return this._end(false, 'Ön kollapsade totalt.');
+    // (2) sista rundan: vinstvillkoret (öh ≥ threshold → rikaste vinner) är ORÖRT. Kris-grinden gäller
+    //     bara MITT i spelet (runda < rounds) → ingen omspelning av själva slutrundan.
     if (this.S.round >= c.rounds) {
       return this.S.oh >= c.threshold ? this._end(true) : this._end(false, `Ön nådde bara ${this.S.oh} — under tröskeln ${c.threshold}.`);
     }
+    // (3) KRIS-GRIND: starta/lös kris, eller spela om rundan (full rollback) om olöst vid deadline.
+    if (this._krisGrind() === 'replay') return this.replayRound();
+
     this.S.round++;
     this._snapshot();
     this._rollExtraProposals();                      // rulla rundans extra-förslag (server-auktoritativt) före roundStart
     this._drawEvent();                               // dra rundans händelse (före roundStart → servern ser pendingEvent)
     this._emit('roundStart', { round: this.S.round });
     if (!this.gm && this.S.pendingEvent) this._runEvent(this.S.pendingEvent);   // auto-läge: applicera direkt
+    this._captureRound();                            // snapshot EFTER rundsetup + ev. auto-händelse = replay-punkt
+  }
+
+  // ═══════════════ Kris-grind (design/VINST-FORLUST-FORSLAG.md, Alternativ B) ═══════════════
+  // Körs i endRound EFTER att öh uppdaterats, FÖRE rundan avancerar. Returnerar:
+  //   'advance' → fortsätt normalt (ev. efter att kris startat/lösts)
+  //   'replay'  → olöst kris vid deadline → endRound gör rollback via replayRound()
+  // Deadline = 1 runda: krisen deklareras vid bokslut N, måste lösas till bokslut N+1.
+  _krisGrind() {
+    const c = this.cfg;
+    if (!this.S.inCrisis) {
+      // Ingen aktiv kris → starta om öh föll till/under krisZon vid detta bokslut.
+      if (this.S.oh <= c.krisZon) {
+        this.S.inCrisis = true;
+        this.S.krisReplaysLeft = c.krisMaxReplay;   // färskt omspels-tak per kris (en senare, separat kris får egna 2)
+        this._emit('crisis', { on: true, oh: this.S.oh, replaysLeft: this.S.krisReplaysLeft });
+      }
+      return 'advance';
+    }
+    // Aktiv kris → LÖST om öh klättrat upp över återhämtnings-tröskeln (hysteres krisReset > krisZon).
+    if (this.S.oh >= c.krisReset) {
+      this.S.inCrisis = false;
+      this._emit('crisis', { on: false, oh: this.S.oh, replaysLeft: this.S.krisReplaysLeft });
+      return 'advance';
+    }
+    // Aktiv kris, fortfarande olöst vid deadline → spela OM rundan om tak ej nått.
+    if (c.krisReplay && this.S.krisReplaysLeft > 0) {
+      this.S.krisReplaysLeft--;
+      return 'replay';
+    }
+    // ── HÅRD GAME-OVER-GRÄNS ── Taket (krisMaxReplay) är nått och krisen är fortfarande olöst.
+    // DEFAULT: ingen hård game-over — spelet fortsätter med krisen kvar aktiv (spelledaren/gmMode
+    // räddar i rummet). Vill Josef ha en hård game-over här är detta exakt platsen:
+    //   return this._end(false, 'Ön kollapsade — krisen löstes aldrig.');
+    return 'advance';
+  }
+
+  // Spela om rundan: full rollback till rundans start (snapshotten) + emit 'roundReplay'.
+  // krisReplaysLeft/inCrisis är META om omspels-processen → överlever rollbacken (rullas EJ tillbaka).
+  // Emittar INTE 'roundStart' (undviker award-paus-maskineriet) — lyssnarna hanterar 'roundReplay' separat.
+  replayRound() {
+    const keepReplaysLeft = this.S.krisReplaysLeft;
+    this.S = structuredClone(this._roundSnapshot);
+    this.S.inCrisis = true;                 // krisen är fortfarande aktiv under omspelet (blandaren kvar PÅ)
+    this.S.krisReplaysLeft = keepReplaysLeft;
+    this._emit('roundReplay', { round: this.S.round });
+    this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: 0 });
+    // _roundSnapshot lämnas orört → varje omspel rullar tillbaka till SAMMA rena rundstart.
   }
 
   // ═══════════════ Händelse-system ═══════════════
@@ -492,6 +563,12 @@ export class EcoLoco {
     };
   }
   _end(won, reason) {
+    // Släpp en ev. aktiv kris FÖRE gameEnd → riggen (kris→0: blandare av + ambient) och skärmen
+    // (glöd av) nollställs innan slutrutan. Täcker fallet att krisen var olöst på sista rundan.
+    if (this.S.inCrisis) {
+      this.S.inCrisis = false;
+      this._emit('crisis', { on: false, oh: this.S.oh, replaysLeft: this.S.krisReplaysLeft });
+    }
     this.S.over = true;
     const w = this.richest(), bov = this.worstPolluter();
     this._emit('gameEnd', {

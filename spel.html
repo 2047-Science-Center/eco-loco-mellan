@@ -249,6 +249,12 @@
   #banner .bt { font-size: 76px; font-weight: 800; letter-spacing: 6px; text-shadow: 0 4px 30px #000; background: rgba(20,18,14,.8); border: 3px solid var(--edge2); border-radius: 20px; padding: 24px 60px; }
   #banner .bt.varn { color: var(--led-red); border-color: var(--led-red); }
 
+  /* KRIS — subtil tickande röd glöd runt hela skärmen; ligger kvar tills krisen är löst (design/ui-mockup/kris-mockup.html) */
+  .krisglow { position: absolute; inset: 0; pointer-events: none; z-index: 40; display: none;
+      box-shadow: inset 0 0 70px 6px rgba(240,86,75,.14); animation: kristick 2.4s ease-in-out infinite; }
+  .krisglow.on { display: block; }
+  @keyframes kristick { 0%,100% { box-shadow: inset 0 0 64px 6px rgba(240,86,75,.12); } 50% { box-shadow: inset 0 0 150px 30px rgba(240,86,75,.42); } }
+
   /* ——— Runda 0: tutorial-lagret ——— */
   #tutveil { position: absolute; inset: 0; background: rgba(10, 9, 7, .72); z-index: 8; display: none; }
   .tut-focus { position: relative; z-index: 9; }
@@ -450,6 +456,8 @@
 
   <div id="toasts"></div>
   <div id="banner"><div class="bt" id="bannertxt"></div></div>
+  <!-- KRIS: tickande röd glöd — tänds vid crisis{on:true}, ligger kvar tills crisis{on:false} -->
+  <div class="krisglow" id="krisglow"></div>
 
   <!-- Start-ceremoni: redo → nedräkning → RUNDA 1 -->
   <div class="overlay" id="ov-ready" style="background:rgba(8,7,5,.93);z-index:16;flex-direction:column;gap:30px">

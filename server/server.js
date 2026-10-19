@@ -180,10 +180,14 @@ function newEngine() {
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
   rigg = attachRigg(engine, { publish: riggPublish, gm: gmMode, isPaused: () => paused });  // förstärkningsriggen: semantiska cues (paus fryser award-takten)
   const relay = ev => payload => broadcast({ type: 'event', event: ev, payload });
-  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'roundEnd', 'gameEnd'])
+  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd'])
     engine.on(ev, relay(ev));
+  // KRIS → riggen via EN semantisk cue. Dirigenten (hjarna-stubb.py) översätter: blandare + röd puls + 15s-timer.
+  // Gatas automatiskt av riggPublish i spelledarläge (ecoloco/rigg/kris är ej en AMBIENT_TOPIC) → spelledaren
+  // äger då blandaren manuellt. 15s-timern och LED-looken ligger i DIRIGENTEN, inte här.
+  engine.on('crisis', p => riggPublish('ecoloco/rigg/kris', p.on ? '1' : '0'));
   // Persistens-tap: SAMMA eventström som relä-broadcastas → en JSONL-rad per motorhändelse (payloads oförändrade).
-  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'roundEnd', 'award', 'gameEnd'])
+  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'crisis', 'roundReplay', 'roundEnd', 'award', 'gameEnd'])
     engine.on(ev, p => session?.logEvent(ev, p));
   // Härledda tal för summaryn: öhälsa per runda, händelser som slog, och summary vid gameEnd.
   engine.on('roundEnd', p => session?.noteOhRound(p.round, engine.getState().oh));
@@ -207,6 +211,15 @@ function newEngine() {
       if (pe) riggPublish('ecoloco/rigg/eventforslag', JSON.stringify({ id: pe.id, namn: pe.rubrik, text: pe.text }));
     }
     if (p.round > 1) pauseForAwards(); else startTimer();   // runda 2+: timern väntar tills prisutdelningen klickats igenom
+    maybeBotProposal(p.round);
+  });
+  // OMSPEL (kris olöst): rundan raderas och spelas om. Ingen prisceremoni (rundan är ogjord) → starta
+  // rundtimern direkt, i stället för pauseForAwards. 'roundReplay' broadcastas redan via relay-loopen ovan.
+  // OBS GM-läge: en award-ceremoni för den FELADE rundan kan ha hunnit broadcastas; cer nollas här, men
+  // samspelet skärm↔rigg vid omspel i GM-läge bör verifieras i rummet.
+  engine.on('roundReplay', p => {
+    resolvingNow = false; klar = new Set(); cer = null;
+    startTimer();
     maybeBotProposal(p.round);
   });
   engine.on('gameEnd', () => stopTimer());

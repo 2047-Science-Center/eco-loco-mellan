@@ -59,7 +59,7 @@ function makeLocal() {
   const engine = new EcoLoco(manifest.config || {});
   const me = engine.cfg.humanTeam;
   for (const ev of ['start', 'roundStart', 'build', 'trade', 'proposalOpened', 'proposalResolved',
-                    'income', 'ohalsa', 'award', 'event', 'roundEnd', 'gameEnd'])
+                    'income', 'ohalsa', 'award', 'event', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd'])
     engine.on(ev, p => em.emit(ev, p));
 
   let left = 0, tid = null, votingOpen = false;
@@ -90,6 +90,8 @@ function makeLocal() {
   });
   engine.on('proposalOpened', () => { votingOpen = true; });
   engine.on('proposalResolved', () => { votingOpen = false; });
+  // OMSPEL (kris olöst): rundan spelas om → ingen prisceremoni, starta rundtimern direkt.
+  engine.on('roundReplay', () => { votingOpen = false; startT(); });
   engine.on('gameEnd', () => stopT());
 
   function botAccepts(bot, get, getCur, give) {
@@ -155,7 +157,7 @@ function makeProxy() {
   const seen = new Set();
   const FWD = ['start', 'roundStart', 'build', 'trade', 'proposalOpened', 'proposalResolved',
                'income', 'ohalsa', 'award', 'awardCeremony', 'awardStep', 'awardDone',
-               'event', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
+               'event', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
                'disconnected', 'reconnected', 'paused',
                'trailer', 'trailerDone',
@@ -322,6 +324,34 @@ game.on('event', p => run(async () => {
     await banner(`${warn ? '⚠ ' : '🎉 '}${(p.rubrik || '').toUpperCase()}`, warn, 1900);
     if (p.text) toast(`${warn ? '⚠' : '🎉'} ${p.text}`, warn);
     if (resolving) await delay(600);
+  }
+}));
+
+// KRIS (design/VINST-FORLUST-FORSLAG.md Alt B + design/ui-mockup/kris-mockup.html):
+//   on:true  → fyll #ov-event med kris-innehållet (röd .warn-ram) + visa kortet + tänd .krisglow.
+//              Kortet stängs som andra event (tryck/timeout) MEN glöden ligger kvar tills on:false.
+//   on:false → släck .krisglow (krisen löst).
+game.on('crisis', p => run(async () => {
+  if (p.on) {
+    $('krisglow').classList.add('on');
+    renderMe(); renderTeams(); renderRegs();
+    const reset = E().cfg.krisReset ?? 35;
+    $('event-img').src = 'assets/kris.png';   // placeholder tills Josef genererar bilden (fallback = som andra saknade event-bilder)
+    $('event-rubrik').textContent = 'Ön står inför kollaps';
+    $('event-text').textContent = 'Centralmakten meddelar kyligt: öns hälsa är kritisk. Rädda den innan rundan är slut — annars faller allt, och ni får börja om. Lösningen är er.';
+    $('event-kons').innerHTML =
+      `<div class="kons oh">🎯 Få öns hälsa <b>över ${reset}</b></div>` +
+      `<div class="kons"><span class="minus">⏳ 1 runda — annars förlorar <b>alla</b></span></div>`;
+    $('ov-event').classList.add('warn');
+    $('ov-event').classList.add('open');
+    await delay(500);                               // hinner läsas innan tryck registreras
+    await clickOrTimeout($('ov-event'), resolving ? 6000 : 8000);
+    $('ov-event').classList.remove('open');
+    await delay(200);
+    // .krisglow ligger KVAR — släcks först vid crisis{on:false}
+  } else {
+    $('krisglow').classList.remove('on');
+    toast('✓ Krisen avvärjd — ön andas ut');
   }
 }));
 
@@ -670,6 +700,24 @@ $('btn-end').addEventListener('click', () => {
   }
 });
 game.on('roundStart', () => { klarSent = false; });
+
+// OMSPEL (kris olöst → rundan spelas om): kort signal + bygg om vyn från det ÅTERSTÄLLDA statet.
+// Separat från roundStart (undviker award-paus-maskineriet) → nollställ rund-UI:t explicit här.
+game.on('roundReplay', p => run(async () => {
+  klarSent = false; picked = null; expanded = null; resolving = false; klarLag = new Set();
+  $('ov-award').classList.remove('open');
+  $('ov-event').classList.remove('open');
+  $('ov-vote').classList.remove('open'); voteOpenFor = null;
+  $('cards').parentElement.classList.remove('hand-locked');
+  $('roundnum').textContent = p.round;
+  await banner('ÖN KOLLAPSADE — SPELAR OM RUNDAN', true, 1900);
+  const S = E()?.getState();
+  if (S) rebuildFromState(S);                         // ritar om byggnader/resurser/öhälsa från rollbacken; tänder .krisglow (S.inCrisis)
+  $('btn-prop').disabled = false;
+  $('endwrap').classList.remove('pulse');
+  setEndBtn('AVSLUTA<br>OMGÅNG', false);
+}));
+
 function humanCount() {
   const l = lastLobby;
   return l ? Object.values(l.claims).filter(v => v === 'human').length : 1;
@@ -945,6 +993,7 @@ function rebuildFromState(S) {
   map.clearBuildings();
   for (const t of S.teams) t.slots.forEach((b, i) => map.placeBuilding(t.id, i, manifest.buildings[b.asset].file));
   updateOh({ value: S.oh, mode: ohMode(S.oh), delta: S.lastDelta });
+  $('krisglow').classList.toggle('on', !!S.inCrisis);   // kris-glöden följer statet (återanslutning/övertag/omspel)
   renderTeams(); renderRegs();
   if (!game.me) {
     // Åskådare mitt i pågående spel: behåll lobbyn öppen så man kan ta över en bot.

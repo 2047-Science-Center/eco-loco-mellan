@@ -35,6 +35,8 @@ ATTRACT_LOOK = {"h": 200, "s": 60, "v": 20, "puls": 25}
 GREEN_LOOK   = {"h": 120, "s": 100, "v": 90}
 OFF          = {"h": 0, "s": 0, "v": 0}
 PAUS_LOOK    = {"h": 210, "s": 70, "v": 14, "puls": 0}   # lugn, nersläckt blå bas ("fryst") — wave sveper över
+KRIS_LOOK    = {"h": 0, "s": 100, "v": 15, "puls": 40}   # svag, pulserande röd — krisen äger LED-listen tills den släpps
+KRIS_BLANDARE_SEK = 15.0                                  # blandaren fyrar så länge, sen släcks BARA den (röda pulsen kvar)
 
 # ---- MAPPNING: award -> vinnarsidans look + ljud ----
 AWARD = {
@@ -46,6 +48,8 @@ LAG_SIDE = {"aker": 1, "skog": 2, "tundra": 3, "stad": 4}   # lag -> sida/spot
 
 # ---- state ----
 master  = False     # GM-master: ignorera spelets cues tills den släpps
+crisis_active = False   # KRIS pågår: krisen äger LED-listen (apply_ohalsa/apply_scen får ej skriva över den)
+crisis_timer  = None    # threading.Timer som släcker BARA blandaren efter KRIS_BLANDARE_SEK
 cur_mode = None
 last_oh  = None
 last_sides = {1: None, 2: None, 3: None, 4: None}    # senaste look per sida (för exakt paus-återställning)
@@ -163,21 +167,50 @@ def apply_ohalsa(payload):
     global cur_mode, last_oh
     last_oh = payload
     m = oh_mode(payload)
-    set_fx("none"); set_all(MODE_LOOK[m]); spots_off()
-    set_ambience(AMB_FILE.get(m))          # kontinuerlig soundscape för läget
+    if not crisis_active:                  # under KRIS äger krisen LED-listen → rör ej looken
+        set_fx("none"); set_all(MODE_LOOK[m]); spots_off()
+    set_ambience(AMB_FILE.get(m))          # kontinuerlig soundscape för läget (ambiencen loopar vidare även i kris)
     if m != cur_mode:
-        play(MODE_SOUND.get(m)); cur_mode = m
+        if not crisis_active: play(MODE_SOUND.get(m))
+        cur_mode = m
 
 def apply_scen(payload):
     global cur_mode
     if payload == "attract":
-        set_fx("none"); set_all(ATTRACT_LOOK); spots_off(); cur_mode = None; set_ambience("attract.mp3")
+        cur_mode = None; set_ambience("attract.mp3")
+        if not crisis_active: set_fx("none"); set_all(ATTRACT_LOOK); spots_off()
     elif payload == "runda":
         cur_mode = None            # nästa ohalsa sätter look + ambience
     elif payload == "awards":
-        set_fx("none"); stop_ambience()    # tyst under awards
+        stop_ambience()            # tyst under awards
+        if not crisis_active: set_fx("none")
     elif payload == "slut":
-        set_fx("none"); set_all(OFF); spots_off(); stop_ambience()
+        stop_ambience()
+        if not crisis_active: set_fx("none"); set_all(OFF); spots_off()
+
+# KRIS (semantisk cue ecoloco/rigg/kris, 1/0) — "ett MQTT-kommando gör allt".
+# '1': tänd saftblandaren + svag pulserande röd på alla fyra; starta 15 s-timer som släcker BARA
+#      blandaren (röda pulsen ligger kvar). crisis_active = True → apply_ohalsa/apply_scen rör ej looken.
+# '0': släck blandaren, nollställ timern, crisis_active = False, återställ ambient (nuvarande öhälso-look).
+def apply_kris(payload):
+    global crisis_active, crisis_timer
+    if payload == "1":
+        crisis_active = True
+        set_blandare(True)
+        set_fx("none"); set_all(KRIS_LOOK); spots_off()
+        if crisis_timer is not None: crisis_timer.cancel()
+        crisis_timer = threading.Timer(KRIS_BLANDARE_SEK, lambda: set_blandare(False))
+        crisis_timer.daemon = True
+        crisis_timer.start()
+    else:
+        crisis_active = False
+        if crisis_timer is not None: crisis_timer.cancel(); crisis_timer = None
+        set_blandare(False)
+        # återställ ambient-looken för nuvarande läge (krisen släppte LED-listen)
+        if last_oh is not None:
+            apply_ohalsa(last_oh)
+        else:
+            set_fx("none"); set_all(ATTRACT_LOOK); spots_off()
 
 # Paus (systemsignal, kringgår master): lugn blå bas + långsam wave = "fryst/väntar".
 # Hålls tills paus=0. Ambiencen rörs INTE (soundscapet loopar vidare under pausen).
@@ -258,6 +291,7 @@ def on_semantic(topic, payload):
     elif topic == "ecoloco/rigg/award":     apply_award(payload)
     elif topic == "ecoloco/rigg/ljud":      play(payload)   # central "show"-ljud: round_start/win/lose/relief/proposal_open/event_*
     elif topic == "ecoloco/rigg/wave":      set_fx("wave" if payload == "1" else "none")
+    elif topic == "ecoloco/rigg/kris":      apply_kris(payload)
     elif topic == "ecoloco/rigg/blandare":  set_blandare(payload == "1")
     elif topic == "ecoloco/rigg/countdown":
         if payload == "1":
@@ -269,7 +303,7 @@ def on_semantic(topic, payload):
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
               "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
-              "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")
