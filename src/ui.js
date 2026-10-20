@@ -1358,12 +1358,8 @@ async function runTutorial() {
   await startCeremony();
 }
 
-// Spelledar-läge (väljs i lobbyn): PÅ → spelet skickar INGA rigg-cues; spelledaren driver riggen manuellt.
-let medSpelledare = false;
-document.querySelectorAll('#modeseg .seg').forEach(b => b.addEventListener('click', () => {
-  medSpelledare = b.dataset.sp === '1';
-  document.querySelectorAll('#modeseg .seg').forEach(x => x.classList.toggle('sel', x === b));
-}));
+// Spelar-start = ALLTID utan spelledare (selfplay). Spelledar-läget styrs från spelledar-pulten
+// (den kan ta över riggen/prisutdelningen när som helst) — spelarna väljer det inte i lobbyn.
 // Paus (spelledare): fryser BARA spelmotorn — ambiencen i riggen fortsätter spela.
 $('btn-paus')?.addEventListener('click', () => game.pause());
 $('ov-paus')?.addEventListener('click', () => game.pause());
@@ -1387,13 +1383,13 @@ $('btn-start').addEventListener('click', async () => {
       fortsatt = () => runTutorial();
     } else {
       if (game.me) initSector();   // utan lag: starta ändå — alla lag körs av datorn, du tittar på
-      fortsatt = () => game.startGame({ spelledare: medSpelledare });
+      fortsatt = () => game.startGame({ spelledare: false });
     }
     startEfterTrailer(fortsatt);   // spela intro-trailern FÖRST (en gång, på alla skärmar), fortsätt när den är klar
   } else {
     $('ov-start').classList.remove('open');
     if (MODE === 'tutorial') { runTutorial(); return; }
-    game.startGame({ spelledare: medSpelledare });
+    game.startGame({ spelledare: false });
   }
 });
 
