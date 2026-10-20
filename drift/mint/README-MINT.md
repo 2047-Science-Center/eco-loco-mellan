@@ -68,6 +68,25 @@ Installerar Chromium (apt) + unclutter, skärmsläckare av, och lägger en **skr
 "Starta Eco Loco"**. **Ingen autostart** — du bootar till skrivbordet och öppnar spelet
 själv via ikonen. Stänger du fönstret (Alt+F4) är du tillbaka på skrivbordet.
 
+## 3b. Klient-NUC (spelledare + extra spelare, ingen egen server)
+
+En NUC som **bara ansluter till server-NUC:en** (ingen server/broker/hjärna) — t.ex. för att
+testa spelledarfunktionen + en andra spelare från en annan dator. Kör på klient-NUC:en:
+
+```bash
+bash drift/mint/installera-mint.sh klient http://<server-ip>:8765
+```
+
+Lägger **fyra skrivbordsknappar**:
+- **Starta spelledare** → `http://<server-ip>:8765/spelledare.html`
+- **Starta spelare** → `http://<server-ip>:8765/spel.html?online=1` (väljer lag i lobbyn)
+- **Uppdatera spelet** + **Starta om spelet** (samma som server-NUC:en; "Starta om" laddar bara
+  om skärmen här eftersom klienten inte har någon egen server).
+
+`<server-ip>` = det IP `installera-mint.sh server` skrev ut på server-NUC:en (kör `hostname -I`
+där). **Tips:** reservera server-NUC:ens IP i routern (DHCP-reservation) så den aldrig flyttar —
+då fortsätter knapparna peka rätt. Server-NUC:en måste köra för att knapparna ska ansluta.
+
 ## 4. Skrivbordsknappar (skötsel utan terminal)
 
 ```bash

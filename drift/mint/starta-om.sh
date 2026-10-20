@@ -4,8 +4,12 @@
 set -u
 pause() { [ -t 1 ] && read -rp "Tryck Enter för att stänga..."; }
 
-echo "== Startar om spelservern =="
-systemctl --user restart eco-loco-server && echo "  ✓ eco-loco-server omstartad" || echo "  ! kunde inte starta om servern"
+if systemctl --user list-unit-files 2>/dev/null | grep -q eco-loco-server; then
+  echo "== Startar om spelservern =="
+  systemctl --user restart eco-loco-server && echo "  ✓ eco-loco-server omstartad" || echo "  ! kunde inte starta om servern"
+else
+  echo "== Ingen lokal server på denna NUC (klient) — laddar bara om skärmen =="
+fi
 
 if systemctl --user list-unit-files 2>/dev/null | grep -q eco-loco-hjarna; then
   echo "== Startar om rigg-hjärnan =="

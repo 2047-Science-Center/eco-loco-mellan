@@ -129,9 +129,83 @@ EOF
   echo "  (Valfritt) autologin TILL SKRIVBORDET för obevakad boot:"
   echo "  Meny → Inloggningsfönster → fliken Användare → Automatisk inloggning PÅ."
 
+elif [ "$ROLL" = "klient" ]; then
+  # KLIENT-NUC: ingen egen server/broker/hjärna. Ansluter bara till server-NUC:en och ger
+  # TVÅ skrivbordsknappar — "Starta spelledare" (spelledare.html) och "Starta spelare"
+  # (spel.html?online=1, väljer lag i lobbyn) — plus Uppdatera/Starta om via installera-knappar.sh.
+  SERVER_URL="${2:?Ange server-NUC:ens URL, t.ex. http://192.168.1.50:8765}"
+  while [ "${SERVER_URL%/}" != "$SERVER_URL" ]; do SERVER_URL="${SERVER_URL%/}"; done  # strip avslutande slash
+  SPELLEDARE_URL="${SERVER_URL}/spelledare.html"
+  SPELARE_URL="${SERVER_URL}/spel.html?online=1"
+
+  echo "▸ Installerar Chromium (apt) + unclutter (dold muspekare)…"
+  sudo apt-get update -qq
+  sudo apt-get install -y unclutter || true
+  sudo apt-get install -y chromium 2>/dev/null || sudo apt-get install -y chromium-browser
+  CHROMIUM="$(command -v chromium || command -v chromium-browser)"
+
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+  apps="$HOME/.local/share/applications"
+  desktop_dir="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+
+  # Skriv ett kiosk-skript + en BETRODD skrivbordsikon. Egen --user-data-dir per roll så
+  # spelledare och spelare blir rena, oberoende webbläsarsessioner.
+  skriv_knapp() {  # <script-fil> <url> <ikon-text> <ikon> <desktop-filnamn> <profil-mapp>
+    local script="$HOME/.local/bin/$1" url="$2" namn="$3" icon="$4" deskfil="$5" profil="$6"
+    cat > "$script" <<EOF
+#!/usr/bin/env bash
+# ${namn} — genererad av installera-mint.sh (klient). Ansluter till ${SERVER_URL}.
+xset s off 2>/dev/null || true; xset -dpms 2>/dev/null || true; xset s noblank 2>/dev/null || true
+unclutter -idle 1 & UNC=\$!
+${CHROMIUM} --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
+  --autoplay-policy=no-user-gesture-required --check-for-update-interval=31536000 \\
+  --user-data-dir="\$HOME/.config/${profil}" \\
+  --app="${url}"
+kill \$UNC 2>/dev/null || true
+# Körs EN gång. Alt+F4 (eller 'Starta om spelet') → tillbaka till skrivbordet.
+EOF
+    chmod +x "$script"
+    local tmp; tmp="$(mktemp)"
+    cat > "$tmp" <<EOF
+[Desktop Entry]
+Type=Application
+Name=${namn}
+Comment=Anslut till Maktspelet-servern (${SERVER_URL})
+Exec=bash "$script"
+Icon=${icon}
+Terminal=false
+Categories=Game;
+StartupNotify=false
+EOF
+    install -m 0755 "$tmp" "$apps/$deskfil"                 # appmenyn (betrodd → funkar alltid)
+    if [ -d "$desktop_dir" ]; then
+      install -m 0755 "$tmp" "$desktop_dir/$deskfil"; chmod +x "$desktop_dir/$deskfil"
+      gio set -t string "$desktop_dir/$deskfil" metadata::trusted yes  2>/dev/null || true
+      gio set -t string "$desktop_dir/$deskfil" metadata::trusted true 2>/dev/null || true
+    fi
+    rm -f "$tmp"; echo "  ✓ $namn"
+  }
+
+  echo "▸ Skapar skrivbordsknappar (startas MANUELLT — INGEN autostart)…"
+  skriv_knapp "eco-loco-spelledare-kiosk.sh" "$SPELLEDARE_URL" "Starta spelledare" "preferences-desktop" "eco-loco-spelledare.desktop" "eco-loco-spelledare"
+  skriv_knapp "eco-loco-spelare-kiosk.sh"    "$SPELARE_URL"    "Starta spelare"    "input-gaming"       "eco-loco-spelare.desktop"    "eco-loco-spelare"
+  update-desktop-database "$apps" 2>/dev/null || true
+
+  echo "▸ Lägger Uppdatera-/Starta om-knappar…"
+  bash "$REPO_DIR/drift/mint/installera-knappar.sh"
+
+  echo
+  echo "✔ Klient-NUC klar — ansluter till ${SERVER_URL}"
+  echo "  Skrivbordsknappar: 'Starta spelledare', 'Starta spelare', 'Uppdatera spelet', 'Starta om spelet'."
+  echo "  'Starta spelledare' → ${SPELLEDARE_URL}"
+  echo "  'Starta spelare'    → ${SPELARE_URL}  (väljer lag i lobbyn)"
+  echo "  Grå/inaktiv ikon? → HÖGERKLICKA → 'Tillåt start' (Allow Launching), eller starta från MENYN."
+  echo "  OBS: server-NUC:en (${SERVER_URL}) måste köra — kör där:  bash drift/mint/installera-mint.sh server"
+
 else
   echo "Användning:"
-  echo "  bash drift/mint/installera-mint.sh server"
-  echo "  bash drift/mint/installera-mint.sh kiosk http://<server-ip>:8765 [aker|skog|tundra|stad]"
+  echo "  bash drift/mint/installera-mint.sh server                                  # denna NUC kör spelservern"
+  echo "  bash drift/mint/installera-mint.sh kiosk  http://<server-ip>:8765 [lag]    # spelar-kiosk (ett lag)"
+  echo "  bash drift/mint/installera-mint.sh klient http://<server-ip>:8765          # klient: spelledare + spelare-knappar"
   exit 1
 fi
