@@ -907,9 +907,18 @@ function showSlut(p) {
     (p.won ? `<div class="award"><div class="em">🏆</div><h4>Vinnare — rikast</h4><div class="who">${logoSVG(p.winner.teamId, 64)}${p.winner.namn}${p.winner.teamId === game.me ? ' (du!)' : ''}<span class="val">${p.winner.kapital} kapital</span></div></div>` : '') +
     (p.klimatbov ? `<div class="award" style="border-color:var(--edge2)"><div class="em">🏭</div><h4>Klimatbov</h4><div class="who">${logoSVG(p.klimatbov.teamId, 64)}${p.klimatbov.namn}${p.klimatbov.teamId === game.me ? ' (du…)' : ''}<span class="val ohminus">${p.klimatbov.skada} öhälsa</span></div></div>` : '');
   $('slut-efter').innerHTML = EFTERSNACK[Math.floor(Math.random() * EFTERSNACK.length)];
+  slutForlust = !p.won;                              // förlust → knappen tar tillbaka till lobbyn (spelet är avslutat)
+  $('btn-again').textContent = p.won ? 'STARTA NYTT SPEL' : 'TILLBAKA TILL LOBBYN';
   $('ov-slut').classList.add('open');
 }
-$('btn-again').addEventListener('click', () => game.playAgain());
+let slutForlust = false;
+$('btn-again').addEventListener('click', () => {
+  if (slutForlust) {                                 // FÖRLUST: tillbaka till lobbyn (inte direkt omstart)
+    $('ov-slut').classList.remove('open');
+    $('ov-start').classList.add('open');
+    if (lastLobby) renderLobby(lastLobby);
+  } else game.playAgain();
+});
 
 // ═══════════════ Toasts & banner ═══════════════
 function toast(html, warn = false) {
@@ -1193,6 +1202,7 @@ async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 12000 }) 
 }
 async function tutBarrier(beat) {
   if (!ONLINE || humanCount() <= 1) return;          // solo: passera direkt
+  if (beat !== 5) return;                            // synk BARA vid nedräkningen (beat 5) — alla kör fritt i egen takt innan
   realGame.net.tutBeat(beat);
   const bar = $('tutbarrier');
   let klart = false;

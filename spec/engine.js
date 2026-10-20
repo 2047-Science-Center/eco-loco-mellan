@@ -408,7 +408,9 @@ export class EcoLoco {
       return this.S.oh >= c.threshold ? this._end(true) : this._end(false, `Ön nådde bara ${this.S.oh} — under tröskeln ${c.threshold}.`);
     }
     // (3) KRIS-GRIND: starta/lös kris, eller spela om rundan (full rollback) om olöst vid deadline.
-    if (this._krisGrind() === 'replay') return this.replayRound();
+    const krisRes = this._krisGrind();
+    if (krisRes === 'replay')   return this.replayRound();
+    if (krisRes === 'gameover') return;   // olöst kris → _krisGrind kallade redan _end(false) (game over)
 
     this.S.round++;
     this._snapshot();
@@ -441,16 +443,10 @@ export class EcoLoco {
       this._emit('crisis', { on: false, oh: this.S.oh, replaysLeft: this.S.krisReplaysLeft });
       return 'advance';
     }
-    // Aktiv kris, fortfarande olöst vid deadline → spela OM rundan om tak ej nått.
-    if (c.krisReplay && this.S.krisReplaysLeft > 0) {
-      this.S.krisReplaysLeft--;
-      return 'replay';
-    }
-    // ── HÅRD GAME-OVER-GRÄNS ── Taket (krisMaxReplay) är nått och krisen är fortfarande olöst.
-    // DEFAULT: ingen hård game-over — spelet fortsätter med krisen kvar aktiv (spelledaren/gmMode
-    // räddar i rummet). Vill Josef ha en hård game-over här är detta exakt platsen:
-    //   return this._end(false, 'Ön kollapsade — krisen löstes aldrig.');
-    return 'advance';
+    // Aktiv kris, fortfarande olöst vid deadline → FÖRLORAT. Josef: ett förlorat spel ska AVSLUTAS
+    // (inte spelas om) → game over. Klienten går då tillbaka till lobbyn (gameEnd, won=false).
+    this._end(false, 'Ön kollapsade — krisen löstes aldrig i tid.');
+    return 'gameover';
   }
 
   // Spela om rundan: full rollback till rundans start (snapshotten) + emit 'roundReplay'.

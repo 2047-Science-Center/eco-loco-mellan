@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maktspelet — KRIS som eventkort (mockup)</title>
+<style>
+  /* Fonter + tokens hämtade direkt ur spel.html så mockupen matchar riktiga spelet */
+  @font-face{font-family:'Oxanium';font-weight:700;src:url('../../assets/fonts/oxanium.woff2') format('woff2');}
+  @font-face{font-family:'Oxanium';font-weight:800;src:url('../../assets/fonts/oxanium.woff2') format('woff2');}
+  @font-face{font-family:'Chakra Petch';font-weight:700;src:url('../../assets/fonts/chakrapetch-700.woff2') format('woff2');}
+  :root{
+    --bg:#121009; --panel:#211E17; --panel2:#2A261D; --panel3:#0C0B07;
+    --edge:#4A443A; --edge2:#5C5547; --gold:#C9A94F; --text:#F2ECDD; --dim:#B8AF9A;
+    --led:#F0B33C; --led-red:#F0564B; --led-green:#3DD68C;
+    --oh-red:#F0564B; --oh-yellow:#F5C518; --oh-green:#3DD68C;
+    --smutsig:#8A4A38; --standard:#7A7263; --gron:#4E9C58;
+    --font-disp:'Oxanium','Avenir Next',system-ui,sans-serif;
+    --font-num:'Chakra Petch',ui-monospace,'Menlo',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#0E0D0A;color:var(--text);font-family:var(--font-disp);overflow:hidden}
+
+  /* ── mockup-väljare (INTE del av spelet) ── */
+  .picker{position:fixed;top:0;left:0;right:0;height:46px;z-index:100;display:flex;align-items:center;gap:8px;
+    padding:0 14px;background:#000;border-bottom:1px solid #2a2721}
+  .picker b{font-size:12px;letter-spacing:2px;color:var(--dim);margin-right:8px}
+  .picker button{font-family:var(--font-disp);font-weight:800;font-size:13px;letter-spacing:.5px;color:var(--dim);
+    background:#1a1813;border:1px solid #38342b;border-radius:8px;padding:8px 14px;cursor:pointer}
+  .picker button.on{color:#0E0D0A;background:var(--gold);border-color:var(--gold)}
+
+  .screen{position:absolute;top:46px;left:0;right:0;bottom:0;overflow:hidden}
+
+  /* ── topbar / öhälsomätare (ur spel.html) ── */
+  .topbar{padding:16px 22px 10px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,#1a1711,transparent);position:relative;z-index:5}
+  .toprow{display:flex;align-items:center;gap:20px}
+  .hero-oh{flex:1;display:flex;align-items:baseline;gap:18px}
+  .hero-oh .hero-lbl{align-self:center;font-size:13px;letter-spacing:3px;color:var(--dim);font-weight:800;text-transform:uppercase}
+  .ohval{font-family:var(--font-num);font-size:64px;font-weight:800;line-height:.9;transition:color .3s}
+  .ohdelta{font-family:var(--font-num);font-size:19px;font-weight:800;padding:6px 12px;border-radius:8px;border:2px solid var(--edge2);background:var(--panel2);min-width:60px;text-align:center}
+  .ohdelta.neg{background:#3d2320;color:var(--led-red);border-color:#5e332c}
+  .ohdelta.pos{background:#20372a;color:var(--led-green);border-color:#2c5e3d}
+  .chip{background:var(--panel2);border:2px solid var(--edge);border-radius:10px;padding:9px 16px;font-weight:800;letter-spacing:1px;font-size:20px;white-space:nowrap}
+  .chip small{display:block;font-size:11px;color:var(--dim);letter-spacing:2px;font-weight:600}
+  .chip span{font-family:var(--font-num)}
+  .ohbar{position:relative;height:30px;background:var(--panel3);border:3px solid var(--edge2);border-radius:12px}
+  .ohzones{position:absolute;inset:3px;border-radius:8px;overflow:hidden;display:flex}
+  .ohzones i{height:100%;opacity:.42}
+  .ohzones .z1{width:35%;background:var(--oh-red)}.ohzones .z2{width:25%;background:var(--oh-yellow)}.ohzones .z3{width:40%;background:var(--oh-green)}
+  .ohfill{position:absolute;top:3px;bottom:3px;left:3px;border-radius:8px;transition:width .4s,background .3s;box-shadow:0 0 16px currentColor}
+  .ohgoal{position:absolute;top:-22px;bottom:-6px;left:60%;width:0;border-left:3px dashed var(--gold)}
+  .ohgoal em{position:absolute;top:-2px;left:6px;font-style:normal;font-size:12px;font-weight:800;color:var(--gold);letter-spacing:1px;white-space:nowrap}
+
+  /* ── spel-backdrop (förenklad) ── */
+  .stage{position:relative;height:calc(100% - 140px);display:flex;align-items:center;justify-content:center}
+  .island{width:280px;height:200px;border-radius:50%/42%;
+    background:radial-gradient(ellipse at 50% 38%,#3a4a2f,#243019 60%,#171f10);
+    border:4px solid #0c0b07;box-shadow:0 20px 60px #000, inset 0 0 40px #0a0d06;transition:filter .4s}
+  .hand{position:absolute;bottom:14px;left:0;right:0;display:flex;gap:14px;justify-content:center}
+  .card{width:150px;height:88px;border-radius:12px;border:3px solid var(--edge);background:var(--panel);
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;font-weight:800;font-size:14px}
+  .card .t{font-size:11px;letter-spacing:1px;padding:2px 8px;border-radius:6px;color:#fff}
+  .card.s .t{background:var(--smutsig)}.card.m .t{background:var(--standard)}.card.g .t{background:var(--gron)}
+  body[data-state="glod"] .island{filter:grayscale(.55) brightness(.7) sepia(.4) hue-rotate(-22deg)}
+
+  /* ══ DET ENDA EXTRA: tickande röd glöd runt hela skärmen tills krisen är löst ══ */
+  .krisglow{position:absolute;inset:0;pointer-events:none;z-index:40;display:none;
+    box-shadow:inset 0 0 70px 6px rgba(240,86,75,.14);animation:tick 2.4s ease-in-out infinite}
+  body[data-state="kort"] .krisglow,body[data-state="glod"] .krisglow{display:block}
+  @keyframes tick{0%,100%{box-shadow:inset 0 0 64px 6px rgba(240,86,75,.12)}50%{box-shadow:inset 0 0 150px 30px rgba(240,86,75,.42)}}
+
+  /* ── eventkort (exakt #ov-event-mönstret ur spel.html) ── */
+  .overlay{position:absolute;inset:0;background:rgba(10,9,7,.78);display:none;align-items:center;justify-content:center;z-index:30}
+  body[data-state="kort"] #ov-event{display:flex}
+  .eventcard{width:min(760px,86vw);background:var(--panel);border:4px solid var(--edge2);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 80px rgba(0,0,0,.7)}
+  #ov-event.warn .eventcard{border-color:var(--led-red)}
+  .eventcard .evimg{width:100%;height:300px;object-fit:cover;display:block;background:#14120E;
+    position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+  .eventcard .evimg::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(240,86,75,.18),transparent 70%)}
+  .evimg .ph{font-size:13px;letter-spacing:3px;color:#6f655a;font-weight:800;z-index:1}
+  .evimg .phicon{width:56px;height:56px;opacity:.5;z-index:1}
+  .event-tx{padding:22px 32px 24px;text-align:center}
+  .event-tx h3{margin:0 0 10px;font-size:32px;letter-spacing:1px;color:var(--led-red)}
+  .event-tx p{margin:0;font-size:20px;line-height:1.5;color:var(--text)}
+  .event-kons{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px}
+  .event-kons .kons{background:var(--panel3);border:2px solid var(--edge2);border-radius:10px;padding:8px 14px;font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .event-kons .kons.oh{border-color:var(--gold)}
+  .event-kons .kons.fara{border-color:#5e332c;color:var(--led-red)}
+  .fortsatt{margin-top:16px;font-size:13px;color:var(--dim);letter-spacing:1px;animation:fpuls 1.6s ease-in-out infinite}
+  @keyframes fpuls{50%{opacity:.5}}
+
+  .solved{position:absolute;top:50%;left:0;right:0;text-align:center;transform:translateY(-50%);display:none}
+  body[data-state="löst"] .solved{display:block}
+  .solved .big{font-size:40px;font-weight:800;color:var(--led-green);letter-spacing:2px}
+  .solved .sub{margin-top:8px;color:var(--dim);font-size:18px}
+</style>
+</head>
+<body data-state="kort">
+
+  <div class="picker">
+    <b>MOCKUP — VÄXLA LÄGE:</b>
+    <button data-s="kort" class="on">1 · Kris-kort (pop-up)</button>
+    <button data-s="glod">2 · Kort stängt — glöd kvar</button>
+    <button data-s="löst">3 · Krisen löst — glöd av</button>
+  </div>
+
+  <div class="screen">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="toprow">
+        <div class="hero-oh">
+          <span class="hero-lbl">Öns hälsa</span>
+          <div class="ohval" id="ohval">18</div>
+          <div class="ohdelta neg" id="ohdelta">−9</div>
+        </div>
+        <div class="chip"><small>ÖNS LÄGE</small><span id="ohmode">Superdåligt</span></div>
+      </div>
+      <div class="ohbar">
+        <div class="ohzones"><i class="z1"></i><i class="z2"></i><i class="z3"></i></div>
+        <div class="ohfill" id="ohfill"></div>
+        <div class="ohgoal"><em>MÅL 60</em></div>
+      </div>
+    </div>
+
+    <!-- Spel-scen -->
+    <div class="stage">
+      <div class="island"></div>
+      <div class="hand">
+        <div class="card s"><span class="t">SMUTSIG</span><span>Industrijordbruk</span></div>
+        <div class="card m"><span class="t">STANDARD</span><span>Jordbruk</span></div>
+        <div class="card g"><span class="t">GRÖN</span><span>Ekologiskt</span></div>
+      </div>
+
+      <div class="solved">
+        <div class="big">✓ KRISEN AVVÄRJD</div>
+        <div class="sub">Ön andas ut. Den röda glöden slocknar.</div>
+      </div>
+    </div>
+
+    <!-- Eventkort (samma som andra event) -->
+    <div class="overlay warn" id="ov-event"><div class="eventcard">
+      <div class="evimg">
+        <svg class="phicon" viewBox="0 0 24 24" fill="none" stroke="#9a4a40" stroke-width="1.6"><path d="M12 3 2 21h20L12 3z"/><line x1="12" y1="10" x2="12" y2="15"/><circle cx="12" cy="18" r=".6" fill="#9a4a40" stroke="none"/></svg>
+        <span class="ph">KRIS-BILD — DU GENERERAR</span>
+      </div>
+      <div class="event-tx">
+        <h3>Ön står inför kollaps</h3>
+        <p>Centralmakten meddelar kyligt: öns hälsa är kritisk. Rädda den innan rundan är slut — annars faller allt, och ni får börja om. Lösningen är er.</p>
+        <div class="event-kons">
+          <div class="kons oh">🎯 Få öns hälsa <b>över 35</b></div>
+          <div class="kons fara">⏳ 1 runda — annars förlorar <b>alla</b></div>
+        </div>
+        <div class="fortsatt">▸ TRYCK FÖR ATT FORTSÄTTA</div>
+      </div>
+    </div></div>
+
+    <!-- Det enda extra: tickande röd glöd runt skärmen -->
+    <div class="krisglow"></div>
+  </div>
+
+<script>
+  const S={
+    kort:{oh:18,delta:'−9',cls:'neg',mode:'Superdåligt'},
+    glod:{oh:18,delta:'−9',cls:'neg',mode:'Superdåligt'},
+    'löst':{oh:38,delta:'+20',cls:'pos',mode:'Dåligt'},
+  };
+  const col=v=>v<35?'var(--oh-red)':v<60?'var(--oh-yellow)':'var(--oh-green)';
+  function set(s){
+    document.body.dataset.state=s;const d=S[s];
+    const o=document.getElementById('ohval');o.textContent=d.oh;o.style.color=col(d.oh);
+    const dl=document.getElementById('ohdelta');dl.textContent=d.delta;dl.className='ohdelta '+d.cls;
+    document.getElementById('ohmode').textContent=d.mode;
+    const f=document.getElementById('ohfill');f.style.width=d.oh+'%';f.style.background=col(d.oh);f.style.color=col(d.oh);
+    document.querySelectorAll('.picker button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+  }
+  document.querySelectorAll('.picker button').forEach(b=>b.addEventListener('click',()=>set(b.dataset.s)));
+  set('kort');
+</script>
+</body>
+</html>
