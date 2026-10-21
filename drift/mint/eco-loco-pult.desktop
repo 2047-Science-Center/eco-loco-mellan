@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Öppna spelledar-pulten
+Comment=Öppnar spelledar-pulten i webbläsaren (helskärm = tryck F11)
+# @EXEC@ ersätts av installera-knappar.sh med rätt sökväg till oppna-pulten.sh.
+Exec=@EXEC@
+Icon=input-tablet
+Terminal=false
+Categories=Game;
+StartupNotify=false

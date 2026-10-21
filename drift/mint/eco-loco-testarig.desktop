@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Testa riggen
+Comment=Fyra en test-cue (hela listen grön 2 s) — ser du grönt lever riggen
+# @EXEC@ ersätts av installera-knappar.sh med rätt sökväg till testa-riggen.sh.
+Exec=@EXEC@
+Icon=weather-clear
+Terminal=true
+Categories=Game;
+StartupNotify=false

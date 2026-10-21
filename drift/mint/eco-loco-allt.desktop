@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Starta om ALLT
+Comment=Starta om spelserver + rigg-hjärna och ladda om skärmen — rent bord
+# @EXEC@ ersätts av installera-knappar.sh med rätt sökväg till starta-om-allt.sh.
+Exec=@EXEC@
+Icon=view-refresh
+Terminal=true
+Categories=Game;
+StartupNotify=false

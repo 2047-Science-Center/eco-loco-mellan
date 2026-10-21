@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Hälsokoll
+Comment=Visar om server, rigg-hjärna och broker lever + maskinens IP:er (felsökning utan terminal)
+# @EXEC@ ersätts av installera-knappar.sh med rätt sökväg till halsokoll.sh.
+Exec=@EXEC@
+Icon=utilities-system-monitor
+Terminal=true
+Categories=Game;
+StartupNotify=false

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Starta om riggen
+Comment=Starta om rigg-dirigenten (hjärnan) — när LED:en slutat lysa men spelet funkar
+# @EXEC@ ersätts av installera-knappar.sh med rätt sökväg till starta-om-riggen.sh.
+Exec=@EXEC@
+Icon=preferences-desktop-display
+Terminal=true
+Categories=Game;
+StartupNotify=false

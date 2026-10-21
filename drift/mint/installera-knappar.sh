@@ -32,8 +32,14 @@ lagg_knapp() {  # <desktop-mall> <målskript>
 }
 
 echo "== Lägger skrivbordsknappar =="
-lagg_knapp "eco-loco-starta-om.desktop" "starta-om.sh"
-lagg_knapp "eco-loco-uppdatera.desktop" "uppdatera.sh"
+lagg_knapp "eco-loco-starta-om.desktop"   "starta-om.sh"
+lagg_knapp "eco-loco-uppdatera.desktop"   "uppdatera.sh"
+# Felsöknings-knappar (robusta — säger "ej här" där en tjänst inte finns, så de kan ligga på alla NUC:ar):
+lagg_knapp "eco-loco-riggomstart.desktop" "starta-om-riggen.sh"
+lagg_knapp "eco-loco-allt.desktop"        "starta-om-allt.sh"
+lagg_knapp "eco-loco-testarig.desktop"    "testa-riggen.sh"
+lagg_knapp "eco-loco-halsokoll.desktop"   "halsokoll.sh"
+lagg_knapp "eco-loco-pult.desktop"        "oppna-pulten.sh"
 update-desktop-database "$apps" 2>/dev/null || true
 
 echo
