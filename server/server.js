@@ -95,11 +95,23 @@ let trailerPlaying = false, trailerPlayedAuto = false, trailerTimers = [];
 let offerSeq = 0;
 const offers = new Map();      // offerId → { from, to, give, giveCur, get, getCur }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RUMS-FLÖDE — server-ägd fas + 15 s start-fönster (additivt ovanpå det befintliga
+// klient-drivna flödet attract→lobby→STARTA→trailer→tutorial→runda 1).
+//   phase = var GRUPPEN är → skickas i VARJE send() (top-level) + i hello-ack, så en
+//   sent ansluten klient kan hoppa in på rätt ställe (se src/ui.js joinPhase).
+//   startWindow = självspelets 15 s join-fönster FÖRE det befintliga trailer-steget.
+//   En start FRÅN SPELLEDARPULTEN (startGame direkt) hoppar över fönstret.
+// ─────────────────────────────────────────────────────────────────────────────
+let phase = 'lobby';                 // 'lobby' | 'intro' | 'tutorial' | 'spel' | 'slutdel'
+const START_WINDOW_SEC = 15;
+let startWindowInt = null, startWindowLeft = null;
+
 const humanIds = () => TEAMS.filter(id => claims[id] && claims[id] !== 'bot');
 const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 
 // State bär även serverns driftflaggor (gmMode/riggSilent) så spelledarpanelen kan spegla dem auktoritativt.
-function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, state: engine ? { ...engine.getState(), gmMode, riggSilent } : null })); }
+function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, state: engine ? { ...engine.getState(), gmMode, riggSilent } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, claims: Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])) };
@@ -146,6 +158,7 @@ function stopTrailer() {
 function playTrailer() {
   if (trailerPlaying) return;              // kör aldrig två trailrar samtidigt
   trailerPlaying = true;
+  phase = 'intro';                         // trailern/introt rullar → late-join hoppar in i introt
   trailerPlayedAuto = true;                // auto-vägen fyrar bara en gång per lobby-cykel
   const src = manifest.onboarding?.trailer || '';
   console.log(`[trailer] start — ${TRAILER_CUES.length} ljus-cues från servern (EN källa)`);
@@ -169,6 +182,53 @@ function maybeAutoTrailer() {
   if (started || trailerPlaying || trailerPlayedAuto) return;
   const allaManniskor = TEAMS.every(id => claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1);
   if (allaManniskor) playTrailer();
+}
+
+// ——— 15 s start-fönster (självspel) ———
+// Första STARTA-trycket från en SPELARE öppnar ett join-fönster: fasen står kvar i 'lobby',
+// servern broadcastar en synlig nedräkning, och fler kan claima sina lag. Vid 0 → 'startGo' →
+// klienterna kör det BEFINTLIGA flödet (trailer → tutorial → runda 1). Avbryts vid omstart.
+function openStartWindow(byLag) {
+  if (startWindowInt) return;                                   // redan öppet — ignorera dubbeltryck
+  if (started && engine && !engine.getState().over) return;     // pågår redan
+  startWindowLeft = START_WINDOW_SEC;
+  console.log(`[spel] 15 s start-fönster öppnat av ${byLag || 'bänk utan lag'}`);
+  broadcast({ type: 'startWindow', left: startWindowLeft, total: START_WINDOW_SEC });
+  startWindowInt = setInterval(() => {
+    startWindowLeft--;
+    if (startWindowLeft > 0) {
+      broadcast({ type: 'startWindow', left: startWindowLeft, total: START_WINDOW_SEC });
+    } else {
+      clearInterval(startWindowInt); startWindowInt = null; startWindowLeft = null;
+      console.log('[spel] start-fönster klart → startGo (kör det riktiga flödet)');
+      broadcast({ type: 'startGo' });
+    }
+  }, 1000);
+}
+function cancelStartWindow(silent) {
+  if (startWindowInt) { clearInterval(startWindowInt); startWindowInt = null; }
+  startWindowLeft = null;
+  if (!silent) broadcast({ type: 'startWindowCancel' });
+}
+
+// ——— Spelledarens OMSTART → alla till lobbyn (när som helst) ———
+// Stoppar allt (fönster/trailer/timer), nollställer started + motorn, sätter phase='lobby' och
+// broadcastar 'tilllobby' så varje klient river ner det den håller på med (overlays, solo-tutorial,
+// trailer) och visar lobbyn. Motorn = null → samma tillstånd som vid serverstart innan första partiet.
+function resetToLobby() {
+  cancelStartWindow(true);
+  stopTrailer();
+  broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
+  stopTimer();
+  slutdel = null; cer = null; lastAwards = null; resolvingNow = false;
+  started = false; paused = false;
+  klar = new Set(); tutBeats = {}; awardsVantar = new Set(); trailerPlayedAuto = false;
+  for (const id of TEAMS) if (claims[id] === 'bot') claims[id] = null;   // släpp botarna, behåll människornas platser
+  engine = null; rigg = null; session = null;
+  phase = 'lobby';
+  console.log('[spel] OMSTART → lobbyn (allt nollställt)');
+  broadcast({ type: 'event', event: 'tilllobby' });
+  broadcast(lobbyMsg());
 }
 
 function newEngine() {
@@ -289,6 +349,7 @@ function awardsKlar(lag) {
 
 // Röstlogik: botar röstar när alla (levande) människor röstat; döda/mänskliga eftersläntrare tvingas vid timeout.
 function checkBotVotes() {
+  if (!started || !engine) return;   // efter omstart-till-lobby finns ingen motor
   const p = engine.getState().proposal;
   if (!p || p.resolved) return;
   const waiting = liveHumanIds().filter(id => p.votes[id] === undefined);
@@ -310,7 +371,7 @@ function forceResolve() {
   engine.endRound();
 }
 function maybeResolve() {
-  if (paused || resolvingNow) return;
+  if (paused || resolvingNow || !started || !engine) return;
   const p = engine.getState().proposal;
   if (p && !p.resolved) return;                            // röstning pågår
   if (liveHumanIds().every(id => klar.has(id))) { stopTimer(); forceResolve(); }
@@ -356,6 +417,18 @@ function slutdelDistribution(questionId) {
   }
   return { questionId, counts, tokens };
 }
+// Skicka slutdelens AKTUELLA steg till EN klient (sent ansluten) så den hamnar på rätt ställe.
+function sendSlutdelStep(ws) {
+  const step = slutdel?.steps[slutdel.i];
+  if (!step) return;
+  send(ws, { type: 'event', event: 'slutdelStart', payload: { total: slutdel.steps.length, version } });
+  if (step.kind === 'question') {
+    send(ws, { type: 'event', event: 'slutdelQuestion', payload: { id: step.id, fraga: step.fraga, options: step.options, bild: step.bild } });
+    send(ws, { type: 'event', event: 'slutdelDist', payload: slutdelDistribution(step.id) });
+  } else {
+    send(ws, { type: 'event', event: 'slutdelReveal', payload: { kort: step } });
+  }
+}
 
 // ——— WebSocket ———
 const wss = new WebSocketServer({ server: httpServer });
@@ -386,7 +459,9 @@ wss.on('connection', ws => {
         }
         send(ws, { type: 'hello-ack', lag: ws._lag ?? null, started, config: engine?.cfg ?? new EcoLoco(manifest.config || {}).cfg });
         broadcast(lobbyMsg());
-        // (trailern triggas nu av STARTA-knappen, inte av anslutning — se playTrailer + klientens startEfterTrailer)
+        // Sent ansluten mitt i slutdelen → skicka DET steg som visas nu, så skärmen hamnar rätt.
+        if (phase === 'slutdel' && slutdel && slutdel.i >= 0 && slutdel.i < slutdel.steps.length) sendSlutdelStep(ws);
+        // (trailern triggas nu av STARTA-knappen/fönstret, inte av anslutning — se playTrailer + klientens startEfterTrailer)
         break;
       }
       case 'claim': {
@@ -410,11 +485,13 @@ wss.on('connection', ws => {
         break;
       }
       case 'startGame': {
-        console.log(`[spel] startGame från ${lag || 'bänk utan lag'}${started && !engine.getState().over ? ' — ignorerad (pågår)' : ''}`);
-        if (started && !engine.getState().over) break;
+        console.log(`[spel] startGame från ${lag || 'bänk utan lag'}${started && engine && !engine.getState().over ? ' — ignorerad (pågår)' : ''}`);
+        if (started && engine && !engine.getState().over) break;
+        cancelStartWindow(true);                     // ev. 15 s-fönster är klart nu — stäng tyst
         stopTrailer(); trailerPlayedAuto = false;   // partiet startar → stoppa ev. trailer, nollställ auto för nästa lobby-cykel
         for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
         started = true;
+        phase = 'spel';                              // motorn körs → late-join tar över en bot via claim
         riggSilent = !!m.spelledare;   // "med spelledare" → spelet tyst mot riggen (manuell styrning)
         if (riggSilent) console.log('[spel] MED spelledare — riggen styrs manuellt (inga rigg-cues från spelet)');
         tutBeats = {};
@@ -502,6 +579,11 @@ wss.on('connection', ws => {
       // ——— SLUTDEL/GM: sekundär kontrollkanal över WS (webb-spelledarpanel + headless-test) ———
       // MQTT-kanalen ecoloco/spel/gm är oförändrad; detta är ett ADDITIV alternativ med samma payload.
       case 'pause': { setPaused(m.on !== undefined ? m.on : !paused); break; }   // skärmknapp → pausa/fortsätt
+      // RUMS-FLÖDE: spelaren trycker STARTA i självspel → öppna 15 s join-fönster (fasen kvar i 'lobby').
+      // Spelledarpulten startar via 'startGame' direkt → rör aldrig detta.
+      case 'startWindow': { openStartWindow(lag); break; }
+      // RUMS-FLÖDE: klienten säger att den gått in i solo-tutorialen → phase='tutorial' (bara i lobby, före start).
+      case 'phaseTutorial': { if (!started && phase !== 'spel') phase = 'tutorial'; break; }
       case 'gmcmd': { try { handleGmCmd(m); } catch (e) { console.warn(`[gm] fel vid WS-kommando: ${e.message}`); } break; }
       // Spelledarpanel → riggen (grupp B): publicera en rigg-topic direkt. Bara ecoloco/rigg/* släpps igenom.
       case 'rigcmd': { if (typeof m.topic === 'string' && m.topic.startsWith('ecoloco/rigg/')) riggSend(m.topic, (m.payload && typeof m.payload === 'object') ? JSON.stringify(m.payload) : (m.payload ?? '')); break; }
@@ -544,6 +626,15 @@ function handleGmCmd(m) {
       stopTrailer();
       broadcast({ type: 'event', event: 'trailerDone' });
       break;
+    case 'skipintro':    // SPELLEDARE: skippa introt/trailern → gå vidare (tutorial/spel) för ALLA. Bara i intro-fasen.
+      if (phase !== 'intro') break;
+      stopTrailer();
+      broadcast({ type: 'event', event: 'trailerDone' });   // klienterna kör korEfterTrailer → tutorial/spel
+      console.log('[spel] SKIPPA INTRO → vidare för alla');
+      break;
+    case 'tilllobby':    // SPELLEDARE: omstart → alla till lobbyn (när som helst)
+      resetToLobby();
+      break;
     case 'pengaslapp':   // +10 pengar & +10 material till alla lag — bara under en pågående runda
       if (!started || !engine || engine.getState().over || resolvingNow) break;
       engine.pengaslapp();
@@ -578,6 +669,7 @@ function handleGmCmd(m) {
     case 'slutdel_start': {   // guard: partiet måste vara SLUT. Bygg ordnad steglista [q1..q6, nf1..nf3] (version A).
       if (!engine || engine.getState().over !== true) break;
       slutdel = { steps: buildSlutdel(version), i: -1, answers: {} };
+      phase = 'slutdel';
       rigg?.beginSlutdel?.();
       broadcast({ type: 'event', event: 'slutdelStart', payload: { total: slutdel.steps.length, version } });
       break;

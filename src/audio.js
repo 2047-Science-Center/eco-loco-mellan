@@ -18,6 +18,7 @@ export class GameAudio {
     if (this.unlocked) return;
     this.unlocked = true;
     for (const [name, src] of Object.entries(this.paths)) {
+      if (name.startsWith('_') || typeof src !== 'string' || !src.startsWith('assets/')) continue; // hoppa _readme/meta → ingen 404
       const a = new Audio();
       a.preload = 'auto';
       const isAmb = name.startsWith('amb_');

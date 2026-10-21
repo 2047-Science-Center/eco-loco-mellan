@@ -14,6 +14,7 @@ export class ServerNet {
     this._reqId = 0;
     this._pending = new Map();   // reqId → resolve
     this.connected = false;
+    this.phase = 'lobby';        // RUMS-FLÖDE: serverns senaste fas (bärs i varje meddelande)
   }
   on(ev, cb) { (this._h[ev] ||= []).push(cb); return this; }
   _emit(ev, p) { (this._h[ev] || []).forEach(cb => cb(p)); }
@@ -26,14 +27,17 @@ export class ServerNet {
       this.ws.addEventListener('open', () => { this.connected = true; this._send({ type: 'hello', lag: wishLag }); });
       this.ws.addEventListener('message', e => {
         const m = JSON.parse(e.data);
-        if (m.state && this.reader) this.reader.S = m.state;
+        if (typeof m.phase === 'string') this.phase = m.phase;   // RUMS-FLÖDE: fasen bärs i varje send()
+        // state följer med varje meddelande (null när ingen motor finns = lobby/omstart) → spegla rakt av.
+        if (this.reader && 'state' in m) this.reader.S = m.state;
+        else if (m.state && this.reader) this.reader.S = m.state;
         switch (m.type) {
           case 'hello-ack':
             this.me = m.lag;
             this.reader = new EcoLoco({});
             this.reader.cfg = m.config;
             this.reader.S = m.state;
-            resolve({ lag: m.lag, started: m.started, state: m.state });
+            resolve({ lag: m.lag, started: m.started, state: m.state, phase: m.phase || 'lobby' });
             break;
           case 'claimAck': this.me = m.lag; this._emit('claimAck', m); break;
           case 'event': this._emit(m.event, m.payload); break;
@@ -61,6 +65,11 @@ export class ServerNet {
 
   claim(lag) { this._send({ type: 'claim', lag }); }
   startGame(opts = {}) { this._send({ type: 'startGame', ...opts }); }   // opts.spelledare → med/utan spelledare
+  // ——— RUMS-FLÖDE ———
+  startWindow() { this._send({ type: 'startWindow' }); }                 // spelar-STARTA (självspel) → öppna 15 s join-fönster
+  enterTutorial() { this._send({ type: 'phaseTutorial' }); }            // klient → server: nått solo-tutorialen
+  tillLobby() { this._send({ type: 'gmcmd', cmd: 'tilllobby' }); }      // SPELLEDARE: omstart → alla till lobbyn
+  skipIntro() { this._send({ type: 'gmcmd', cmd: 'skipintro' }); }      // SPELLEDARE: skippa introt/trailern
   pause() { this._send({ type: 'pause' }); }                             // paus: frys bara spelmotorn
   selectCard(tier) { return this._request({ type: 'selectCard', tier }); }
   trade(to, give, giveCur, get, getCur) { return this._request({ type: 'tradeOffer', to, give, giveCur, get, getCur }, 30000); }

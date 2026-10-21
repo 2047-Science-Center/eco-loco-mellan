@@ -252,12 +252,14 @@
       <div class="card">
         <h2>PARTI</h2>
         <button class="btn primary" id="start-btn">STARTA SPEL</button>
-        <p class="note">Tomma lag fylls av datorn. Startar om först när ett parti är slut (ingen omstart mitt i parti i nuvarande server).</p>
+        <button class="btn" id="lobby-btn">TILL LOBBYN (OMSTART)</button>
+        <p class="note">Start från pulten kör direkt (inget 15 s-fönster). "Till lobbyn" river ner allt — pågående spel, intro eller tutorial — och tar alla skärmar tillbaka till lobbyn, när som helst.</p>
       </div>
       <div class="card">
         <h2>INTRO-TRAILER</h2>
         <button class="btn" id="trailer-btn">SPELA TRAILER</button>
-        <p class="note">Spelar intro-klippet på alla skärmar och kör ljussekvensen från servern (EN källa). Startar även automatiskt när alla fyra lag anslutit i lobbyn.</p>
+        <button class="btn" id="skipintro-btn">SKIPPA INTRO</button>
+        <p class="note">Spelar intro-klippet på alla skärmar och kör ljussekvensen från servern (EN källa). Startar även automatiskt när alla fyra lag anslutit i lobbyn. "Skippa intro" hoppar vidare (tutorial/spel) för alla.</p>
       </div>
       <div class="card">
         <h2>MED / UTAN SPELLEDARE <span class="hint">(gäller nästa start)</span></h2>
@@ -319,7 +321,7 @@ const net = new ServerNet();
 net.on('disconnected', () => { setConn(false); });
 net.on('reconnected', () => { setConn(true); render(); });
 ['timer','roundStart','ohalsa','roundEnd','gameEnd','lobby','notis','voteUpdate','paused',
- 'event','award','awardCeremony','awardStep','awardDone',
+ 'event','award','awardCeremony','awardStep','awardDone','tilllobby',
  'slutdelStart','slutdelQuestion','slutdelReveal','slutdelDist','slutdelDone'].forEach(ev => net.on(ev, p => onEvent(ev, p)));
 
 const first = await net.connect(null);   // åskådare (inget lag)
@@ -339,6 +341,7 @@ function onEvent(ev, p) {
   else if (ev === 'awardStep') { award = p; }
   else if (ev === 'awardDone') { award = null; }
   else if (ev === 'gameEnd') { toast('Partiet slut — slutdel kan startas'); }
+  else if (ev === 'tilllobby') { timerLeft = null; timerFull = null; setPaused(false); award = null; slutdelState = null; toast('Tillbaka i lobbyn (omstart)'); }
   else if (ev === 'slutdelStart') { slutdelState = { i: 0, total: p.total, label: 'steg 1' }; }
   else if (ev === 'slutdelQuestion') { slutdelState = { i: (slutdelState?.i ?? 0), total: slutdelState?.total, label: 'fråga: ' + (p.text || '') }; }
   else if (ev === 'slutdelReveal') { slutdelState = { i: (slutdelState?.i ?? 0), total: slutdelState?.total, label: 'kort' }; }
@@ -446,7 +449,9 @@ $('#slutdel-next').onclick  = () => { net.gmcmd({ cmd: 'slutdel_next' }); if (sl
 
 // ——— ADMIN ———
 $('#start-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.startGame({ spelledare: withSpelledare }); toast('Spel startat (' + (withSpelledare ? 'med' : 'utan') + ' spelledare)'); });
+$('#lobby-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.tillLobby(); toast('Alla till lobbyn (omstart)'); });
 $('#trailer-btn').onclick = () => { net.gmcmd({ cmd: 'trailer' }); toast('Spelar intro-trailer'); };
+$('#skipintro-btn').onclick = () => { net.skipIntro(); toast('Skippar introt'); };
 $('#sl-utan').onclick = () => { withSpelledare = false; render(); toast('Nästa start: UTAN spelledare'); };
 $('#sl-med').onclick  = () => { withSpelledare = true;  render(); toast('Nästa start: MED spelledare'); };
 </script>

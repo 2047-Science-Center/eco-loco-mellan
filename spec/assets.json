@@ -1,7 +1,7 @@
 {
   "_readme": "Manifest som spelet läser LIVE. Byggnads-nycklar = <område>_<nivå> och matchar engine.js card.asset samt filnamnen i assets/. Alla 12 byggnader finns. Ljudfiler ej på plats än (se design/AUDIO.md). Fable: skriv in slots-koordinaterna i Fas 1 när kartan ritats.",
   "config": {
-    "_readme": "Overrides av DEFAULT_CONFIG i spec/engine.js - las live av spel.html. Tomt objekt = motorns standardvarden (rounds 8, timerSec 90, startPengar 40, startMaterial 30, ohStart 50, threshold 60, humanTeam aker m.fl.). mode styr onboarding-lagret (tutorial | selfplay | gm), aldrig motorns regler; ?mode=... i URL:en vinner.",
+    "_readme": "Overrides av DEFAULT_CONFIG i spec/engine.js - las live av spel.html. Tomt objekt = motorns standardvarden (rounds 8, timerSec 90, startPengar 35, startMaterial 35, ohStart 50, threshold 60, humanTeam aker m.fl.). mode styr onboarding-lagret (tutorial | selfplay | gm), aldrig motorns regler; ?mode=... i URL:en vinner.",
     "mode": "tutorial"
   },
   "onboarding": {

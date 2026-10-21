@@ -132,6 +132,9 @@ async function makeOnline() {
     get me() { return net.me; }, E: () => net.reader,
     on: (ev, cb) => net.on(ev, cb),
     startGame: (opts) => net.startGame(opts),
+    startWindow: () => net.startWindow(),       // RUMS-FLÖDE: spelar-STARTA → 15 s join-fönster
+    enterTutorial: () => net.enterTutorial(),   // RUMS-FLÖDE: markera tutorial-fasen för late-join
+    get phase() { return net.phase; },
     pause: () => net.pause(),
     selectCard: t => net.selectCard(t),
     trade: (to, give, gc, get, gc2) => net.trade(to, give, gc, get, gc2),
@@ -161,6 +164,7 @@ function makeProxy() {
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
                'disconnected', 'reconnected', 'paused',
                'trailer', 'trailerDone',
+               'startWindow', 'startGo', 'startWindowCancel', 'tilllobby',
                'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone'];
   return {
     attach(b) {
@@ -174,6 +178,9 @@ function makeProxy() {
     get _first() { return cur._first; },
     E: () => cur.E(),
     startGame: (...a) => cur.startGame(...a),
+    startWindow: (...a) => cur.startWindow?.(...a),
+    enterTutorial: (...a) => cur.enterTutorial?.(...a),
+    get phase() { return cur.phase; },
     selectCard: (...a) => cur.selectCard(...a),
     trade: (...a) => cur.trade(...a),
     openProposal: (...a) => cur.openProposal(...a),
@@ -240,6 +247,12 @@ let voteOpenFor = null;
 let klarLag = new Set();   // lag som tryckt AVSLUTA denna runda (online)
 const queue = [];
 let running = false;
+// RUMS-FLÖDE: delat vy-tillstånd (deklareras tidigt → late-join-routern vid boot kan läsa dem).
+let startWindowLeft = null;   // 15 s start-fönster: sekunder kvar (null = inget fönster öppet)
+let tutRunning = false;       // solo-tutorialen kör (gard mot dubbelstart vid late-join/claim)
+let tutAbort = false;         // omstart mitt i tutorialen → avbryt den rent
+let tutInCeremony = false;    // tutorialen är i slut-ceremonin (redo→nedräkning) — konvergerar själv mot spelet
+const _tutAborters = [];      // väntare som väcks när tutorialen ska avbrytas
 function run(step) {
   queue.push(step);
   if (running) return;
@@ -490,6 +503,8 @@ if (ONLINE) {
     // Tog över ett lag mitt i pågående spel → bygg upp vyn och stäng lobbyn.
     const S = E()?.getState();
     if (game.me && S && S.round >= 1 && !S.over) rebuildFromState(S);
+    // RUMS-FLÖDE: sent ansluten claimade ett lag medan gruppen är i tutorial-fasen → kör egen solo-tutorial.
+    else if (game.me && game.phase === 'tutorial' && !tutRunning) runTutorial();
   });
   game.on('tradeIncoming', m => openTradeIncoming(m));
   game.on('notis', m => toast(m.text));
@@ -988,6 +1003,14 @@ function renderLobby(m) {
     $('startnote').textContent = game.me ? 'Lag utan spelare styrs av datorn 🤖'
                                          : 'Inget lag valt — du tittar på. Datorn spelar alla 🤖';
   }
+  // RUMS-FLÖDE: 15 s join-fönster öppet → visa nedräkningen, fler kan claima under tiden.
+  if (phase !== 'pagar' && startWindowLeft != null) {
+    btn.style.display = '';
+    btn.disabled = true;
+    btn.textContent = `STARTAR OM ${startWindowLeft}s…`;
+    $('startnote').style.display = 'block';
+    $('startnote').textContent = 'Spelet börjar strax — fler hinner ansluta! Tryck på ett ledigt lag.';
+  }
 }
 function setConn(ok) {
   const el = $('connstatus');
@@ -1055,9 +1078,12 @@ function videoEllerFallback(videoId, fallbackId, src) {
   return v;
 }
 
-const senJoin = ONLINE && game._first?.started;   // spel pågår redan → rakt till ta-över-lobbyn
+// RUMS-FLÖDE: sent ansluten → hoppa in där gruppen är (fasen kommer i hello-ack).
+const bootPhase = ONLINE ? (game._first?.phase || (game._first?.started ? 'spel' : 'lobby')) : 'lobby';
+const senJoin = ONLINE && (game._first?.started || bootPhase !== 'lobby');   // spel/intro/tutorial/slutdel pågår → hoppa in
 if (senJoin) $('ov-attract').classList.remove('open');
 else videoEllerFallback('attract-video', 'attract-fallback', ONB.attract)?.play().catch(() => {});
+// joinPhase(bootPhase) körs längre ned, EFTER att trailer-/tutorial-vars + hjälpare deklarerats.
 
 $('btn-attract').addEventListener('click', () => {
   audio.unlock();                 // första trycket låser upp ljudet (webbläsarpolicyn)
@@ -1132,8 +1158,112 @@ function korEfterTrailer() {
 $('ov-trailer').addEventListener('click', () => {
   if (game.skipTrailer) game.skipTrailer(); else { doljTrailer(); korEfterTrailer(); }
 });
-// Nytt parti (replay) → tillåt att trailern spelas igen vid nästa STARTA.
-game.on('gameEnd', () => { trailerVisad = false; });
+// Nytt parti (replay) → tillåt att trailern + tutorialen körs igen vid nästa STARTA.
+game.on('gameEnd', () => { trailerVisad = false; tutRunning = false; });
+
+// ═══════════════ RUMS-FLÖDE: 15 s start-fönster · startGo · late-join · omstart · skippa intro ═══════════════
+// Det BEFINTLIGA flödet (trailer → tutorial → runda 1) rörs inte — fönstret läggs FÖRE det, och
+// late-join/omstart hoppar in i / river ner rätt fas. Allt gardat av ONLINE (lokalt läge opåverkat).
+
+// Vad som händer EFTER trailern (tutorial eller riktiga spelet). I tutorial-läge krävs ett lag.
+function computeFortsatt() {
+  if (MODE === 'tutorial' && gamePhase() === 'lobby') {
+    if (!game.me) return null;                 // utan lag i tutorial → den här skärmen tittar bara på
+    return () => runTutorial();
+  }
+  if (game.me) initSector();
+  return () => game.startGame({ spelledare: false });
+}
+// Kör det befintliga trailer→tutorial→runda-1-flödet (anropas vid 'startGo' på alla skärmar).
+function beginStartFlow() {
+  if (gamePhase() !== 'lobby') return;         // redan igång/slut → gör inget
+  // Ta med skärmar som ännu står kvar på attract/narrativ in i flödet (rummet startar synkat).
+  try { audio.unlock(); } catch {}
+  $('ov-attract')?.classList.remove('open');
+  $('ov-narrativ')?.classList.remove('open');
+  const f = computeFortsatt();
+  if (f) startEfterTrailer(f);
+}
+
+// Late-join: hoppa in där gruppen är.
+function joinIntro() {
+  trailerVisad = true;
+  const v = videoEllerFallback('trailer-video', 'trailer-fallback', ONB.trailer);
+  $('ov-trailer').classList.add('open');
+  if (v) { try { v.currentTime = 0; } catch {} v.addEventListener('ended', doljTrailer, { once: true }); v.play?.().catch(() => {}); }
+  // När introt är klart (trailerDone/skip) → kör samma flöde som alla andra (lag räknas om då).
+  efterTrailer = () => { const f = computeFortsatt(); if (f) f(); };
+  clearTimeout(efterTrailerFailsafe);
+  efterTrailerFailsafe = setTimeout(korEfterTrailer, 33000);
+}
+function joinPhase(ph) {
+  if (!ONLINE || ph === 'lobby') return;
+  $('ov-attract').classList.remove('open');
+  $('ov-narrativ')?.classList.remove('open');
+  if (ph === 'intro') { joinIntro(); return; }
+  if (ph === 'tutorial') { if (game.me && !tutRunning) runTutorial(); return; }   // egen solo-tutorial; utan lag → stanna i lobbyn
+  // 'spel' → ta-över via claim + rebuildFromState (sköts av game._first.started-blocket ovan).
+  // 'slutdel' → servern skickar aktuellt steg direkt efter hello → slutdel-eventsen fyller vyn.
+}
+
+// Omstart (spelledaren) → riv ner allt på den här skärmen och visa lobbyn.
+function fireTutAbort() { tutAbort = true; while (_tutAborters.length) _tutAborters.shift()('abort'); }
+function resetToLobbyUI() {
+  fireTutAbort();                               // avbryt ev. pågående solo-tutorial rent
+  tutRunning = false; tutInCeremony = false;
+  startWindowLeft = null;
+  efterTrailer = null;
+  clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
+  doljTrailer();
+  ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
+   'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus'].forEach(id => $(id)?.classList.remove('open'));
+  $('tutveil').style.display = 'none';
+  $('tutbox').style.display = 'none';
+  $('tutbarrier').style.display = 'none';
+  $('banner').style.display = 'none';
+  tutFocus(null);
+  map.clearBuildings();
+  // Nollställ topbaren så inga gamla rund-/öhälso-siffror ligger kvar bakom lobbyn.
+  try { $('roundnum').textContent = '–'; const oh0 = E()?.cfg?.ohStart ?? 50; updateOh({ value: oh0, mode: ohMode(oh0), delta: 0 }); } catch {}
+  game.attach(realGame);                        // tutorialens övningsmotor var ev. påkopplad → tillbaka till servern
+  $('ov-start').classList.add('open');
+  if (lastLobby) renderLobby(lastLobby);
+  toast('Spelledaren tog alla tillbaka till lobbyn');
+}
+
+// OBS: dessa server-events måste lyssnas på realGame (ServerNet), INTE proxyn `game` — under
+// tutorialen är proxyn kopplad till övningsmotorn och släpper inte igenom serverns events.
+// (Samma mönster som tutBarrier, som använder realGame.on/realGame.net direkt.)
+if (ONLINE) {
+  realGame.on('startWindow', m => {              // 15 s-fönstret tickar → visa nedräkningen i lobbyn
+    startWindowLeft = m.left;
+    if (lastLobby) renderLobby(lastLobby);
+  });
+  realGame.on('startGo', () => {                 // fönstret klart → kör det riktiga flödet på alla skärmar
+    startWindowLeft = null;
+    beginStartFlow();
+  });
+  realGame.on('startWindowCancel', () => {       // fönstret avbrutet (t.ex. omstart) → åter till normal lobby
+    startWindowLeft = null;
+    if (lastLobby) renderLobby(lastLobby);
+  });
+  realGame.on('tilllobby', () => resetToLobbyUI());  // spelledaren tog alla till lobbyn (kan ske mitt i tutorialen)
+  // Robusthet: om spelet START:ar från servern (t.ex. spelledaren tryckte STARTA SPEL) medan DEN HÄR
+  // skärmen fortfarande är i tutorialens lär-del (ej ceremonin, som konvergerar själv) → avbryt och hoppa in i spelet.
+  realGame.on('start', () => {
+    if (!tutRunning || tutInCeremony || game.backend === realGame) return;
+    fireTutAbort();
+    tutRunning = false;
+    $('tutveil').style.display = 'none'; $('tutbox').style.display = 'none'; $('tutbarrier').style.display = 'none';
+    $('banner').style.display = 'none'; tutFocus(null);
+    game.attach(realGame);
+    const S = realGame.E()?.getState();
+    if (S && S.round >= 1 && !S.over) rebuildFromState(S);
+  });
+}
+
+// Sent ansluten: nu finns alla trailer-/tutorial-hjälpare → hoppa in i rätt fas.
+if (senJoin) joinPhase(bootPhase);
 
 // ═══════════════ Runda 0 — tutorial (mode='tutorial') ═══════════════
 // En skriptad övningsrunda på en EGEN kastmotor bakom samma UI: deterministiska botar,
@@ -1184,7 +1314,11 @@ function tutFocus(sel) {
   document.querySelectorAll('.tut-focus').forEach(e => e.classList.remove('tut-focus'));
   if (sel) document.querySelector(sel)?.classList.add('tut-focus');
 }
+// RUMS-FLÖDE: ett löfte som resolvar till 'abort' när spelledaren tar alla till lobbyn mitt i tutorialen.
+// Varje väntepunkt i tutorialen racear mot detta → tutorialen släpper direkt och runTutorial returnerar.
+function tutAbortP() { return new Promise(res => { if (tutAbort) res('abort'); else _tutAborters.push(res); }); }
 async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 12000 }) {
+  if (tutAbort) return;                       // omstart under tutorialen → visa ingenting mer
   tutFocus(focus);
   const b = $('tutbox');
   b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.display = 'block';
@@ -1194,9 +1328,10 @@ async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 12000 }) 
   let tmo = null;
   const skipP = new Promise(res => { $('tut-skip').onclick = () => res('skip'); });
   const timeP = new Promise(res => { tmo = setTimeout(() => res('timeout'), autoMs); });
-  const r = await Promise.race([until, skipP, timeP]);
+  const r = await Promise.race([until, skipP, timeP, tutAbortP()]);
   clearTimeout(tmo);
-  if (r === 'skip' || r === 'timeout') { await autoDo?.(); await Promise.race([until, delay(4000)]); }  // handlingen görs åt dig
+  if (r === 'abort') { b.style.display = 'none'; tutFocus(null); return; }
+  if (r === 'skip' || r === 'timeout') { await autoDo?.(); await Promise.race([until, delay(4000), tutAbortP()]); }  // handlingen görs åt dig
   b.style.display = 'none';
   tutFocus(null);
 }
@@ -1215,10 +1350,10 @@ async function tutBarrier(beat) {
     });
   });
   const start = Date.now();
-  await Promise.race([allaP, delay(700)]);           // syns bara om någon faktiskt är långsammare
-  if (!klart) {
+  await Promise.race([allaP, delay(700), tutAbortP()]);           // syns bara om någon faktiskt är långsammare
+  if (!klart && !tutAbort) {
     bar.style.display = 'flex';
-    await Promise.race([allaP, delay(12000 - (Date.now() - start))]);  // timeout: en seg bänk låser aldrig de andra
+    await Promise.race([allaP, delay(12000 - (Date.now() - start)), tutAbortP()]);  // timeout: en seg bänk låser aldrig de andra
     klart = true;
   }
   bar.style.display = 'none';
@@ -1226,6 +1361,7 @@ async function tutBarrier(beat) {
 
 // Konsekvens-beat ("SE"): spelaren läser i egen takt och trycker NÄSTA för att gå vidare.
 function tutSay({ ix, txt, x, y, focus }) {
+  if (tutAbort) return Promise.resolve();      // omstart under tutorialen → visa ingenting mer
   return new Promise(res => {
     tutFocus(focus);
     const b = $('tutbox');
@@ -1242,16 +1378,20 @@ function tutSay({ ix, txt, x, y, focus }) {
     };
     next.onclick = finish;
     const tmo = setTimeout(finish, 45000);   // kiosk-säkring: aldrig fast för alltid
+    tutAbortP().then(finish);                // omstart → släpp direkt (finish är idempotent via done)
   });
 }
 
 // Startceremoni: ÄR DU REDO? → (vänta in alla lag) → nedräkning 10→0 → RUNDA 1.
 // Riggen (LED-chase, riser-soundscape, vitt ljus 3 s) styrs av semantiska cues: ecoloco/rigg/ceremoni.
 async function startCeremony() {
+  tutInCeremony = true;                       // från och med nu konvergerar skärmen själv mot spelet (rebuildFromState)
   $('ov-ready').classList.add('open');
-  await new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_tap'); res(); }; });
+  await Promise.race([new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_tap'); res(); }; }), tutAbortP()]);
+  if (tutAbort) return;
   $('ov-ready').classList.remove('open');
   await tutBarrier(5);                       // online: vänta in de andra lagen; solo: direkt
+  if (tutAbort) return;
   realGame.net?.rigCue?.('countdown');        // rigg: riser + LED-chase 1–4 + klockljud (hjärnan)
   $('ov-countdown').classList.add('open');
   for (let n = 10; n >= 1; n--) {
@@ -1260,14 +1400,17 @@ async function startCeremony() {
     el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';   // starta om pop
     $('ov-countdown').classList.toggle('hot', n <= 3);
     audio.play('ui_tap');                       // befintligt klick-ljud — inget nytt generiskt ljud
-    await delay(1000);
+    await Promise.race([delay(1000), tutAbortP()]);
+    if (tutAbort) { $('ov-countdown').classList.remove('open'); return; }
   }
   realGame.net?.rigCue?.('climax');           // rigg: vitt ljus sköts av LED-listerna (ej på skärmen)
   $('ov-countdown').classList.remove('open');
   await delay(300);
+  if (tutAbort) return;
   realGame.net?.rigCue?.('runda1');           // rigg: fade in till rundans ljus/ljud
   $('tutveil').style.display = 'none';
   await banner('RUNDA 1', false, 1500);
+  if (tutAbort) return;
   game.attach(realGame);
   game.startGame();
   if (ONLINE) {
@@ -1278,6 +1421,9 @@ async function startCeremony() {
 }
 
 async function runTutorial() {
+  if (tutRunning) return;                      // redan igång (late-join/claim kan trigga dubbelt)
+  tutRunning = true; tutAbort = false; tutInCeremony = false; _tutAborters.length = 0;
+  game.enterTutorial?.();                       // RUMS-FLÖDE: markera tutorial-fasen för sent anslutna
   const myLag = ONLINE ? realGame.me : (manifest.config?.humanTeam || 'aker');
   const tut = makeTutorial(myLag);
   game.attach(tut);
@@ -1285,15 +1431,19 @@ async function runTutorial() {
   $('tutveil').style.display = 'block';
   tut.startGame();
   await delay(500);
+  if (tutAbort) return;
   $('timertxt').textContent = '–:––';
   await banner('ÖVNING — RUNDA 0', false, 1400);
+  if (tutAbort) return;
 
   // ——— 1) BYGG (gör) — det billiga lockar ———
   const dirtyTier = E().getState().banDirtyThisRound ? 'standard' : 'smutsig';
   await tutBeat({ ix: 0, txt: 'Bygg en byggnad. Tryck på ett kort.', x: 520, y: 560, focus: '.handbar',
     until: tutOnce('build', p => p.teamId === myLag),
     autoDo: () => buyCard(dirtyTier) });
+  if (tutAbort) return;
   await delay(650);
+  if (tutAbort) return;
 
   // ——— 2) SE KONSEKVENSEN: du tjänar + ön betalar (Josefs kärna) ———
   const built = handFor(myLag).find(c => c.tier === picked) || handFor(myLag)[0];
@@ -1306,7 +1456,9 @@ async function runTutorial() {
     txt: built.oh < 0
       ? `Men det billiga <b>sänker ön ${built.oh}${ico('industri', 18)}</b> — notan delar ni fyra.`
       : `Och det <b>lyfter ön +${built.oh}${ico('tillvaxt', 18)}</b>.`, ms: 3400 });
+  if (tutAbort) return;
   await tutBarrier(1);
+  if (tutAbort) return;
 
   // ——— 3) SLÅ I VÄGGEN → BYT (beroendet upptäcks genom att fastna) ———
   const mig = E().team(myLag);
@@ -1327,42 +1479,56 @@ async function runTutorial() {
     x: 1180, y: 150, focus: null,
     until: tutOnce('trade', p => p.from === myLag || p.to === myLag),
     autoDo: () => $('btn-trade-go').click() });
+  if (tutAbort) return;
   document.querySelectorAll('#cards .card.tut-vagg').forEach(el => {
     el.classList.remove('tut-vagg', 'poor');
     el.querySelector('.saknas').innerHTML = '';
   });
   await delay(500);
+  if (tutAbort) return;
   const getBox = getCur === 'pengar' ? '#box-pengar' : '#box-material';
   await tutSay({ ix: 1, focus: getBox, x: 300, y: 300,
     txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b> — nu räcker det.` });
   await tutSay({ ix: 1, focus: null, x: 1140, y: 150,
     txt: `På riktigt förhandlar ni med de andra lagen genom <b>telefonen på arbetsbordet</b>.` });
+  if (tutAbort) return;
   await tutBarrier(2);
+  if (tutAbort) return;
 
   // ——— 4) RÖSTA → se den delade mätaren svara ———
   const resolvedP = tutOnce('proposalResolved');
   tut.script.oppnaForslag();
   await delay(700);
+  if (tutAbort) return;
   await tutBeat({ ix: 2, txt: 'Ön behöver hjälp. Rösta <b>JA</b>.', x: 1180, y: 120, focus: null,
     until: tutWaitP(() => tut.E().getState().proposal?.votes[myLag] !== undefined),
     autoDo: () => $('btn-ja').click() });
-  for (const b of tut.script.bots) { await delay(600); tut.script.botRosta(b); }
-  await Promise.race([resolvedP, delay(3000)]);
+  if (tutAbort) return;
+  for (const b of tut.script.bots) { await delay(600); if (tutAbort) return; tut.script.botRosta(b); }
+  await Promise.race([resolvedP, delay(3000), tutAbortP()]);
+  if (tutAbort) return;
   await delay(500);
+  if (tutAbort) return;
   await tutSay({ ix: 2, focus: '.topbar', x: 520, y: 150,
     txt: `3 av 4 sa ja — <b>ön andas ut ${ico('tillvaxt', 18)}</b>. Din röst flyttade den delade mätaren.`, ms: 3200 });
+  if (tutAbort) return;
   await tutBarrier(3);
+  if (tutAbort) return;
 
   // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
   await tutSay({ ix: 3, focus: '#endwrap', x: 1020, y: 540,
     txt: `Sista steget: avsluta rundan. Efter <b>varje runda</b> delas tre priser ut — årets ledande företag, årets eldsjäl och årets sabotör.` });
+  if (tutAbort) return;
   const roundEndP = tutOnce('roundEnd');
   await tutBeat({ ix: 3, txt: 'Klar? Tryck här. Annars räknas det av självt.', x: 1040, y: 760, focus: '#endwrap',
     until: roundEndP,
     autoDo: () => $('btn-end').click() });
+  if (tutAbort) return;
   await delay(1200);
   await tutWaitP(() => !running);                    // vänta ut bokslutsscenerna + award-popuparna
+  if (tutAbort) return;
   await tutBarrier(4);
+  if (tutAbort) return;
 
   // Övningen klar → tydlig startceremoni (redo → nedräkning → vitt ljus → RUNDA 1) → riktiga spelet
   await startCeremony();
@@ -1385,17 +1551,15 @@ $('btn-start').addEventListener('click', async () => {
   audio.unlock();
   audio.play('ui_tap');
   if (ONLINE) {
-    if (gamePhase() === 'pagar') return;
-    let fortsatt;   // vad som ska hända EFTER trailern (tutorial eller riktiga spelet)
-    if (MODE === 'tutorial' && gamePhase() === 'lobby') {
-      if (!game.me) await delay(1500);             // kiosk-claim (?lag=) kan vara på väg in
-      if (!game.me) { toast('Tryck på ett lag först!', true); return; }   // i tutorial-läge startar man inte spelet utan lag
-      fortsatt = () => runTutorial();
-    } else {
-      if (game.me) initSector();   // utan lag: starta ändå — alla lag körs av datorn, du tittar på
-      fortsatt = () => game.startGame({ spelledare: false });
+    if (gamePhase() !== 'lobby') return;          // pågår/slut → STARTA gör inget
+    if (startWindowLeft != null) { toast('Spelet startar strax…'); return; }   // fönstret redan öppet
+    if (MODE === 'tutorial') {
+      if (!game.me) await delay(1500);            // kiosk-claim (?lag=) kan vara på väg in
+      if (!game.me) { toast('Tryck på ett lag först!', true); return; }   // i tutorial-läge startar man inte utan lag
     }
-    startEfterTrailer(fortsatt);   // spela intro-trailern FÖRST (en gång, på alla skärmar), fortsätt när den är klar
+    // RUMS-FLÖDE: öppna 15 s join-fönstret. Vid 0 → servern broadcastar 'startGo' → beginStartFlow()
+    // kör det BEFINTLIGA flödet (trailer → tutorial → runda 1) på alla skärmar. Fler kan ansluta under tiden.
+    game.startWindow();
   } else {
     $('ov-start').classList.remove('open');
     if (MODE === 'tutorial') { runTutorial(); return; }
