@@ -80,7 +80,8 @@ export function attachRigg(engine, opts = {}) {
   engine.on('roundStart', p  => { countdownFired = false; if (p.round > 1) cue('round_start'); });
   engine.on('gameEnd',    p  => { over = true; cue(p.won ? 'win' : 'lose'); });
   engine.on('award',      p  => { pendingAwards = p; });   // fångas FÖRE roundEnd (motorns emit-ordning)
-  engine.on('roundEnd',   () => { if (!gm) ceremony = runCeremony(); });   // GM: servern dirigerar ceremonin
+  // Ceremonin dirigeras numera av SERVERN i BÅDA lägen (beginAwards/showAward/endAwards) så skärm + rigg
+  // kliver i exakt takt. Riggen self-pacar INTE längre på roundEnd (runCeremony kvar för ev. testharness).
   // Händelse-ljud (auto) + förslags-/frestelse-ljud (rost) på centralhögtalaren.
   engine.on('event',        p => cue(p.ljud));
   engine.on('proposalOpened', p => cue(p.event?.ljud || 'proposal_open'));

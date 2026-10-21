@@ -87,7 +87,9 @@ let tutBeats = {};             // tutorial-barriären: beat → Set av lag som �
 let awardsVantar = new Set();  // mänskliga lag som inte klickat klart prisutdelningen än
 let awardsFailsafe = null;     // timeout som startar timern även om någon klient tappas
 let lastAwards = null;         // senaste rundans prisvinnare (motorns 'award'-event)
-let cer = null;                // GM-prisutdelning som servern dirigerar: { steps:[{typ,w}], i }
+let cer = null;                // prisutdelning som SERVERN dirigerar (båda lägen): { steps:[{typ,w}], i }
+let cerTimer = null;           // selfplay: auto-stegarens timer (server-dirigerad lockstep skärm+rigg)
+const CEREMONY_STEP_MS = 8000; // selfplay: tid per pris (skärm + rigg kliver i exakt denna takt)
 let resolvingNow = false;
 // KOPPLING 2 — intro-trailer: trailerPlaying = kör just nu (gardar både command- och auto-vägen
 // mot dubbelstart). trailerPlayedAuto = auto-vägen har fyrat denna lobby-cykel (nollas vid startGame).
@@ -220,6 +222,7 @@ function resetToLobby() {
   stopTrailer();
   broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
   stopTimer();
+  clearTimeout(cerTimer);
   slutdel = null; cer = null; lastAwards = null; resolvingNow = false;
   started = false; paused = false;
   klar = new Set(); tutBeats = {}; awardsVantar = new Set(); trailerPlayedAuto = false;
@@ -253,14 +256,20 @@ function newEngine() {
   engine.on('roundEnd', p => session?.noteOhRound(p.round, engine.getState().oh));
   engine.on('event', p => session?.noteEvent(engine.getState().round, p));
   engine.on('gameEnd', p => { lastGameEnd = p; session?.writeSummary(engine.getState(), p); });
-  // Award: SELFPLAY skickar hela paketet → skärmen stegar själv. GM-läge: servern dirigerar
-  // ceremonin (awardCeremony → awardStep×N → awardDone) så skärm + rigg kliver i exakt takt.
-  engine.on('award', p => { lastAwards = p; if (!gmMode) broadcast({ type: 'event', event: 'award', payload: p }); });
+  // Award-ceremonin dirigeras av SERVERN i BÅDA lägen (awardCeremony → awardStep×N → awardDone) så
+  // skärm + rigg kliver i EXAKT takt — fixar mqtt-lagget där LED-listen låg före skärmen. Ingen klient
+  // och ingen rigg self-pacar längre. GM: spelledaren stegar via award_next. Selfplay: server-timer
+  // (startAutoCeremony). 'award' broadcastas INTE rått längre; ceremonin bär vinnarna.
+  engine.on('award', p => { lastAwards = p; });
   engine.on('roundEnd', () => {
-    if (!gmMode || !lastAwards) return;
+    if (!lastAwards) return;
     cer = { steps: buildCeremonySteps(lastAwards), i: -1 };
-    rigg.beginAwards();                                                  // riggen går till award-scenen, väntar
-    broadcast({ type: 'event', event: 'awardCeremony', payload: { total: cer.steps.length } });
+    if (gmMode) {
+      rigg.beginAwards();                                               // riggen går till award-scenen, väntar
+      broadcast({ type: 'event', event: 'awardCeremony', payload: { total: cer.steps.length } });
+    } else {
+      startAutoCeremony();   // selfplay: stegaren öppnar scenen + broadcastar awardCeremony på sitt FÖRSTA tick
+    }                        // (deferrad → en synkron roundReplay hinner nolla cer innan något syns)
   });
   engine.on('roundStart', p => {
     resolvingNow = false; klar = new Set();
@@ -278,7 +287,7 @@ function newEngine() {
   // OBS GM-läge: en award-ceremoni för den FELADE rundan kan ha hunnit broadcastas; cer nollas här, men
   // samspelet skärm↔rigg vid omspel i GM-läge bör verifieras i rummet.
   engine.on('roundReplay', p => {
-    resolvingNow = false; klar = new Set(); cer = null;
+    resolvingNow = false; klar = new Set(); cer = null; clearTimeout(cerTimer);   // avbryt ev. påbörjad auto-ceremoni (rundan är ogjord)
     startTimer();
     maybeBotProposal(p.round);
   });
@@ -336,10 +345,46 @@ function pauseForAwards() {
   const full = roundFull();
   timerLeft = full;
   broadcast({ type: 'timer', left: timerLeft, full, paused: true });
-  if (gmMode) return;   // GM: servern startar timern när spelledaren klickat klart ceremonin (awardDone)
-  awardsVantar = new Set(liveHumanIds());
-  if (awardsVantar.size === 0) return startTimer();
-  awardsFailsafe = setTimeout(() => { awardsVantar = new Set(); startTimer(); }, 40000);
+  // Rundtimern står stilla tills ceremonin når awardDone. GM: spelledarens award_next startar den.
+  // Selfplay: serverns auto-stegare (startAutoCeremony → advanceCeremony) startar den. Ingen klient-gating.
+}
+
+// Stega prisutdelningen ETT pris (skärm-broadcast + rigg i exakt takt). Returnerar true när ceremonin
+// är slut. Delas av GM (award_next, ett klick per pris) och selfplay (auto-stegaren nedan).
+function advanceCeremony() {
+  if (!cer) return true;
+  cer.i++;
+  if (cer.i < cer.steps.length) {
+    const s = cer.steps[cer.i];
+    rigg?.showAward(s.typ, s.w);                                        // riggen tänder priset
+    broadcast({ type: 'event', event: 'awardStep', payload: { typ: s.typ, w: s.w, i: cer.i, total: cer.steps.length } });
+    return false;
+  }
+  const over = engine.getState().over;
+  rigg?.endAwards(over);
+  broadcast({ type: 'event', event: 'awardDone', payload: { over } });
+  cer = null;
+  if (!over) startTimer();                                             // rundan återupptas
+  return true;
+}
+
+// SELFPLAY: servern stegar ceremonin på en fast klocka så skärm + rigg kliver i takt. Första ticket
+// öppnar scenen (beginAwards + awardCeremony); följande tick stegar ett pris var CEREMONY_STEP_MS.
+// Paus fryser takten. Avbryts av clearTimeout(cerTimer) + cer=null (omstart/omspel).
+function startAutoCeremony() {
+  clearTimeout(cerTimer);
+  const total = cer ? cer.steps.length : 0;
+  cerTimer = setTimeout(function open() {
+    if (!cer) return;
+    rigg?.beginAwards();
+    broadcast({ type: 'event', event: 'awardCeremony', payload: { total } });
+    cerTimer = setTimeout(step, 700);                                  // kort pre-award-paus (matchar scen-bytet)
+  }, 300);
+  function step() {
+    if (!cer) return;
+    if (paused) { cerTimer = setTimeout(step, 400); return; }          // paus → vänta in fortsätt
+    if (!advanceCeremony()) cerTimer = setTimeout(step, CEREMONY_STEP_MS);
+  }
 }
 function awardsKlar(lag) {
   if (!awardsVantar.has(lag)) return;
@@ -648,20 +693,9 @@ function handleGmCmd(m) {
       engine.resolveEventDecision(beslut);
       break;
     }
-    case 'award_next': {   // GM: stega prisutdelningen ett pris — skärm + rigg i exakt takt
+    case 'award_next': {   // GM: stega prisutdelningen ett pris — skärm + rigg i exakt takt (delad med selfplay)
       if (!gmMode || !cer) break;
-      cer.i++;
-      if (cer.i < cer.steps.length) {
-        const s = cer.steps[cer.i];
-        rigg?.showAward(s.typ, s.w);                                     // riggen tänder priset
-        broadcast({ type: 'event', event: 'awardStep', payload: { typ: s.typ, w: s.w, i: cer.i, total: cer.steps.length } });
-      } else {                                                           // sista priset passerat → avsluta
-        const over = engine.getState().over;
-        rigg?.endAwards(over);
-        broadcast({ type: 'event', event: 'awardDone', payload: { over } });
-        cer = null;
-        if (!over) startTimer();                                         // rundan återupptas
-      }
+      advanceCeremony();
       break;
     }
 
