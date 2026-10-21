@@ -974,12 +974,13 @@ function renderLobby(m) {
     phase === 'pagar' ? 'Spelet pågår. Tryck på en dator — ta över!'
     : phase === 'slut' ? 'Spelet är slut. Starta ett nytt!'
     : game.me ? 'Du är med! Starta när ni är redo.'
+    : params.get('lag') ? `Du spelar ${teamName(params.get('lag'))} — vänta på start.`
     : 'Tryck på laget du vill spela.';
 
   $('lobby').innerHTML = LAGEN.map(id => {
     const st = m.claims[id];
     const mine = game.me === id;
-    const takbar = !mine && st !== 'human';
+    const takbar = !mine && st !== 'human' && !params.get('lag');   // LÅST BÄNK (?lag=): andra lag aldrig valbara → björnen kan aldrig bli räven
     const status = mine ? `<span class="st du"><i class="dot"></i>DU ✓</span>`
       : st === 'human' ? `<span class="st human"><i class="dot"></i>SPELARE</span>`
       : st === 'bot' ? `<span class="st"><i class="dot"></i>${phase === 'pagar' ? 'DATOR — TA ÖVER!' : 'DATOR 🤖'}</span>`

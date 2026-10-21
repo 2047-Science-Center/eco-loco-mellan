@@ -68,6 +68,13 @@ elif [ "$ROLL" = "kiosk" ]; then
   while [ "${SERVER_URL%/}" != "$SERVER_URL" ]; do SERVER_URL="${SERVER_URL%/}"; done  # strip avslutande slash → annars //spel.html (bryter relativa asset-sökvägar → 404 → spelet laddar inte)
   LAG="${3:-}"
   SPEL_URL="${SERVER_URL}/spel.html?online=1${LAG:+&lag=${LAG}}"
+  # Lagnamn → knapptext ("Starta Björnen" i stället för "Starta Eco Loco (skog)").
+  case "$LAG" in
+    aker)   LAGNAMN="Oxen" ;;   skog)  LAGNAMN="Björnen" ;;
+    tundra) LAGNAMN="Räven" ;;  stad)  LAGNAMN="Örnen" ;;
+    *)      LAGNAMN="" ;;
+  esac
+  KNAPP_NAMN="Starta Eco Loco"; [ -n "$LAGNAMN" ] && KNAPP_NAMN="Starta $LAGNAMN"
 
   echo "▸ Installerar Chromium (apt) + unclutter (dold muspekare)…"
   sudo apt-get update -qq
@@ -101,7 +108,7 @@ EOF
   cat > "$tmp" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Starta Eco Loco${LAG:+ (${LAG})}
+Name=${KNAPP_NAMN}
 Comment=Öppna spelet i helskärm
 Exec=bash "$HOME/.local/bin/eco-loco-kiosk.sh"
 Icon=input-gaming
