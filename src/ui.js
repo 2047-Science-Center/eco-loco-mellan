@@ -507,7 +507,7 @@ if (ONLINE) {
     else if (game.me && game.phase === 'tutorial' && !tutRunning) runTutorial();
   });
   game.on('tradeIncoming', m => openTradeIncoming(m));
-  game.on('notis', m => toast(m.text));
+  game.on('notis', m => { audio.play('ui_notis'); toast(m.text); });
   game.on('disconnected', () => setConn(false));
   game.on('reconnected', r => { setConn(true); toast('✅ Återansluten'); if (r.started && r.state) rebuildFromState(r.state); });
 }
@@ -766,6 +766,7 @@ function openTrade(partnerId = null) {
   $('tb-give').innerHTML = `DU GER (${giveCur} ${curIco(giveCur, 14)})`;
   $('tb-get').innerHTML = `DU FÅR (${getCur} ${curIco(getCur, 14)})`;
   renderTradeModal();
+  audio.play('ui_open');
   $('ov-trade').classList.add('open');
 }
 function renderTradeModal() {
@@ -782,7 +783,7 @@ function renderTradeModal() {
   $('get-amt').textContent = getAmt;
 }
 $('btn-trade').addEventListener('click', () => { audio.play('ui_tap'); openTrade(); });
-$('btn-trade-cancel').addEventListener('click', () => $('ov-trade').classList.remove('open'));
+$('btn-trade-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-trade').classList.remove('open'); });
 $('give-minus').addEventListener('click', () => { giveAmt = Math.max(1, giveAmt - 1); renderTradeModal(); });
 $('give-plus').addEventListener('click', () => { giveAmt = Math.min(E().team(game.me)[giveCur], giveAmt + 1); renderTradeModal(); });
 $('get-minus').addEventListener('click', () => { getAmt = Math.max(1, getAmt - 1); renderTradeModal(); });
@@ -846,9 +847,10 @@ $('btn-prop').addEventListener('click', () => {
     $('ov-choose').classList.remove('open');
     game.openProposal(el.dataset.type);
   }));
+  audio.play('ui_open');
   $('ov-choose').classList.add('open');
 });
-$('btn-choose-cancel').addEventListener('click', () => $('ov-choose').classList.remove('open'));
+$('btn-choose-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-choose').classList.remove('open'); });
 
 function openVoteModal(p) {
   voteOpenFor = p;
@@ -892,8 +894,8 @@ function humanVote(yes) {
 }
 
 // ═══════════════ Register / årsberättelse ═══════════════
-$('btn-log').addEventListener('click', () => { audio.play('ui_tap'); renderRegister(); $('ov-register').classList.add('open'); });
-$('btn-reg-close').addEventListener('click', () => $('ov-register').classList.remove('open'));
+$('btn-log').addEventListener('click', () => { audio.play('ui_open'); renderRegister(); $('ov-register').classList.add('open'); });
+$('btn-reg-close').addEventListener('click', () => { audio.play('ui_close'); $('ov-register').classList.remove('open'); });
 function renderRegister() {
   const lb = E().leaderboards();
   $('tbl-bors').innerHTML = lb.bors.map((r, i) =>
@@ -1388,7 +1390,7 @@ function tutSay({ ix, txt, x, y, focus }) {
 async function startCeremony() {
   tutInCeremony = true;                       // från och med nu konvergerar skärmen själv mot spelet (rebuildFromState)
   $('ov-ready').classList.add('open');
-  await Promise.race([new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_tap'); res(); }; }), tutAbortP()]);
+  await Promise.race([new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_confirm'); res(); }; }), tutAbortP()]);
   if (tutAbort) return;
   $('ov-ready').classList.remove('open');
   await tutBarrier(5);                       // online: vänta in de andra lagen; solo: direkt
