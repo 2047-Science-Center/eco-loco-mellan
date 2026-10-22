@@ -1,11 +1,15 @@
-// tools/generera-ljud.js — genererar spelets alla ljud via ElevenLabs Sound Effects-API.
-// Prompterna kommer från design/AUDIO.md; filnamnen matchar spec/assets.json → audio.
+// tools/generera-ljud.js — skärmens interaktions-/UI-ljud via ElevenLabs SFX (webbläsarlagret).
+// LJUDIDENTITET: Riktning A "Centralmaktens etersändning" (se design/LJUDIDENTITET.md).
+// Samma gemensamma PREFIX som centrallagret (generera-rigg-ljud.js) → skärm + show = samma maskin.
+// Skärmljuden är KORTA och TORRA, men bär samma sliten-PA/band-finish subtilt.
+// Filnamnen matchar spec/assets.json → audio. UI-familjen härleds ur ett torrt konsol-ankare (ui_tap).
 //
-//   export ELEVENLABS_API_KEY=sk_...      (eller lägg nyckeln i .env-fil och source:a den)
-//   node tools/generera-ljud.js           (hoppar över filer som redan finns)
-//   node tools/generera-ljud.js --force   (genererar om allt)
+//   export ELEVENLABS_API_KEY=sk_...
+//   node tools/generera-ljud.js            (hoppar över filer som finns)
+//   node tools/generera-ljud.js --force    (gör om allt)
 //
-// Ambienserna görs som ~20 s loopar; korsfadningen i src/audio.js döljer skarven.
+// OBS: de gamla orphan-ljuden (round_start/event/award_led/eld/sab/win/lose/amb_*) genereras INTE
+// längre här — de ligger centralt i assets/audio/rigg/ (se spec/assets.json). Radera orphan-filerna.
 
 import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,42 +21,48 @@ const FORCE = process.argv.includes('--force');
 const DIR = join(fileURLToPath(import.meta.url), '..', '..', 'assets', 'audio');
 mkdirSync(DIR, { recursive: true });
 
-// [fil, prompt, sekunder, loop]
-const LJUD = [
-  // De tre signatur-byggljuden (tonal trappa: smutsig lågt/dissonant → grön ljust/konsonant)
-  ['build_smutsig', 'short low industrial machine clank with a dull rumble and a puff of steam, slightly dissonant, ominous, game build sound, no music', 1.0],
-  ['build_standard', 'short neutral mechanical construction thunk, a single wooden-and-metal placement sound, plain and clean, game build sound, no music', 0.7],
-  ['build_gron', 'short bright organic chime with a soft sprout leaf shimmer and a gentle wind, pleasant and harmonic, game build sound, no music', 1.0],
-  // Grund-SFX
-  ['ui_tap', 'soft UI tap, clean, short, subtle', 0.5],
-  ['trade', 'quick coin and resource exchange chime, light and positive', 0.8],
-  ['vote', 'short wooden gavel tap, civic, decisive', 0.6],
-  ['proposal_pass', 'brief positive two-note confirmation chime, bright', 1.0],
-  ['proposal_fail', 'brief soft negative buzz, muted, gentle rejection', 1.0],
-  ['round_start', 'gentle round-start bell, hopeful, single clear tone', 1.2],
-  ['event', 'short dramatic warning sting, low brass hit with alarm tail, urgent', 1.6],
-  // Award-stingar
-  ['award_led', 'triumphant short brass fanfare, celebratory, game award jingle', 1.6],
-  ['award_eld', 'warm uplifting short chime, wholesome, gentle celebration', 1.4],
-  ['award_sab', 'comedic ominous short sting, playful shame trombone wah wah', 1.4],
-  // Slutstingar
-  ['win', 'warm victorious musical resolve, bright and hopeful, game victory sting', 2.6],
-  ['lose', 'somber descending musical sting, muted and heavy, game defeat', 2.6],
-  // De fem öhälso-ambienserna (loopar)
-  ['amb_superdaligt', 'bleak industrial ambience loop, distant coughing crowd, heavy machinery hum, cold wind, oppressive smog atmosphere', 20, true],
-  ['amb_daligt', 'muted industrial ambience loop, faint machinery, occasional lonely bird, uneasy grey atmosphere', 20, true],
-  ['amb_neutralt', 'balanced calm ambient loop, light wind, faint distant town and nature mixed', 20, true],
-  ['amb_bra', 'pleasant nature ambience loop, birdsong, light breeze, faint cheerful voices far away', 20, true],
-  ['amb_mycketbra', 'joyful thriving nature ambience loop, lively birds, gentle festive murmur, warm and bright', 20, true],
+// Samma stil-lim som centrallagret (håll identisk med PREFIX i generera-rigg-ljud.js).
+export const PREFIX = 'through Centralmaktens worn PA loudspeaker, driven valve-and-tape saturation and light distortion, tape hiss and wow-flutter, institutional melancholic not arcade, no music no melody no voice';
+
+// [fil, specifik beskrivning, sekunder]  — slutlig prompt = `${desc}, ${PREFIX}`
+const SPEC = [
+  // De tre signatur-byggljuden (tonal trappa: smutsig lågt/dovt → grön mjukt/organiskt)
+  ['build_smutsig',  'a short low industrial placement thunk with a dull muffled rumble, slightly ominous and grounded', 1.0],
+  ['build_standard', 'a short neutral mechanical placement thunk, a plain muted wooden-and-metal tap', 0.7],
+  ['build_gron',     'a short soft organic placement tone with a gentle warm resonance and a faint shimmer, pleasant', 1.0],
+
+  // UI-familjen (ankaret ui_tap varieras i tonhöjd/riktning — EN familj, inte spridda ljud)
+  ['ui_tap',     'a short dry console tap, a single soft muted key-press blip with a quick damped tail', 0.6],
+  ['ui_confirm', 'a short confirm blip, a soft muted rising two-note, positive and understated', 0.6],
+  ['ui_reject',  'a short reject blip, a soft muted falling two-note, polite not harsh', 0.6],
+  ['ui_hover',   'a very short faint hover blip, a tiny muted neutral tick, subtle', 0.5],
+  ['ui_open',    'a short open cue, a soft muted blip with a quick upward filtered swell, a panel appearing', 0.7],
+  ['ui_close',   'a short close cue, a soft muted blip with a quick downward swell, a panel dismissed', 0.6],
+  ['ui_notis',   'a soft muted two-note notification ping, neutral and calm', 0.8],
+  ['ui_back',    'a short back blip, a soft muted neutral falling tone', 0.6],
+  ['ui_tick',    'a very short dry counting tick, a soft muted mid tone', 0.5],
+
+  // Interaktion / feedback
+  ['trade',         'a short muted resource-exchange chime, a soft warm two-part swap, light and positive', 0.8],
+  ['vote',          'a short muted gavel tap, a soft civic knock, decisive but warm', 0.6],
+  ['proposal_pass', 'a brief muted positive confirmation, a soft low-key two-note, warm', 1.0],
+  ['proposal_fail', 'a brief soft muted negative tone, a gentle institutional rejection', 1.0],
 ];
 
-for (const [namn, text, dur, loop] of LJUD) {
+const LJUD = SPEC.map(([namn, desc, dur]) => [namn, `${desc}, ${PREFIX}`, dur]);
+
+// Guard: ElevenLabs tar max 450 tecken/prompt.
+console.log(`PREFIX (${PREFIX.length} tecken)`);
+let bad = false;
+for (const [namn, text] of LJUD) { if (text.length > 450) { console.error(`FÖR LÅNG (${text.length}): ${namn}`); bad = true; } }
+if (bad) { console.error('Avbryter — korta ner markerade prompts.'); process.exit(1); }
+
+for (const [namn, text, dur] of LJUD) {
   const fil = join(DIR, `${namn}.mp3`);
   if (existsSync(fil) && !FORCE) { console.log(`↷ ${namn}.mp3 finns — hoppar över`); continue; }
   process.stdout.write(`♪ ${namn}.mp3 … `);
-  const body = { text, duration_seconds: dur, prompt_influence: 0.5 };
-  if (loop) body.loop = true;   // stöds av nyare API:t; ta bort raden om servern klagar
-  const r = await fetch('https://api.elevenlabs.io/v1/sound-generation', {
+  const body = { text, model_id: 'eleven_text_to_sound_v2', duration_seconds: dur, prompt_influence: 0.6 };
+  const r = await fetch('https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128', {
     method: 'POST',
     headers: { 'xi-api-key': KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -61,4 +71,4 @@ for (const [namn, text, dur, loop] of LJUD) {
   writeFileSync(fil, Buffer.from(await r.arrayBuffer()));
   console.log('klar');
 }
-console.log('\nFärdigt. Ljuden pekas redan ut i spec/assets.json — ladda om spelet så spelar de.');
+console.log('\nFärdigt → assets/audio/. UI-familjen kräver nya nycklar i spec/assets.json + anrop i src/ui.js (se design/LJUDIDENTITET.md).');

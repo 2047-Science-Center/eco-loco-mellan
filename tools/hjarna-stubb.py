@@ -120,16 +120,17 @@ def _amb_cmd(path):   # kontinuerlig loop + volym, per plattform
         return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", str(int(float(AMB_VOL) * 100)), "-loop", "0", path]
     return None
 AMB_FILE = {
-    "superdaligt": "ambience-5-tryck.mp3",     # tungt/tryck (öhälsa ≤20, kris)
-    "daligt":      "ambience-4-tyngd.mp3",
-    "neutralt":    "ambience-3-oro.mp3",        # neutralt/start — svag oro
-    "bra":         "ambience-2-jamvikt.mp3",
-    "mycketbra":   "ambience-1-gryning.mp3",    # lugnt/hoppfullt (öhälsa >80)
+    "superdaligt": "soundscape_1.mp3",   # mörk/tung (öhälsa ≤20, kris)
+    "daligt":      "soundscape_2.mp3",   # orolig/grå
+    "neutralt":    "soundscape_3.mp3",   # balanserad/lugn (start)
+    "bra":         "soundscape_4.mp3",   # varm/hoppfull
+    "mycketbra":   "soundscape_5.mp3",   # ljus/blomstrande (öhälsa >80)
 }
-# Spelledarens manuella stämnings-presets (topic ecoloco/rigg/ambience "1".."5"). 1=lugn → 5=tung.
+# Spelledarens manuella stämnings-presets (topic ecoloco/rigg/ambience "1".."5") = soundscape_1..5.
+# 1 = mörkast/kris → 5 = ljusast/glad (samma skala som AUTO ovan).
 AMB_PRESET = {
-    "1": "ambience-1-gryning.mp3", "2": "ambience-2-jamvikt.mp3", "3": "ambience-3-oro.mp3",
-    "4": "ambience-4-tyngd.mp3",   "5": "ambience-5-tryck.mp3",
+    "1": "soundscape_1.mp3", "2": "soundscape_2.mp3", "3": "soundscape_3.mp3",
+    "4": "soundscape_4.mp3", "5": "soundscape_5.mp3",
 }
 amb_manual = None   # None = AUTO (ambiencen följer öhälsan); annars en fast preset-fil spelledaren valt
 _amb_target = None   # resolverad sökväg, eller None = tyst
