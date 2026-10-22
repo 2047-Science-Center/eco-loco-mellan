@@ -17,14 +17,16 @@ GM-ljud: det du publicerar som `gm-ljud <id>` spelar `<id>.wav` härifrån (t.ex
 
 ## Soundscapes (kontinuerliga loopar)
 
-Spelas i loop på halv volym (`AMB_VOL`, default 0.5) hela rundan, byts med öns hälsa, tystnar vid nedräkning och under awards. Stingarna ovan mixas ovanpå.
+Spelas i loop på halv volym (`AMB_VOL`, default 0.5) hela rundan, tystnar vid nedräkning och under awards. Stingarna ovan mixas ovanpå. Rent atmosfäriska soundscapes (inga fåglar/röster/maskiner), skala 1 = lugn → 5 = tung. Numret i filnamnet = stämnings-presetet; öhälso-mappningen nedan är omvänd (sämst → tyngst).
 
-| Fil | Öhälsoläge | Stämning |
-|-----|-----------|----------|
-| `soundscape_1.mp3` | superdåligt (≤20) | upprorsstämning |
-| `soundscape_2.mp3` | dåligt (≤40) | spänd/orolig |
-| `soundscape_3.mp3` | neutralt (≤60) | lugn (= start-vibe) |
-| `soundscape_4.mp3` | bra (≤80) | varm/positiv |
-| `soundscape_5.mp3` | mycket bra (>80) | glatt |
+| Fil | Preset | Öhälsoläge (AUTO) | Stämning |
+|-----|--------|-------------------|----------|
+| `ambience-1-gryning.mp3` | 1 | mycket bra (>80) | varm, öppen, hoppfull |
+| `ambience-2-jamvikt.mp3` | 2 | bra (≤80) | samlad, neutral |
+| `ambience-3-oro.mp3` | 3 | neutralt (≤60, start) | svag, olöst oro |
+| `ambience-4-tyngd.mp3` | 4 | dåligt (≤40) | mörkare, tyngd |
+| `ambience-5-tryck.mp3` | 5 | superdåligt (≤20, kris) | tätt, tryckande (ej skräck) |
 
-Alla har subtil mänsklig chatter inblandad. `attract.mp3` loopar i viloläget före spelstart.
+**AUTO vs manuell:** i AUTO-läge byter dirigenten ambience efter öns hälsa (tabellen ovan). Spelledaren kan när som helst välja en fast stämning via panelens **STÄMNING**-knappar → topic `ecoloco/rigg/ambience` med `"1"`–`"5"` (manuell preset vinner över öhälsan) eller `"auto"` (åter till hälso-styrning). Se `AMB_FILE`/`AMB_PRESET`/`apply_ambience` i `tools/hjarna-stubb.py`.
+
+`attract.mp3` loopar i viloläget före spelstart.

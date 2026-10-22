@@ -194,6 +194,18 @@
       </div>
 
       <div class="card span">
+        <h2>STÄMNING <span class="hint">— atmosfärisk ambience i rummet · AUTO följer öns hälsa</span></h2>
+        <div class="row auto">
+          <button class="btn amb" data-amb="1">① GRYNING<small>lugn/hoppfull</small></button>
+          <button class="btn amb" data-amb="2">② JÄMVIKT<small>neutral</small></button>
+          <button class="btn amb" data-amb="3">③ ORO<small>på väg ned</small></button>
+          <button class="btn amb" data-amb="4">④ TYNGD<small>går dåligt</small></button>
+          <button class="btn amb" data-amb="5">⑤ TRYCK<small>kris</small></button>
+          <button class="btn" id="amb-auto" style="color:var(--gold)">AUTO<small>följer hälsan</small></button>
+        </div>
+      </div>
+
+      <div class="card span">
         <h2>INDIVIDUELLT LJUS <span class="hint">— helt utan ljud · fungerar alltid</span></h2>
         <div class="row auto">
           <button class="btn spot" data-team="aker" data-n="1"><span class="chipdot"></span>SPOT 1<small>Åker</small></button>
@@ -433,6 +445,16 @@ $$('.spot').forEach(b => b.onclick = () => { const on = b.classList.toggle('acti
 $('#blandare-btn').onclick = (e) => { const on = e.currentTarget.classList.toggle('active');
   net.rigcmd(R + 'gm/blandare', on ? '1' : '0'); toast('Saftblandaren ' + (on ? 'PÅ' : 'AV')); };
 $('#allagron-btn').onclick = () => { net.rigcmd(R + 'gm/alla_grona', '1'); toast('Alla gröna'); };
+// ——— STÄMNING: manuell ambience-preset (1..5) eller AUTO (dirigenten byter ambience-loop) ———
+const AMB_NAMN = { '1': 'Gryning', '2': 'Jämvikt', '3': 'Oro', '4': 'Tyngd', '5': 'Tryck' };
+$$('.amb').forEach(b => b.onclick = () => {
+  $$('.amb').forEach(x => x.classList.remove('active')); $('#amb-auto').classList.remove('active'); b.classList.add('active');
+  net.rigcmd(R + 'ambience', b.dataset.amb); toast('Stämning: ' + AMB_NAMN[b.dataset.amb]);
+});
+$('#amb-auto').onclick = (e) => {
+  $$('.amb').forEach(x => x.classList.remove('active')); e.currentTarget.classList.add('active');
+  net.rigcmd(R + 'ambience', 'auto'); toast('Stämning: AUTO (följer öns hälsa)');
+};
 $('#slack-btn').onclick = () => { net.rigcmd(R + 'scen', 'slut'); [1,2,3,4].forEach(n => net.rigcmd(R + 'gm/spot/' + n, '0'));
   $$('.spot,.btn.active').forEach(x => x.classList.remove('active')); toast('Släck allt'); };
 

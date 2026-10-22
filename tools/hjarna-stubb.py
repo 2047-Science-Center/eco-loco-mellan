@@ -120,12 +120,18 @@ def _amb_cmd(path):   # kontinuerlig loop + volym, per plattform
         return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", str(int(float(AMB_VOL) * 100)), "-loop", "0", path]
     return None
 AMB_FILE = {
-    "superdaligt": "soundscape_1.mp3",   # upprorsstämning (öhälsa ≤20)
-    "daligt":      "soundscape_2.mp3",
-    "neutralt":    "soundscape_3.mp3",
-    "bra":         "soundscape_4.mp3",
-    "mycketbra":   "soundscape_5.mp3",   # glatt (öhälsa >80)
+    "superdaligt": "ambience-5-tryck.mp3",     # tungt/tryck (öhälsa ≤20, kris)
+    "daligt":      "ambience-4-tyngd.mp3",
+    "neutralt":    "ambience-3-oro.mp3",        # neutralt/start — svag oro
+    "bra":         "ambience-2-jamvikt.mp3",
+    "mycketbra":   "ambience-1-gryning.mp3",    # lugnt/hoppfullt (öhälsa >80)
 }
+# Spelledarens manuella stämnings-presets (topic ecoloco/rigg/ambience "1".."5"). 1=lugn → 5=tung.
+AMB_PRESET = {
+    "1": "ambience-1-gryning.mp3", "2": "ambience-2-jamvikt.mp3", "3": "ambience-3-oro.mp3",
+    "4": "ambience-4-tyngd.mp3",   "5": "ambience-5-tryck.mp3",
+}
+amb_manual = None   # None = AUTO (ambiencen följer öhälsan); annars en fast preset-fil spelledaren valt
 _amb_target = None   # resolverad sökväg, eller None = tyst
 _amb_proc = None
 def _amb_worker():
@@ -161,6 +167,15 @@ def stop_ambience():
     if _amb_target is None: return
     _amb_target = None
     _amb_kill()
+def apply_ambience(payload):   # SPELLEDARE: manuell stämningsväxel. "1".."5" = fast preset, "auto" = åter till öhälso-styrning.
+    global amb_manual
+    p = str(payload).strip()
+    if p == "auto":
+        amb_manual = None
+        set_ambience(AMB_FILE.get(oh_mode(last_oh)))   # återgå till ambiencen för öhälso-läget just nu
+    elif p in AMB_PRESET:
+        amb_manual = AMB_PRESET[p]
+        set_ambience(amb_manual)
 
 # ---- handlers ----
 def apply_ohalsa(payload):
@@ -169,7 +184,7 @@ def apply_ohalsa(payload):
     m = oh_mode(payload)
     if not crisis_active:                  # under KRIS äger krisen LED-listen → rör ej looken
         set_fx("none"); set_all(MODE_LOOK[m]); spots_off()
-    set_ambience(AMB_FILE.get(m))          # kontinuerlig soundscape för läget (ambiencen loopar vidare även i kris)
+    set_ambience(amb_manual or AMB_FILE.get(m))  # manuell preset vinner; annars följ öhälso-läget (loopar vidare även i kris)
     if m != cur_mode:
         if not crisis_active: play(MODE_SOUND.get(m))
         cur_mode = m
@@ -284,6 +299,8 @@ def on_semantic(topic, payload):
         handle_gm(topic[len("ecoloco/rigg/gm/"):], payload); return
     if topic == "ecoloco/rigg/paus":   # systemsignal: visas även i spelledar-/master-läge
         apply_paus(payload); return
+    if topic == "ecoloco/rigg/ambience":   # spelledarens manuella stämningsväxel: gäller i både auto- och master-läge
+        apply_ambience(payload); return
     if master:
         return                      # GM har tagit över — ignorera spelets cues
     if   topic == "ecoloco/rigg/ohalsa":    apply_ohalsa(payload)
@@ -303,7 +320,7 @@ def on_semantic(topic, payload):
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
               "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
-              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")
