@@ -179,6 +179,20 @@ def apply_ambience(payload):   # SPELLEDARE: manuell stämningsväxel. "1".."5" 
         set_ambience(amb_manual)
 
 # ---- handlers ----
+_trailer_proc = None
+def play_trailer(on):   # TRAILER-LJUD CENTRALT (skärmarna är tysta). "1" = spela, annat = stoppa.
+    global _trailer_proc
+    if _trailer_proc and _trailer_proc.poll() is None:
+        try: _trailer_proc.terminate()
+        except Exception: pass
+    _trailer_proc = None
+    if str(on).strip() == "1":
+        stop_ambience()                      # tysta attract-loopen under trailern (ingen överlappning)
+        path = resolve("trailer.mp3")
+        if not path: print("[hjarna]   (trailer-ljud saknas: trailer.mp3)"); return
+        cmd = _oneshot_cmd(path)
+        if cmd: _trailer_proc = subprocess.Popen(cmd)
+
 def apply_ohalsa(payload):
     global cur_mode, last_oh
     last_oh = payload
@@ -303,6 +317,8 @@ def on_semantic(topic, payload):
         apply_paus(payload); return
     if topic == "ecoloco/rigg/ambience":   # spelledarens manuella stämningsväxel: gäller i både auto- och master-läge
         apply_ambience(payload); return
+    if topic == "ecoloco/rigg/trailer":    # trailer-ljud centralt (skärmarna tysta) — systemceremoni, gäller alltid
+        play_trailer(payload); return
     if master:
         return                      # GM har tagit över — ignorera spelets cues
     if   topic == "ecoloco/rigg/ohalsa":    apply_ohalsa(payload)
@@ -322,7 +338,7 @@ def on_semantic(topic, payload):
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
               "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
-              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/trailer", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")

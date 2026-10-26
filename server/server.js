@@ -161,6 +161,7 @@ function stopTrailer() {
   for (const t of trailerTimers) clearTimeout(t);
   trailerTimers = [];
   trailerPlaying = false;
+  riggSend('ecoloco/rigg/trailer', '0');   // stoppa ev. centralt trailer-ljud (hjärnan)
 }
 // playTrailer: broadcasta 'trailer' till skärmarna, schemalägg varje ljus-cue vid sin tid,
 // och efter sista cuen broadcasta 'trailerDone'. Fas-gardat (en flagga) + rör aldrig motorn.
@@ -172,8 +173,9 @@ function playTrailer() {
   const src = manifest.onboarding?.trailer || '';
   console.log(`[trailer] start — ${TRAILER_CUES.length} ljus-cues från servern (EN källa)`);
   broadcast({ type: 'event', event: 'trailer', payload: { src, dur: TRAILER_DUR } });
-  // Trailern spelas med sitt EGET ljud på skärmarna (inget separat central-ljud-cue → ingen dubbel).
-  stopTrailer(); trailerPlaying = true;    // stopTrailer nollar flaggan — sätt tillbaka
+  // Skärmarna spelar videon TYST — trailer-ljudet går CENTRALT via hjärnan (navet → centralhögtalaren).
+  stopTrailer(); trailerPlaying = true;    // stopTrailer nollar flaggan (+ ev. gammalt trailer-ljud) — sätt tillbaka
+  riggSend('ecoloco/rigg/trailer', '1');   // starta centralt trailer-ljud
   trailerTimers = TRAILER_CUES.map(cue => setTimeout(() => {
     fireTrailerCue(cue.cmds);
     console.log(`[trailer] cue ${cue.t.toFixed(1)}s · ${cue.label}`);

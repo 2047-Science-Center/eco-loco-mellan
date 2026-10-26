@@ -1130,6 +1130,7 @@ game.on('trailer', p => {
   const v = videoEllerFallback('trailer-video', 'trailer-fallback', p?.src);   // saknas klippet → placeholder
   $('ov-trailer').classList.add('open');
   if (v) {
+    v.muted = true;   // TYST på skärmen — trailer-ljudet går centralt via hjärnan (navet → centralhögtalaren)
     v.addEventListener('ended', doljTrailer, { once: true });
     try { v.currentTime = 0; } catch {}
     v.play?.().catch(() => {});   // autoplay nekad → ljussekvensen körs ändå, failsafe/trailerDone döljer
@@ -1193,7 +1194,7 @@ function joinIntro() {
   trailerVisad = true;
   const v = videoEllerFallback('trailer-video', 'trailer-fallback', ONB.trailer);
   $('ov-trailer').classList.add('open');
-  if (v) { try { v.currentTime = 0; } catch {} v.addEventListener('ended', doljTrailer, { once: true }); v.play?.().catch(() => {}); }
+  if (v) { v.muted = true; try { v.currentTime = 0; } catch {} v.addEventListener('ended', doljTrailer, { once: true }); v.play?.().catch(() => {}); }
   // När introt är klart (trailerDone/skip) → kör samma flöde som alla andra (lag räknas om då).
   efterTrailer = () => { const f = computeFortsatt(); if (f) f(); };
   clearTimeout(efterTrailerFailsafe);
