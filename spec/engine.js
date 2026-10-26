@@ -47,6 +47,7 @@ export const DEFAULT_CONFIG = {
   // Motorn väljer dem server-auktoritativt → S.extraProposals (se _rollExtraProposals).
   extraProposalsFromRound: 4,  // först fr.o.m. denna runda dyker extra-förslag upp (runda 1–3 = bara grund-3)
   extraProposalsPerRound: 2,   // exakt så många extra-förslag/runda (utöver grund-3)
+  krisProposalOh: 20,          // öhälsa under detta → SOS Krispaket ligger ALLTID bland förslagen (även före gate-rundan)
 
   // Belopp för de NYA extra-förslagen. Konservativt satta — Klara/Josef får tuna.
   // (Grund-3-siffrorna ovan rörs INTE; nya förslag återanvänder dem där det går.)
@@ -213,14 +214,20 @@ export class EcoLoco {
   }
 
   // Rulla rundans extra-förslag. Server-auktoritativt → S.extraProposals, som alla vyer läser
-  // (samma 2 extra på alla skärmar + spelledarpulten). Runda < gate → []; annars N unika ur poolen.
+  // (samma extra på alla skärmar + spelledarpulten). Runda < gate → [] (men se kris nedan); annars N unika.
+  // KRIS: öhälsa < krisProposalOh → SOS Krispaket ligger ALLTID med (garanterad räddningsutväg),
+  // även före gate-rundan. Övriga platser fylls slumpvis som vanligt.
   _rollExtraProposals() {
+    if (!this.S) return;
     const fromRound = this.cfg.extraProposalsFromRound ?? 4;
     const count = this.cfg.extraProposalsPerRound ?? 2;
-    if (!this.S || this.S.round < fromRound) { if (this.S) this.S.extraProposals = []; return; }
+    const kris = this.S.oh < (this.cfg.krisProposalOh ?? 20);
+    if (this.S.round < fromRound && !kris) { this.S.extraProposals = []; return; }
     const pool = [...EXTRA_PROPOSAL_POOL];
     const pick = [];
-    for (let i = 0; i < count && pool.length; i++) pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    if (kris && pool.includes('krispaket')) { pick.push('krispaket'); pool.splice(pool.indexOf('krispaket'), 1); }
+    const mal = this.S.round < fromRound ? pick.length : count;   // före gate: bara ev. garanterat krispaket
+    while (pick.length < mal && pool.length) pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     this.S.extraProposals = pick;
   }
   // Vilka förslagstyper får öppnas just nu: grund-3 alltid, extra-förslag bara om de ligger i

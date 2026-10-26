@@ -132,7 +132,7 @@ const humanIds = () => TEAMS.filter(id => claims[id] && claims[id] !== 'bot');
 const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 
 // State bär även serverns driftflaggor (gmMode/riggSilent) så spelledarpanelen kan spegla dem auktoritativt.
-function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, state: engine ? { ...engine.getState(), gmMode, riggSilent } : null })); }
+function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, state: engine ? { ...engine.getState(), gmMode, riggSilent, started } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, claims: Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])) };
