@@ -790,6 +790,10 @@ $('get-minus').addEventListener('click', () => { getAmt = Math.max(1, getAmt - 1
 $('get-plus').addEventListener('click', () => { getAmt = getAmt + 1; renderTradeModal(); });
 $('btn-trade-go').addEventListener('click', async () => {
   $('btn-trade-go').disabled = true;
+  // Byte med ett MÄNSKLIGT lag → servern frågar dem, svaret kan dröja. Visa direkt att förfrågan
+  // är skickad så man inte tror att inget hände och trycker om. (Botar svarar direkt → ingen väntan.)
+  const partnerHuman = ONLINE && lastLobby?.claims?.[tradePartner] === 'human';
+  if (partnerHuman) toast(`📨 Förfrågan skickad till ${teamName(tradePartner)} — väntar på svar …`);
   const res = await game.trade(tradePartner, giveAmt, giveCur, getAmt, getCur);
   $('btn-trade-go').disabled = false;
   if (!res.ok) { toast(`❌ ${res.why || 'bytet gick inte'}`, true); return; }
@@ -1559,12 +1563,18 @@ async function runTutorial() {
   await tutBarrier(3);
   if (tutAbort) return;
 
+  // ——— Coach-tips: peka ut surfplattan med spel-coachen innan sista steget ———
+  // tutSay visar NÄSTA-knapp och ligger kvar tills spelaren trycker (45 s kiosk-säkring) — ingen auto-timer.
+  await tutSay({ ix: 3, focus: null, x: 520, y: 380,
+    txt: `Undrar ni över något under spelet? Vid sidan står en <b>surfplatta med en coach</b> som kan reglerna — fråga den när ni vill. Tryck <b>NÄSTA</b> när ni är redo.` });
+  if (tutAbort) return;
+
   // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
   await tutSay({ ix: 3, focus: '#endwrap', x: 1020, y: 540,
     txt: `Sista steget: avsluta rundan. Efter <b>varje runda</b> delas tre priser ut — årets ledande företag, årets eldsjäl och årets sabotör.` });
   if (tutAbort) return;
   const roundEndP = tutOnce('roundEnd');
-  await tutBeat({ ix: 3, txt: 'Klar? Tryck här. Annars räknas det av självt.', x: 1040, y: 760, focus: '#endwrap',
+  await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA OMGÅNG</b>. Annars räknas det av självt.', x: 1040, y: 760, focus: '#endwrap',
     until: roundEndP,
     autoDo: () => $('btn-end').click() });
   if (tutAbort) return;

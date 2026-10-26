@@ -436,7 +436,7 @@ $('#gm-switch').onclick = () => {
 // ——— GRUPP B: rigg-cues (ljud+ljus) ———
 const CUES = {
   happening:     () => { net.rigcmd(R + 'ljud', 'happening'); net.rigcmd(R + 'wave', '1'); setTimeout(() => net.rigcmd(R + 'wave', '0'), 3000); },
-  kris:          () => { net.rigcmd(R + 'gm/ljud', 'larm'); net.rigcmd(R + 'ohalsa', '10'); net.rigcmd(R + 'gm/blandare', '1'); },
+  kris:          () => { net.rigcmd(R + 'gm/ljud', 'larm'); net.rigcmd(R + 'kris', '1'); },   // semantisk kris-kanal: röd puls + blandare (15 s auto-av), släcks rent av SLÄCK ALLT (kris 0) och ÅTERSTÄLL. Förgiftar INTE öhälsan.
   nedrakning:    () => { net.rigcmd(R + 'countdown', '1'); setTimeout(() => net.rigcmd(R + 'countdown', '0'), 10000); },
   startceremoni: () => { net.rigcmd(R + 'ceremoni', 'countdown'); setTimeout(() => net.rigcmd(R + 'ceremoni', 'climax'), 3000); },
   fanfar:        () => { net.rigcmd(R + 'gm/ljud', 'win'); net.rigcmd(R + 'gm/alla_grona', '1'); },
