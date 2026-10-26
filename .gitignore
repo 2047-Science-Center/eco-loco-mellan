@@ -23,6 +23,10 @@ firmware/paus-knapp/config.h
 # touch-paketet: per-maskin-konfig (varje NUC har sina egna USB-portar) checkas aldrig in
 drift/mint/touch/touch.env
 
+# Hemligheter: API-nycklar m.m. i .env-filer (t.ex. strateg/server/.env) — publikt repo, aldrig in
+.env
+**/.env
+
 # Python bytecode (bieffekt av lokal syntaxkoll)
 __pycache__/
 *.pyc
