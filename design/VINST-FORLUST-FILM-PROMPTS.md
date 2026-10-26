@@ -6,7 +6,9 @@
 
 ## Gemensam identitet (samma som trailern — klistra in överst i varje bildprompt)
 
-> *"Dark, cold, cinematic. Near-black warm background (#121009), a single warm gold accent (#C9A94F), light text tone (#F2ECDD). Siberian island world: tundra, ice, mountains, sparse cold light, aurora/haze. Institutional, bureaucratic power aesthetic — control room, maps, dials, uniform crests — soviet-adjacent but NO real symbols and no readable text. The four companies recur as colors: gold (Oxen/farmland/bison), green (Björnen/forest/bear), orange (Räven/tundra/wolf), grey (Örnen/city/eagle). Film grain, soft vignette, 16:9 landscape. No text, no UI, no logos."*
+> *"Dark, cold, cinematic, PHOTOREAL. Cold Nordic/Arctic island world: black snow-capped mountains, a frozen sea scattered with ice floes, pine forests and fjords, an aurora in the sky (calm green when the island is healthy, toxic red when it is failing) and a low gold sun breaking the clouds. Muted desaturated slate-blue-and-grey palette with a single warm gold accent (#C9A94F); light text tone (#F2ECDD). The man-made / institutional layer is STYLIZED and retro (not the land): a brutalist 1960s control room with a backlit topographic island map, a row of retro CRT monitors, analog dials, desk phones and tungsten lamps, and four faceted low-poly bronze animal crests in hexagonal plaques (gold bison = Oxen, green bear = Björnen, copper wolf = Räven, grey eagle = Örnen) — soviet-adjacent but NO real symbols and no readable text. Film grain, soft vignette, 16:9 landscape. No text, no UI, no logos."*
+>
+> **Två register (viktigt):** ÖN/landskapet renderas **fotorealistiskt** (som trailerns ö-bilder — svarta snötoppar, isflak, norrsken). **Låg-poly/fasetterat gäller BARA** emblemen och kartan. Blanda inte — marken är aldrig low-poly.
 
 **Regler (samma som trailern):** en bild = en enkel rörelse (push-in / pan / parallax). Inga rörliga folkmassor, inget talande ansikte, ingen komplex rök/eld/vatten-i-rörelse — statiskt dis/norrsken är OK (det svepar fint). Generera UTAN text; lägg title-card som overlay i klippsteget (**MAKTSPELET**-typsnittet Oxanium, guld `#C9A94F`). Rösten är **samma som trailern och central-högtalaren — "Institutet för öns framtid": lugn, kall, institutionell, aldrig hetsig.** Ljudet går på central-högtalaren; riggen förstärker med ljus (se not längst ned).
 
@@ -26,21 +28,21 @@ Båda filmerna **återbrukar trailerns vokabulär** medvetet (mätaren, kontroll
 
 ### Shot L2 — Skärmarna slocknar · 0:04–0:08
 - **Kamera:** långsam lateral pan längs konsolen.
-- **Syns:** kontrollrummet (trailerns shot 4) men de **fyra skärmarna slocknar en efter en** — gul, grön, orange, grå falnar till mörkt. Rattarna står stilla. Ingen människa.
+- **Syns:** det brutalistiska kontrollrummet (trailerns kontrollrum) men de **fyra retro-CRT-skärmarna slocknar en efter en** — gul, grön, orange, grå falnar till mörkt, den stora backlit ö-kartan ovanför dämpas. Rattar och telefoner står stilla. Ingen människa.
 - **COPY (VO):** "Varje företag gjorde sitt klokaste val."
-- **BILDPROMPT:** `[Stilrad] Cinematic lateral pan across a cold institutional control room, the four wall monitors (gold, green, orange, grey) gone dark and dead, dials frozen, no people, a thin layer of dust and cold haze, the last dim gold key light fading. Near-black warm background, bureaucratic emptiness, film grain, 16:9, strong parallax depth.` — *Runway: slow left-to-right pan; monitors stay dark, haze drifts.*
+- **BILDPROMPT:** `[Stilrad] Cinematic lateral pan across a cold brutalist 1960s control room, a row of four retro CRT wall monitors (gold, green, orange, grey) gone dark and dead, the big backlit topographic island map above dimmed, analog dials and desk phones frozen, concrete walls, no people, a thin layer of dust and cold haze, the last dim gold tungsten light fading. Near-black warm background, bureaucratic emptiness, film grain, 16:9, strong parallax depth.` — *Runway: slow left-to-right pan; monitors stay dark, haze drifts.*
 
 ### Shot L3 — Ön sjunker · 0:08–0:13
 - **Kamera:** långsam parallax-drift över ön.
-- **Syns:** ön i vidvinkel (trailerns shot 7) nu **helt fallen** — skogarna grå och döda, vattnet platt och livlöst, kall industridis över allt, norrsken slocknat. Likt Newfoundlands tomma hav.
+- **Syns:** ön i vidvinkel (som trailerns ö-bild) nu **fallen** — svarta snötoppar under en **giftig röd norrskenshimmel**, industriskorstenar till höger med svarta rökpelare, döda grå-bruna skogar och tömda fjordar, det frusna havet platt och livlöst med smutsiga isflak. Likt Newfoundlands tomma hav.
 - **COPY (VO):** "Tillsammans räckte det inte."
-- **BILDPROMPT:** `[Stilrad] Cinematic wide aerial of the Siberian island fully collapsed: grey dead faceted forests, flat lifeless water, cold static industrial haze over everything, the aurora gone out, no warmth left. Bleak, still, silent — like an emptied sea. Near-black warm palette with only the faintest grey-gold light, film grain, 16:9, horizontal depth.` — *Runway: slow lateral parallax drift; haze static and gliding — no moving smoke.*
+- **BILDPROMPT:** `[Stilrad] Photoreal cinematic wide aerial of the cold Nordic island in collapse: black snow-capped mountains under a toxic red aurora bleeding across the dark sky, industrial smokestacks on the right belching static columns of black smoke, dead grey-brown forests and drained fjords, the frozen sea flat and lifeless with dirty ice floes, a cold ominous red-gold sun low on the horizon. Bleak, still, like an emptied sea. Photoreal, desaturated slate-blue and grey with a sickly red cast and only a faint gold accent. Film grain, 16:9, horizontal depth.` — *Runway: slow lateral parallax drift; keep smoke and aurora STATIC, only gliding — no animated smoke.*
 
 ### Shot L4 — Emblemen falnar · 0:13–0:17
 - **Kamera:** mycket långsam push-in mot emblemen.
-- **Syns:** de fyra fasetterade metall-emblemen (bison/björn/varg/örn) på stålväggen (trailerns shot 5), nu **matta och färglösa** — glöden borta ur alla fyra. Likställda även i nederlaget.
+- **Syns:** de fyra fasetterade low-poly brons-emblemen (bison/björn/varg/örn) i hexagonala plaketter med lagerkrans + stjärna på den mörka metallväggen (som trailerns emblem-vägg), nu **matta och färglösa** — glöden borta ur alla fyra. Likställda även i nederlaget.
 - **COPY (VO):** "Ön är förlorad."
-- **BILDPROMPT:** `[Stilrad] Cinematic close push-in on the four uniform faceted metal company crests (bison, bear, wolf, eagle) on a brushed-steel wall, now cold, matte and colorless, all glow gone out of them, equal in defeat. Dim institutional light, near-black warm background, faint grey rim light, shallow depth, film grain, 16:9.` — *Runway: slow push-in that settles on the dark crests.*
+- **BILDPROMPT:** `[Stilrad] Cinematic close push-in on the four faceted low-poly bronze animal crests (bison, bear, wolf, eagle), each in a hexagonal plaque with a laurel wreath and small star, mounted on a dark metal wall (exactly like the reference emblem wall), now cold, matte and colourless, all glow gone out of them, equal in defeat. Dim institutional light, near-black warm background, faint grey rim light, shallow depth, film grain, 16:9.` — *Runway: slow push-in that settles on the dark crests.*
 
 ### Shot L5 — Title-card · 0:17–0:21
 - **Kamera:** mycket långsam push-in som låser i stillbild.
@@ -70,19 +72,19 @@ Båda filmerna **återbrukar trailerns vokabulär** medvetet (mätaren, kontroll
 - **Kamera:** långsam lateral pan längs konsolen.
 - **Syns:** kontrollrummet med de **fyra skärmarna lysande stadigt och samtidigt** — gul, grön, orange, grå, lugna och i balans. Varmt guldljus över konsolen.
 - **COPY (VO):** "Fyra företag. En ö."
-- **BILDPROMPT:** `[Stilrad] Cinematic lateral pan across a cold institutional control room now calm and working: the four wall monitors (gold, green, orange, grey) glowing steadily and in balance together, dials settled, warm gold key light filling the room, no people. Near-black warm background, order restored, film grain, 16:9, parallax depth.` — *Runway: slow left-to-right pan; monitors glow steady, warm haze drifts.*
+- **BILDPROMPT:** `[Stilrad] Cinematic lateral pan across a cold brutalist 1960s control room now calm and working: a row of four retro CRT wall monitors (gold harbour, green radar, orange, grey coast) glowing steadily and in balance together, the big backlit island map above softly lit, analog dials and desk phones settled, warm gold tungsten key light filling the concrete room, no people. Near-black warm background, order restored, film grain, 16:9, parallax depth.` — *Runway: slow left-to-right pan; monitors glow steady, warm haze drifts.*
 
 ### Shot W3 — Ön blommar · 0:08–0:13
 - **Kamera:** långsam push-in / uppåtdrift över ön.
-- **Syns:** ön i vidvinkel nu **levande** — fasetterade skogar gröna och täta, vattnet klart, snön rosaskimrande i gryningsljus, **norrskenet vänt till varmt guld**, ljus tänds i den lilla staden.
+- **Syns:** ön i vidvinkel nu **levande** — svarta snötoppar i varmt rosa-guld gryningsljus, ett **lugnt grönt norrsken** som möter en gyllene soluppgång, täta gröna skogar och klara blå fjordar, det frusna havet ljusnar med rena isflak, små varma ljus tänds i en avlägsen stad.
 - **COPY (VO):** "Ni fick den att blomstra."
-- **BILDPROMPT:** `[Stilrad] Cinematic wide aerial of the Siberian island alive and thriving at dawn: lush faceted green forests, clear water, snow glowing softly pink-gold, the aurora turned to warm gold, small lights coming on in the distant town. Cold base palette warming through with gold, hopeful and calm — not a loud celebration, a quiet exhale. Film grain, 16:9, horizontal depth.` — *Runway: slow push-in with gentle upward drift; aurora and light static, gliding.*
+- **BILDPROMPT:** `[Stilrad] Photoreal cinematic wide aerial of the cold Nordic island alive and thriving at dawn: black snow-capped mountains catching warm pink-gold light, a calm green aurora above meeting a golden sunrise, lush green pine forests and clear blue fjords, the frozen sea softening and bright with clean ice floes, small warm lights coming on in a distant town. Cold slate-blue base warming through with green and gold — a quiet exhale, not a loud celebration. Photoreal, film grain, 16:9, horizontal depth.` — *Runway: slow push-in with gentle upward drift; aurora and light static, gliding.*
 
 ### Shot W4 — Emblemen lyser tillsammans · 0:13–0:17
 - **Kamera:** mycket långsam push-in mot emblemen.
-- **Syns:** de fyra fasetterade metall-emblemen (bison/björn/varg/örn) på stålväggen, nu **lysande i sina lagfärger samtidigt** (gul/grön/orange/grå), varm guld-kantbelysning — likställda i framgången.
+- **Syns:** de fyra fasetterade low-poly brons-emblemen (bison/björn/varg/örn) i hexagonala plaketter på den mörka metallväggen, nu **lysande i sina lagfärger samtidigt** (guld/grön/koppar/grå), varm guld-kantbelysning — likställda i framgången.
 - **COPY (VO):** "Den här gången — tillsammans."
-- **BILDPROMPT:** `[Stilrad] Cinematic close push-in on the four uniform faceted metal company crests (bison, bear, wolf, eagle) on a brushed-steel wall, each glowing warmly in its own color (gold, green, orange, grey) at the same time, warm gold rim light, equal and together in success. Near-black warm background, shallow depth, film grain, 16:9.` — *Runway: slow push-in that settles on the glowing crests.*
+- **BILDPROMPT:** `[Stilrad] Cinematic close push-in on the four faceted low-poly bronze animal crests (bison, bear, wolf, eagle) in hexagonal plaques on a dark metal wall (as in the reference emblem wall), each glowing warmly in its own colour (gold, green, copper, grey) at the same time, warm gold rim light, equal and together in success. Near-black warm background, shallow depth, film grain, 16:9.` — *Runway: slow push-in that settles on the glowing crests.*
 
 ### Shot W5 — Title-card · 0:17–0:21
 - **Kamera:** mycket långsam push-in som låser i stillbild.

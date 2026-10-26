@@ -8,12 +8,19 @@ Slutdelen (version A) som servern bygger ur `slutdel.js`: **podium q1–q6** (re
 
 ## Gemensam ton & stil (klistra in överst i varje prompt)
 
-Spelets värld: mörk, kall, guld-accentuerad — samma som dashboarden (bakgrund nästan svart varmsvart `#121009`, ett enda guldskimmer `#C9A94F` som accent, dämpad/avmättad palett, retro kontrollpanel-estetik med LED-glöd). En **sibirisk ö-känsla**: karg, vidsträckt, kall tundra/kust, lågt grått ljus, långa skuggor. Visuellt språk hämtat ur spelets egna assets: **stiliserad låg-poly / fasetterad geometri** (samma som den AI-genererade låg-poly-ö-kartan och de fasetterade djur-badgarna), filmiskt lågdagerljus, kalla blå-grå toner med en varm guld-kantbelysning.
+Spelets värld: mörk, kall, guld-accentuerad — matchar **trailern**. **TVÅ register** (precis som trailern):
+- **ÖN/landskapet = FOTOREALISTISKT** (trailerns ö-bilder): kall nordisk/arktisk ö — svarta snötoppar, fruset hav med isflak, tallskog och fjordar, **norrsken** (grönt när ön mår bra, giftigt rött när den faller) och en låg gyllene sol. Kalla blå-grå toner, EN varm guldaccent `#C9A94F`.
+- **EMBLEM & KARTA (det människogjorda) = STILISERAT LÅG-POLY/fasetterat** (de fasetterade djur-emblemen + den låg-poly-ö-kartan + retro kontrollrum). Blanda inte — marken är aldrig low-poly.
 
-> **Stilrad att återanvända (EN):**
-> *"Dark, cold, cinematic low-poly 3D render. Faceted stylized geometry, near-black warm background (#121009), muted desaturated palette of cold slate-blue and grey, a single warm gold accent (#C9A94F) as rim light / glow. Siberian island mood: barren tundra coast, low grey overcast light, long shadows. Retro control-panel atmosphere, subtle LED glow, film grain, soft vignette. No text, no logos, no UI."*
+Använd rätt stilrad per bild: **fotoreal** för ö-/utfalls-bilder (q1, Newfoundland, El Hierro), **låg-poly** för de metaforiska objekt-/kart-bilderna (q2–q6).
 
-**För Newfoundland-delen (nf1/nf2):** byt låg-poly mot **dokumentär/verklig fotokänsla** (riktiga torskbåtar, hav, kaj) MEN färggradad in i exakt samma kalla palett + guldaccent, så den hänger ihop med resten.
+> **Stilrad LÅG-POLY (EN) — för emblem/karta/metafor-objekt (q2–q6):**
+> *"Dark, cold, cinematic low-poly 3D render. Faceted stylized geometry, near-black warm background (#121009), muted desaturated palette of cold slate-blue and grey, a single warm gold accent (#C9A94F) as rim light / glow. Cold Nordic island mood, retro control-panel atmosphere, subtle LED glow, film grain, soft vignette. No text, no logos, no UI."*
+
+> **Stilrad FOTOREAL-Ö (EN) — för ö-/utfalls-bilder (q1 m.fl.):**
+> *"Dark, cold, cinematic, PHOTOREAL. Cold Nordic/Arctic island: black snow-capped mountains, a frozen sea with ice floes, pine forests and fjords, an aurora (green when healthy, toxic red when failing) and a low gold sun. Muted desaturated slate-blue-and-grey palette with a single warm gold accent (#C9A94F). Film grain, soft vignette. No text, no logos."*
+
+**För Newfoundland-delen (nf1/nf2):** **dokumentär/verklig fotokänsla** (riktiga torskbåtar, hav, kaj) i exakt samma kalla nordiska palett + guldaccent som trailerns ö — samma värld, annan verklig plats.
 
 > **Stilrad Newfoundland (EN):**
 > *"Documentary photographic realism, cold North-Atlantic grade: desaturated slate-blue and grey, muted warm gold accent (#C9A94F) in the light, overcast low light, film grain, soft vignette. Cohesive with a dark, cold game world. No text, no logos."*
@@ -31,40 +38,40 @@ Podiet handlar om **eftertanke** (öns utfall + ansvar + vad det liknar), inte o
 ### q1 — `assets/slutdel/q1.png`  ← "Hur gick det" (öns utfall) — HUVUDBILDEN
 Fråga: *"Hur gick det egentligen för ön under ert styre?"* (Blomstrande / Vi klarade oss / Vi tänjde på gränsen / Fråga inte)
 
-Eftersom svaren spänner från blomstring till kollaps ska bilden **rymma hela spektrat i ETT motiv** — en ö sedd på håll som är kluven: blomstrande på ena sidan, kollapsad på den andra.
+Eftersom svaren spänner från blomstring till kollaps ska bilden **rymma hela spektrat i ETT motiv** — en ö sedd på håll som är kluven: blomstrande på ena sidan, kollapsad på den andra. **Fotorealistisk** (som trailerns ö-bilder, friskt läge vs industriellt kollaps-läge).
 
-**Prompt (EN):**
-> `[Stilrad]` A single low-poly island seen from a slight aerial angle, centered, filling a wide banner. The island is split in mood across its length: one half lush and alive — faceted green forests, clear water, faint gold sunlight and a few birds; the other half barren and collapsed — grey smog haze, dead stylized trees, cracked dark ground, a sickly tint. A soft gradient blends the two halves in the middle so neither "wins". Cold overcast sky, low grey light, long shadows, a single warm gold glow on the healthy side. Faceted stylized geometry, muted cold palette, near-black background, film grain, soft vignette. Wide 3:1 banner, horizon centered. No text, no UI.
+**Prompt (EN) — använd FOTOREAL-Ö-stilraden:**
+> `[Stilrad FOTOREAL-Ö]` A single cold Nordic/Arctic island seen from a slight aerial angle, centered, filling a wide banner, split in fate across its length. One half ALIVE: black snow peaks in warm dawn light, a calm green aurora, lush green pine forests, clear blue fjords, a few small town lights. The other half COLLAPSED: a toxic red aurora, industrial smokestacks with static black smoke, dead grey-brown land, a drained lifeless sea with dirty ice floes. A soft gradient blends the two halves in the middle so neither "wins". Photoreal cinematic, desaturated slate-blue base, a sickly red cast on the dead side and a warm gold glow on the living side. Film grain, soft vignette, wide 3:1 banner, horizon centered. No text, no UI.
 
 ### q2 — `assets/slutdel/q2.png`  — Ansvar
 Fråga: *"Vem bär ansvaret för hur ön mår nu?"* (Vårt lag / De andra lagen / Centralmakten / Reglerna / Ingen)
 
 **Prompt (EN):**
-> `[Stilrad]` Four small low-poly territories around one shared low-poly island — a yellow farmland corner (bison mood), a green forest corner (bear), an orange tundra corner (wolf), a grey city corner (eagle) — each slightly turned away from the others, long shadows pointing inward toward the island's center where a single faint gold light pools on empty ground. A sense of shared, unclaimed responsibility: no one figure, four silent territories. Cold overcast light, faceted geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, centered composition. No text, no UI.
+> `[Stilrad LÅG-POLY]` Four small low-poly territories around one shared low-poly island — a yellow farmland corner (bison mood), a green forest corner (bear), an orange tundra corner (wolf), a grey city corner (eagle) — each slightly turned away from the others, long shadows pointing inward toward the island's center where a single faint gold light pools on empty ground. A sense of shared, unclaimed responsibility: no one figure, four silent territories. Cold overcast light, faceted geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, centered composition. No text, no UI.
 
 ### q3 — `assets/slutdel/q3.png`  — Motståndare eller grannar?
 Fråga: *"De andra lagen — var de motståndare eller grannar?"* (Motståndare / Grannar / Det växlade / Fattade aldrig)
 
 **Prompt (EN):**
-> `[Stilrad]` Two neighbouring low-poly territories separated by a narrow channel of cold water, seen head-on across the banner. A single faceted bridge of gold light arcs between them but is half-formed / unfinished — ambiguous whether it is being built or has broken. Both shores identical in form, mirrored, equal weight left and right. Cold grey overcast, long shadows, one warm gold accent on the bridge. Faceted stylized geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, water horizon centered. No text, no UI.
+> `[Stilrad LÅG-POLY]` Two neighbouring low-poly territories separated by a narrow channel of cold water, seen head-on across the banner. A single faceted bridge of gold light arcs between them but is half-formed / unfinished — ambiguous whether it is being built or has broken. Both shores identical in form, mirrored, equal weight left and right. Cold grey overcast, long shadows, one warm gold accent on the bridge. Faceted stylized geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, water horizon centered. No text, no UI.
 
 ### q4 — `assets/slutdel/q4.png`  — Vad styrde ert ja/nej?
 Fråga: *"När erbjudandet kom — vad styrde ert ja eller nej?"* (Vad som gynnade oss / Vad som var bäst för ön / Vad de andra skulle göra / Magkänsla)
 
 **Prompt (EN):**
-> `[Stilrad]` A single faceted crossroads / fork on barren tundra ground, seen from a low angle, two low-poly paths diverging into cold mist — one path lit by a warm private gold glow leading to a small pile of faceted coins and bricks, the other path cooler and dimmer leading toward the healthy green of the shared island. A lone long shadow stands at the fork, undecided. Cold overcast, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, the fork centered. No text, no UI.
+> `[Stilrad LÅG-POLY]` A single faceted crossroads / fork on barren tundra ground, seen from a low angle, two low-poly paths diverging into cold mist — one path lit by a warm private gold glow leading to a small pile of faceted coins and bricks, the other path cooler and dimmer leading toward the healthy green of the shared island. A lone long shadow stands at the fork, undecided. Cold overcast, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, the fork centered. No text, no UI.
 
 ### q5 — `assets/slutdel/q5.png`  — Gick det att vinna utan att ön fick betala?
 Fråga: *"Gick det ens att vinna utan att ön fick betala?"* (Ja, vi missade det / Nej, reglerna tillät inte / Kanske, med mer tid / Vi brydde oss inte om att vinna)
 
 **Prompt (EN):**
-> `[Stilrad]` A faceted old-style balance scale standing on cold tundra, filling the banner's center. On one pan a glowing gold heap of coins and bricks (private wealth); on the other pan a small fragile low-poly island with a single green tree. The scale tips heavily toward the gold, the little island lifted high and vulnerable. One warm gold rim light, everything else cold grey overcast. Faceted stylized geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, scale centered. No text, no UI.
+> `[Stilrad LÅG-POLY]` A faceted old-style balance scale standing on cold tundra, filling the banner's center. On one pan a glowing gold heap of coins and bricks (private wealth); on the other pan a small fragile low-poly island with a single green tree. The scale tips heavily toward the gold, the little island lifted high and vulnerable. One warm gold rim light, everything else cold grey overcast. Faceted stylized geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, scale centered. No text, no UI.
 
 ### q6 — `assets/slutdel/q6.png`  — Vad liknar det här mest?
 Fråga: *"Vad liknar det här mest?"* (Internationell politik / Näringslivet / Skolans grupparbete / Nej, bara ett spel)
 
 **Prompt (EN):**
-> `[Stilrad]` A wide low-poly conference / round table on the barren island, four empty faceted chairs around it facing inward, one small shared low-poly globe-island glowing faintly gold at the table's center. Long cold shadows, overcast grey light, a quiet after-the-meeting emptiness that could be a summit, a boardroom or a classroom group. Faceted stylized geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, table centered. No text, no UI.
+> `[Stilrad LÅG-POLY]` A wide low-poly conference / round table on the barren island, four empty faceted chairs around it facing inward, one small shared low-poly globe-island glowing faintly gold at the table's center. Long cold shadows, overcast grey light, a quiet after-the-meeting emptiness that could be a summit, a boardroom or a classroom group. Faceted stylized geometry, muted palette, near-black background, film grain, vignette. Wide 3:1 banner, table centered. No text, no UI.
 
 ---
 
