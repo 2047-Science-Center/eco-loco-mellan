@@ -43,7 +43,10 @@ const riggSend = (t, m) => {
 };
 // Ambient kopplat till öns mående (öhälsa-soundscape + grundljus via scen) ska ALLTID nå riggen,
 // även "med spelledare" — spelledaren regisserar bara show-momenten (award m.m.), inte ambienten.
-const AMBIENT_TOPICS = new Set(['ecoloco/rigg/ohalsa', 'ecoloco/rigg/scen']);
+// AMBIENT/alltid-på: öhälso-looken, scen-växlingar OCH award-ceremonin. Award-ceremonin dirigeras av
+// SERVERN i BÅDA lägen (skärm + rigg i exakt takt) → den MÅSTE nå riggen även i spelledarläge, annars
+// tänds award-scenen men pilen + award-ljudet kommer aldrig (buggen i spelledarläge).
+const AMBIENT_TOPICS = new Set(['ecoloco/rigg/ohalsa', 'ecoloco/rigg/scen', 'ecoloco/rigg/award']);
 const riggPublish = (t, m) => { if (riggSilent && !AMBIENT_TOPICS.has(t)) return; riggSend(t, m); };
 // Bänkarnas kontrollbord: src/mqtt.js (attachMqtt) bygger topics/innehåll per bänk
 // (ecoloco/<benchId>/money|resources|winner|looser). Här kopplar vi den mot SAMMA broker,
