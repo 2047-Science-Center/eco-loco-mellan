@@ -270,7 +270,9 @@ function newEngine() {
   engine.on('award', p => { lastAwards = p; });
   engine.on('roundEnd', () => {
     if (!lastAwards) return;
-    cer = { steps: buildCeremonySteps(lastAwards), i: -1 };
+    const steps = buildCeremonySteps(lastAwards);
+    if (!steps.length) { cer = null; return; }   // ingen förändring → HOPPA prisutdelningen helt (ingen scen, inga cues)
+    cer = { steps, i: -1 };
     if (gmMode) {
       rigg.beginAwards();                                               // riggen går till award-scenen, väntar
       broadcast({ type: 'event', event: 'awardCeremony', payload: { total: cer.steps.length } });
@@ -343,7 +345,7 @@ function buildCeremonySteps(aw) {
   const steps = [];
   if (aw.led) steps.push({ typ: 'led', w: aw.led });
   if (aw.eld) steps.push({ typ: 'eld', w: aw.eld });
-  steps.push({ typ: 'sab', w: aw.sab || null });
+  if (aw.sab) steps.push({ typ: 'sab', w: aw.sab });   // bara verkliga pris — ingen tyst "Ön andas ut"-ruta där riggen ligger kvar
   return steps;
 }
 
@@ -351,6 +353,10 @@ function pauseForAwards() {
   stopTimer();
   const full = roundFull();
   timerLeft = full;
+  if (!cer || !cer.steps.length) {                 // ingen prisutdelning denna runda → kör vidare direkt
+    broadcast({ type: 'timer', left: timerLeft, full });
+    return startTimer();
+  }
   broadcast({ type: 'timer', left: timerLeft, full, paused: true });
   // Rundtimern står stilla tills ceremonin når awardDone. GM: spelledarens award_next startar den.
   // Selfplay: serverns auto-stegare (startAutoCeremony → advanceCeremony) startar den. Ingen klient-gating.

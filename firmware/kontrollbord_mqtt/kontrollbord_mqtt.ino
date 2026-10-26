@@ -77,13 +77,23 @@ void showNumber(uint8_t addr, long v) {              // 0..9999, släckta inleda
   sendSeg(addr, FONT[c[0]], FONT[c[1]], FONT[c[2]], FONT[c[3]]);   // siffra 1 (höger) först
 }
 
-// ---- LED-logga: vit normalt, grön = leder, gul = klimatbov ----------------
-void setAll(uint8_t r,uint8_t g,uint8_t b,uint8_t w){ for(int i=0;i<NUM_LEDS;i++) strip.setPixelColor(i,strip.Color(r,g,b,w)); strip.show(); }
-void ledWhite()  { setAll(0xFF,0x70,0x00,0xFF); }    // vitt i loggan
-void ledGreen()  { setAll(0x00,0xFF,0x00,0x00); }    // leder
-void ledYellow() { setAll(0xFF,0x30,0x00,0x00); }    // varning/klimatbov
-void updateLeds() {                                  // prioritet: gul (varning) > grön > vit
-  if (ledLooser) ledYellow(); else if (ledWinner) ledGreen(); else ledWhite();
+// ---- Två skyltar: LEDARE-skylt + SABOTÖR-skylt -----------------------------
+// Vilken sektion (0 = LED 0..31, 1 = LED 32..63) som är vilken skylt sätts här.
+// Byt om de fysiska skyltarna sitter tvärtom på bänken.
+#define LEADER_SIGN    0
+#define SABOTEUR_SIGN  1
+void setSign(int sign, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
+  int lo = sign * LEDS_PER_SIGN, hi = lo + LEDS_PER_SIGN;
+  for (int i = lo; i < hi && i < NUM_LEDS; i++) strip.setPixelColor(i, strip.Color(r, g, b, w));
+  strip.show();
+}
+void updateLeds() {
+  // LEDARE-skylt: GRÖN när laget leder, annars starkt VIT (alltid synlig).
+  if (ledWinner) setSign(LEADER_SIGN, 0x00,0xFF,0x00,0x00);
+  else           setSign(LEADER_SIGN, 0xFF,0x70,0x00,0xFF);
+  // SABOTÖR-skylt: GUL när laget är klimatbov, annars SLÄCKT.
+  if (ledLooser) setSign(SABOTEUR_SIGN, 0xFF,0x30,0x00,0x00);
+  else           setSign(SABOTEUR_SIGN, 0, 0, 0, 0);
 }
 
 // ---- MQTT-callback: ecoloco/<id>/<vad> ------------------------------------
@@ -123,7 +133,7 @@ void setup() {
   Wire.begin(I2C_SDA, I2C_SCL, I2C_HZ);
   strip.begin(); strip.setBrightness(255); strip.clear(); strip.show();
   // kort självtest så man ser att hårdvaran lever innan nät kopplas
-  ledWhite(); showNumber(MONEY_ADDR, 1); showNumber(RES_ADDR, 2);
+  updateLeds(); showNumber(MONEY_ADDR, 1); showNumber(RES_ADDR, 2);   // default: LEDARE vit, SABOTÖR släckt
   snprintf(subTopic, sizeof(subTopic), "ecoloco/%s/#", BENCH_ID);
   connectWifi();
   mqtt.setServer(MQTT_HOST, MQTT_PORT);

@@ -263,9 +263,8 @@
     <div class="grid3">
       <div class="card">
         <h2>PARTI</h2>
-        <button class="btn primary" id="start-btn">STARTA SPEL</button>
-        <button class="btn" id="lobby-btn">TILL LOBBYN (OMSTART)</button>
-        <p class="note">Start från pulten kör direkt (inget 15 s-fönster). "Till lobbyn" river ner allt — pågående spel, intro eller tutorial — och tar alla skärmar tillbaka till lobbyn, när som helst.</p>
+        <button class="btn primary" id="lobby-btn">TILL LOBBYN (START / OMSTART)</button>
+        <p class="note">Den enda start-knappen: river ner allt — pågående spel, intro eller tutorial — och tar alla skärmar tillbaka till lobbyn, när som helst. Därifrån startar spelarna själva.</p>
       </div>
       <div class="card">
         <h2>INTRO-TRAILER</h2>
@@ -279,7 +278,7 @@
           <button class="btn" id="sl-utan">UTAN</button>
           <button class="btn primary" id="sl-med">MED</button>
         </div>
-        <p class="note" id="sl-note">Nästa start: <b id="sl-val">MED</b> spelledare.</p>
+        <p class="note" id="sl-note">Läge: <b id="sl-val">MED</b> spelledare.</p>
       </div>
       <div class="card">
         <h2>SKÄRMLÄGE (config.mode)</h2>
@@ -407,7 +406,6 @@ function render() {
   $('#slutdel-info').textContent = slutdelState ? ('Nästa: ' + (slutdelState.label || '')) : 'Starta slutdelen först.';
 
   // admin
-  $('#start-btn').textContent = over ? 'STARTA OM' : 'STARTA SPEL';
   $('#sl-val').textContent = withSpelledare ? 'MED' : 'UTAN';
 }
 function renderDist(p) {
@@ -455,8 +453,12 @@ $('#amb-auto').onclick = (e) => {
   $$('.amb').forEach(x => x.classList.remove('active')); e.currentTarget.classList.add('active');
   net.rigcmd(R + 'ambience', 'auto'); toast('Stämning: AUTO (följer öns hälsa)');
 };
-$('#slack-btn').onclick = () => { net.rigcmd(R + 'scen', 'slut'); [1,2,3,4].forEach(n => net.rigcmd(R + 'gm/spot/' + n, '0'));
-  $$('.spot,.btn.active').forEach(x => x.classList.remove('active')); toast('Släck allt'); };
+$('#slack-btn').onclick = () => {
+  // SLÄCK ALLT = allt av: släpp ev. kris (annars äger krisen looken), blandare av, wave av,
+  // scen slut (LED + ambience av), alla spots av.
+  net.rigcmd(R + 'kris', '0'); net.rigcmd(R + 'gm/blandare', '0'); net.rigcmd(R + 'wave', '0');
+  net.rigcmd(R + 'scen', 'slut'); [1,2,3,4].forEach(n => net.rigcmd(R + 'gm/spot/' + n, '0'));
+  $$('.spot,.btn.active').forEach(x => x.classList.remove('active')); toast('Släckt allt'); };
 
 // ——— GRUPP B: master + regissera look ———
 $('#rig-master').onclick = (e) => { const on = e.currentTarget.classList.toggle('on-state');
@@ -470,12 +472,11 @@ $('#slutdel-start').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmc
 $('#slutdel-next').onclick  = () => { net.gmcmd({ cmd: 'slutdel_next' }); if (slutdelState) slutdelState.i = (slutdelState.i ?? 0) + 1; toast('Nästa steg'); render(); };
 
 // ——— ADMIN ———
-$('#start-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.startGame({ spelledare: withSpelledare }); toast('Spel startat (' + (withSpelledare ? 'med' : 'utan') + ' spelledare)'); });
 $('#lobby-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.tillLobby(); toast('Alla till lobbyn (omstart)'); });
 $('#trailer-btn').onclick = () => { net.gmcmd({ cmd: 'trailer' }); toast('Spelar intro-trailer'); };
 $('#skipintro-btn').onclick = () => { net.skipIntro(); toast('Skippar introt'); };
-$('#sl-utan').onclick = () => { withSpelledare = false; render(); toast('Nästa start: UTAN spelledare'); };
-$('#sl-med').onclick  = () => { withSpelledare = true;  render(); toast('Nästa start: MED spelledare'); };
+$('#sl-utan').onclick = () => { withSpelledare = false; net.gmcmd({ cmd: 'spelledare', on: false }); render(); toast('Läge: UTAN spelledare (riggen automatisk)'); };
+$('#sl-med').onclick  = () => { withSpelledare = true;  net.gmcmd({ cmd: 'spelledare', on: true  }); render(); toast('Läge: MED spelledare (du styr riggen)'); };
 </script>
 </body>
 </html>

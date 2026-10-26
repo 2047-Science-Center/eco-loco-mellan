@@ -48,10 +48,14 @@ Bänken prenumererar på `ecoloco/<BENCH_ID>/#` och driver:
 |---|---|---|
 | `…/money` | lagets **pengar** (rått tal) | Money-displayen **0x11** |
 | `…/resources` | lagets **resurser/material** (rått tal) | Resources-displayen **0x12** |
-| `…/winner` = 1 | laget **leder** (rikast) | LED-loggan **GRÖN** |
-| `…/looser` = 1 | laget är **klimatbov** (värst för ön) | LED-loggan **GUL** |
-| winner & looser = 0 | normal | LED-loggan **VIT** |
+| `…/winner` | laget **leder** (rikast) | **LEDARE-skylten**: **grön** om leder, annars stark **vit** |
+| `…/looser` | laget är **klimatbov** (värst för ön) | **SABOTÖR-skylten**: **gul** om klimatbov, annars **släckt** |
 | `…/displaymoney`, `…/displayresources` | — | ignoreras (no-op) |
+
+> **Två skyltar (viktigt):** LED-stripens två sektioner är **en LEDARE-skylt** och **en SABOTÖR-skylt** —
+> inte en gemensam logga. LEDARE-skylten lyser alltid (stark vit, grön när laget leder). SABOTÖR-skylten
+> är **släckt** utom när laget är klimatbov (då gul). Vilken sektion som är vilken sätts med `#define
+> LEADER_SIGN` / `SABOTEUR_SIGN` högst upp — **byt dem om de fysiska skyltarna sitter tvärtom** på bänken.
 
 > Siffrorna på displayerna är **de verkliga pengar-/resursvärdena** från spelet (mappas till segment i ESP:n
 > via din font-tabell). Om BÅDE leder och klimatbov samtidigt: **gul** (varning) prioriteras — säg till om

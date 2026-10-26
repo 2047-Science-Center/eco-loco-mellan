@@ -111,7 +111,7 @@ def play(fname):
     else: print("[hjarna]   (ingen ljudspelare — på Linux: sudo apt install mpg123)")
 
 # ---- ambience: kontinuerlig soundscape-loop (halv volym), mixas med stingarna ----
-AMB_VOL = os.environ.get("AMB_VOL", "0.5")
+AMB_VOL = os.environ.get("AMB_VOL", "0.8")   # höjt från 0.5 — stämningsljuden låg för lågt mot stingers (t.ex. countdown)
 def _amb_cmd(path):   # kontinuerlig loop + volym, per plattform
     if IS_MAC: return ["afplay", "-v", AMB_VOL, path]                 # loopas av worker (wait→restart)
     if shutil.which("mpg123"):
@@ -197,6 +197,7 @@ def apply_scen(payload):
         if not crisis_active: set_fx("none"); set_all(ATTRACT_LOOK); spots_off()
     elif payload == "runda":
         cur_mode = None            # nästa ohalsa sätter look + ambience
+        if not crisis_active: set_fx("none"); spots_off()   # rensa ev. award-pil/spot efter prisutdelningen
     elif payload == "awards":
         stop_ambience()            # tyst under awards
         if not crisis_active: set_fx("none")
