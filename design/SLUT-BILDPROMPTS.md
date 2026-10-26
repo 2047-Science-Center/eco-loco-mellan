@@ -88,3 +88,25 @@ Text på kortet: *"En säsong var fisken borta. Tiotusentals jobb med den. Trett
 
 ### nf3 — INGEN BILD (regi-text)
 nf3 är `typ:'regi'`: spelledartexten *"Varenda båt hade rätt. Tillsammans hade de fel. — Känns det igen?"* visas som en **guldstreckad ruta** (`.sd-regi`), inte som bild. **Ingen prompt behövs.**
+
+---
+
+## EL HIERRO — kontrastberättelsen (slutdel version B · `assets/slutdel/elhierro.png`)
+
+*Tillagt 2026-10-26. `slutdel.js`-kortet `elHierro` (version B) är motberättelsen till Newfoundland: en ö som gick **åt andra hållet** — tog ett **gemensamt** beslut och klarade det. Där Newfoundland är tomt grått hav ska El Hierro **vända graderingen mot värme**: samma kalla nordiska bas, men nu **vinner guldaccenten** — ljus, liv, rörelse. Samma dokumentära fotokänsla som Newfoundland så de hänger ihop som ett par (kollaps → alternativ).*
+
+Verkligt exempel: **El Hierro** (Kanarieöarna) byggde Gorona del Viento — vindkraft + pumpkraftverk i en vulkankrater — och kör tidvis på **100 % förnybart**. En liten ö som bestämde sig **tillsammans** för att bli självförsörjande. Rakt motsatt allmänningarnas tragedi: här valde alla att hålla igen/samarbeta, och ön blev rikare för det.
+
+> **Stilrad El Hierro (EN) — varmare gradering än Newfoundland:**
+> *"Documentary photographic realism, cold Atlantic base grade warming toward hope: slate-blue and grey giving way to living green and a rising warm gold light (#C9A94F), clean clear air, low sun breaking through. Cohesive as the hopeful counterpart to a bleak collapse image. Film grain, soft vignette. No text, no logos."*
+
+### elHierro — `assets/slutdel/elhierro.png`  — Ön som valde annorlunda
+Text på kortet (version B, TODO-text ska bytas): *"En ö som valde annorlunda — gick samman, och klarade det."*
+
+**Prompt (EN) — HUVUDBILD:**
+> `[Stilrad El Hierro]` A small volcanic Atlantic island seen in a wide aerial shot, alive and self-sufficient: a ridge of modern white wind turbines turning above green terraced slopes, a turquoise reservoir held in an old volcanic crater, the open ocean clean and bright beyond. Low morning sun breaks through, warm gold light spreading across the green — the whole island quietly working as one system. Cold slate-blue sea at the edges grading into living green and warm gold at the center. Desaturated documentary realism warming toward hope, film grain, soft vignette. Wide 3:1 banner, horizon centered. No text, no logos.
+
+**Prompt (EN) — ALT, "det gemensamma beslutet" (om du vill ha en andra El Hierro-bild):**
+> `[Stilrad El Hierro]` Close documentary shot of a few wind turbines on a green volcanic ridge of a small Atlantic island at golden hour, blades catching warm gold light against a cool blue sky, the ocean far below. Calm, deliberate, collective — a quiet triumph of a community that chose to hold back together. Warm gold accent winning over the cold base grade, film grain, soft vignette. Wide 3:1 banner, horizon centered. No text, no logos.
+
+*Tips: para ihop El Hierro-bilden med nf2 (det tomma havet) i klippet — samma ö-format, motsatt öde. Det är hela poängen med kortet.*

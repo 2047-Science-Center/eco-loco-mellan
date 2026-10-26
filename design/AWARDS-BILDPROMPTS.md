@@ -49,6 +49,26 @@ Boven. Rök, sprucken mark, släckt ö. En mörk, kall skam-medalj med en sjukli
 
 ---
 
+## Runway-videoprompts (10 s inzoom→stillbild)
+
+*Award-rutan visas ~10 s. Idé: generera BILDEN (prompterna ovan) först, mata in den i Runway Gen-3 som **image-to-video** (bilden = första frame), och låt klippet långsamt zooma in / få liv och sedan **frysa de sista ~4 sekunderna** så rutan landar i en lugn stillbild. Allt rör sig subtilt — emblemet ska aldrig byta form, inga nya objekt, ingen text.*
+
+**Runway-inställningar:** Gen-3 Alpha, **image-to-video**, längd **10 s**, kamerarörelse låg/sakta. Håll "Motion" lågt (≈ 2–4) så geometrin inte morfar. Första frame = din genererade award-bild.
+
+**Gemensam negativ/constraint (lägg i prompten eller Runways negativfält):**
+> `no text, no logos, no UI, no new objects, no camera shake, do not morph or distort the emblem, keep faceted low-poly geometry stable, subtle motion only`
+
+### 🏆 LEDANDE — Runway-motionprompt (EN)
+> `Very slow cinematic push-in on the faceted gold medallion. Cold gold rim light slowly brightens and glints across the embossed smokestacks; a single thin ribbon of faceted smoke drifts upward behind the coin; faint dust motes float in the near-black slate-blue dark; a low LED glow pulses once, slowly. Triumphant but cold. Over the final 4 seconds all motion eases to a near-freeze, settling into a still hero shot of the emblem. Slow, controlled, subtle.`
+
+### 🌱 ELDSJÄL — Runway-motionprompt (EN)
+> `Gentle slow push-in on the faceted medallion. The small green sprout / flame at the center softly breathes — its warm gold-green glow swells and gently radiates outward, the one warm light in a cold near-black frame; a few tiny faceted embers or pollen motes drift slowly upward; the cupped hands hold still. Hopeful, tender, quiet. Over the final 4 seconds the glow settles and the motion eases to a near-freeze, holding on a calm still of the sprout. Slow and delicate.`
+
+### 💀 SABOTÖR — Runway-motionprompt (EN)
+> `Slow ominous push-in on the tarnished, cracked medallion. Thin faceted smoke curls off the skull-and-smokestack motif; a sickly cold red-grey tint slowly bleeds deeper into the slate-blue shadow; the dull corroded gold catches a weak light that flickers and almost gutters out; faint ash drifts down. Grim, shaming, cold. Over the final 4 seconds everything slows to a near-freeze, settling into a bleak still of the dead emblem. Heavy, slow, menacing.`
+
+---
+
 ## Att tänka på
 - Spara som `assets/award/led.png` / `eld.png` / `sab.png` (skapa mappen `assets/award/`). Om spelet ska visa dem måste award-kortet peka ut bildsökvägen — säg till Josef om du vill att koden kopplas in (idag har award-korten ljud men ev. ingen bild).
 - Håll de tre **tonalt distinkta men i samma värld**: Ledande = kall guldtriumf, Eldsjäl = ensam varm glöd, Sabotör = korroderad/sjuklig. Då läses de direkt i prisutdelningen.
