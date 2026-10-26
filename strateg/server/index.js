@@ -119,6 +119,41 @@ app.post('/chat', async (req, res) => {
   }
 })
 
+// ── Utvärdering: en rad per svarande, lokalt (JSONL). Ingen DB, ingen extern koppling. ──
+const DATA_DIR = path.join(__dirname, 'data')
+const UTV_FILE = path.join(DATA_DIR, 'utvardering.jsonl')
+fs.mkdirSync(DATA_DIR, { recursive: true })
+
+// Frontend postar hela svaret hit vid slutet av utvärderingen.
+app.post('/utvardering', (req, res) => {
+  try {
+    const body = req.body ?? {}
+    const row = { tid: new Date().toISOString(), id: 'u_' + Math.random().toString(36).slice(2, 9), ...body }
+    fs.appendFileSync(UTV_FILE, JSON.stringify(row) + '\n')
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[strateg] /utvardering fel:', err)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// Hämta ut datan: öppna /utvardering/export.csv i webbläsaren → laddar ner allt som CSV
+// (flerval/rang blir " | "-separerade i cellen). /utvardering/count visar antal svar.
+const UTV_COLS = ['tid','id','alder','forVem','gruppkul','yngreBehov','forstod','svart','roligast','laggaTill','banta','handladeOm','tankvackt','ovrigt']
+app.get('/utvardering/export.csv', (_req, res) => {
+  try {
+    const rows = fs.existsSync(UTV_FILE)
+      ? fs.readFileSync(UTV_FILE, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)) : []
+    const cell = v => '"' + String(Array.isArray(v) ? v.join(' | ') : (v ?? '')).replace(/"/g, '""') + '"'
+    const csv = [UTV_COLS.join(','), ...rows.map(r => UTV_COLS.map(c => cell(r[c])).join(','))].join('\n')
+    res.type('text/csv; charset=utf-8').set('Content-Disposition', 'attachment; filename="utvardering.csv"').send('﻿' + csv)
+  } catch (err) { res.status(500).send('fel: ' + err.message) }
+})
+app.get('/utvardering/count', (_req, res) => {
+  const n = fs.existsSync(UTV_FILE) ? fs.readFileSync(UTV_FILE, 'utf8').split('\n').filter(Boolean).length : 0
+  res.json({ count: n })
+})
+
 app.listen(PORT, () => {
   console.log(`[strateg] Maktspelet-coach igång på http://localhost:${PORT}  (modell: ${MODEL}, keyed: ${Boolean(openai)})`)
   console.log(`[strateg] System-prompt = narrativ (${NARRATIVE.length} tecken) + auto-genererat sifferblock ur spec/engine.js (${SYSTEM_PROMPT.length - NARRATIVE.length} tecken).`)

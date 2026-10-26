@@ -6,3 +6,6 @@ node_modules/
 
 .DS_Store
 *.log
+
+# utvärderingssvar (lokalt, aldrig i repot)
+server/data/
