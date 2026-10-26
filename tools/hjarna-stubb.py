@@ -23,12 +23,15 @@ def oh_mode(v):
     if v <= 80: return "bra"
     return "mycketbra"
 
+# TRAFIKLJUS-skala: grönt (friskt) → gult (mittemellan) → orange (dåligt).
+# RÖTT (h=0) är RESERVERAT för KRIS (KRIS_LOOK nedan) så en kris ALLTID går att skilja
+# från bara-låg-hälsa. Därför är sämsta hälso-läget djup orange, inte rött.
 MODE_LOOK = {
-    "superdaligt": {"h": 0,   "s": 100, "v": 100, "blink": 80},
-    "daligt":      {"h": 0,   "s": 100, "v": 50,  "puls": 30},
-    "neutralt":    {"h": 50,  "s": 100, "v": 35,  "puls": 40},
-    "bra":         {"h": 110, "s": 90,  "v": 70},
-    "mycketbra":   {"h": 125, "s": 100, "v": 70,  "puls": 60},
+    "superdaligt": {"h": 16,  "s": 100, "v": 95, "blink": 80},   # djup orange — sämst (ej kris-rött)
+    "daligt":      {"h": 32,  "s": 100, "v": 80, "puls": 30},    # orange
+    "neutralt":    {"h": 50,  "s": 100, "v": 75, "puls": 40},    # gult
+    "bra":         {"h": 95,  "s": 90,  "v": 75},                # gulgrönt
+    "mycketbra":   {"h": 125, "s": 100, "v": 80, "puls": 60},    # grönt
 }
 MODE_SOUND   = {"superdaligt": "kris.wav"}          # edge-triggat vid inträde i kris
 ATTRACT_LOOK = {"h": 200, "s": 60, "v": 20, "puls": 25}
@@ -272,10 +275,31 @@ def apply_award(payload):
         set_spot(n, n == side)
     play(a["sound"])
 
+# ÅTERSTÄLL RIGGEN TILL AUTOMATIK (spelledarens "ångra"-knapp): släpp master + ev. kris-lås +
+# manuell stämning, släck blandare/spots/fx/ev. startceremoni-chase, och återgå till öhälso-looken
+# som spelet senast sa. Efter detta lyssnar riggen på spelets cues (öhälsan) igen.
+def reset_to_auto():
+    global master, crisis_active, crisis_timer, amb_manual
+    master = False
+    crisis_active = False
+    if crisis_timer is not None:
+        crisis_timer.cancel(); crisis_timer = None
+    ceremoni_stop.set()                 # stoppa ev. pågående startceremoni-chase
+    set_blandare(False)
+    set_fx("none"); spots_off()
+    amb_manual = None                   # stämning åter till AUTO (följer hälsan)
+    if last_oh is not None:
+        apply_ohalsa(last_oh)           # öhälso-look + ambience för nuvarande läge
+    else:
+        set_all(ATTRACT_LOOK); set_ambience("attract.mp3")
+    print("[hjarna] ÅTERSTÄLL → riggen lyssnar på spelet igen (auto)")
+
 def handle_gm(sub, payload):
     global master
     if sub == "master":
         master = (payload == "1"); print(f"[hjarna] GM master = {master}")
+    elif sub == "auto":                 # spelledarens återställningsknapp → tillbaka till spel-styrning
+        reset_to_auto()
     elif sub == "alla_grona":
         if payload == "1":
             set_fx("none"); set_all(GREEN_LOOK); spots_off()

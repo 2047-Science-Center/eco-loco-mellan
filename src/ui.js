@@ -1235,6 +1235,21 @@ function resetToLobbyUI() {
   toast('Spelledaren tog alla tillbaka till lobbyn');
 }
 
+// Lämna tutorialen/väntläget och hoppa in i det riktiga spelet (anropas när servern startat runda 1).
+// Idempotent: river ner tutorial-overlays + nedräkning och bygger vyn från serverns state.
+function convergeToGame() {
+  fireTutAbort();
+  tutRunning = false; tutInCeremony = false;
+  $('ov-ready').classList.remove('open');
+  $('ov-countdown').classList.remove('open', 'hot');
+  $('cd-lbl').textContent = 'SPELET BÖRJAR OM';
+  $('tutveil').style.display = 'none'; $('tutbox').style.display = 'none'; $('tutbarrier').style.display = 'none';
+  $('banner').style.display = 'none'; tutFocus(null);
+  game.attach(realGame);
+  const S = realGame.E()?.getState();
+  if (S && S.round >= 1 && !S.over) rebuildFromState(S);
+}
+
 // OBS: dessa server-events måste lyssnas på realGame (ServerNet), INTE proxyn `game` — under
 // tutorialen är proxyn kopplad till övningsmotorn och släpper inte igenom serverns events.
 // (Samma mönster som tutBarrier, som använder realGame.on/realGame.net direkt.)
@@ -1252,17 +1267,26 @@ if (ONLINE) {
     if (lastLobby) renderLobby(lastLobby);
   });
   realGame.on('tilllobby', () => resetToLobbyUI());  // spelledaren tog alla till lobbyn (kan ske mitt i tutorialen)
-  // Robusthet: om spelet START:ar från servern (t.ex. spelledaren tryckte STARTA SPEL) medan DEN HÄR
-  // skärmen fortfarande är i tutorialens lär-del (ej ceremonin, som konvergerar själv) → avbryt och hoppa in i spelet.
+  // Gate 4: SERVERN äger den gemensamma nedräkningen. Rita 10→0 synkat på alla skärmar.
+  realGame.on('startCountdown', m => {
+    tutInCeremony = true;                      // håll konvergens-läget (även om vi kom hit utan tutorial)
+    $('cd-lbl').textContent = 'SPELET BÖRJAR OM';
+    const el = $('cd-num');
+    el.textContent = m.left;
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';   // starta om pop
+    $('ov-countdown').classList.toggle('hot', m.left <= 3);
+    $('ov-countdown').classList.add('open');
+    audio.play('ui_tap');
+  });
+  realGame.on('startCountdownCancel', () => {   // nedräkningen avbröts (omstart) → stäng overlayn
+    $('ov-countdown').classList.remove('open', 'hot');
+    $('cd-lbl').textContent = 'SPELET BÖRJAR OM';
+  });
+  // Servern startade runda 1 (den gemensamma grinden slog till) → lämna tutorialen/väntläget och hoppa
+  // in i spelet. Gäller BÅDE lär-delen och ceremonin/nedräkningen — EN källa (servern) startar partiet.
   realGame.on('start', () => {
-    if (!tutRunning || tutInCeremony || game.backend === realGame) return;
-    fireTutAbort();
-    tutRunning = false;
-    $('tutveil').style.display = 'none'; $('tutbox').style.display = 'none'; $('tutbarrier').style.display = 'none';
-    $('banner').style.display = 'none'; tutFocus(null);
-    game.attach(realGame);
-    const S = realGame.E()?.getState();
-    if (S && S.round >= 1 && !S.over) rebuildFromState(S);
+    if (!tutRunning || game.backend === realGame) return;
+    convergeToGame();
   });
 }
 
@@ -1389,39 +1413,46 @@ function tutSay({ ix, txt, x, y, focus }) {
 // Startceremoni: ÄR DU REDO? → (vänta in alla lag) → nedräkning 10→0 → RUNDA 1.
 // Riggen (LED-chase, riser-soundscape, vitt ljus 3 s) styrs av semantiska cues: ecoloco/rigg/ceremoni.
 async function startCeremony() {
-  tutInCeremony = true;                       // från och med nu konvergerar skärmen själv mot spelet (rebuildFromState)
+  tutInCeremony = true;                       // från och med nu konvergerar skärmen mot spelet (rebuildFromState)
   $('ov-ready').classList.add('open');
   await Promise.race([new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_confirm'); res(); }; }), tutAbortP()]);
   if (tutAbort) return;
   $('ov-ready').classList.remove('open');
-  await tutBarrier(5);                       // online: vänta in de andra lagen; solo: direkt
-  if (tutAbort) return;
-  realGame.net?.rigCue?.('countdown');        // rigg: riser + LED-chase 1–4 + klockljud (hjärnan)
+
+  if (ONLINE) {
+    // ═══ Gate 3 + 4 (RUMS-FLÖDE): lämna över till SERVERN ═══
+    // Säg bara "den här skärmen är redo". Servern väntar in ALLA levande lag (eller spelledarens
+    // TVINGA START / failsafe), kör EN gemensam nedräkning (realGame 'startCountdown' nedan ritar
+    // 10→0 synkat på alla skärmar) och startar runda 1 åt alla samtidigt (realGame 'start' →
+    // convergeToGame). INGEN lokal nedräkning, INGEN lokal startGame → aldrig mer osynk.
+    realGame.net.tutReady();
+    $('cd-lbl').textContent = 'VÄNTAR PÅ DE ANDRA LAGEN';
+    $('cd-num').textContent = '…';
+    $('ov-countdown').classList.remove('hot');
+    $('ov-countdown').classList.add('open');
+    return;                                   // resten drivs av serverns events
+  }
+
+  // ═══ OFFLINE (lokal tutorial utan server): behåll lokal nedräkning + direkt start ═══
+  $('cd-lbl').textContent = 'SPELET BÖRJAR OM';
   $('ov-countdown').classList.add('open');
   for (let n = 10; n >= 1; n--) {
     const el = $('cd-num');
     el.textContent = n;
     el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';   // starta om pop
     $('ov-countdown').classList.toggle('hot', n <= 3);
-    audio.play('ui_tap');                       // befintligt klick-ljud — inget nytt generiskt ljud
+    audio.play('ui_tap');
     await Promise.race([delay(1000), tutAbortP()]);
     if (tutAbort) { $('ov-countdown').classList.remove('open'); return; }
   }
-  realGame.net?.rigCue?.('climax');           // rigg: vitt ljus sköts av LED-listerna (ej på skärmen)
   $('ov-countdown').classList.remove('open');
   await delay(300);
   if (tutAbort) return;
-  realGame.net?.rigCue?.('runda1');           // rigg: fade in till rundans ljus/ljud
   $('tutveil').style.display = 'none';
   await banner('RUNDA 1', false, 1500);
   if (tutAbort) return;
   game.attach(realGame);
   game.startGame();
-  if (ONLINE) {
-    await delay(400);
-    const S = realGame.E()?.getState();
-    if (S && S.round >= 1 && !S.over) rebuildFromState(S);
-  }
 }
 
 async function runTutorial() {

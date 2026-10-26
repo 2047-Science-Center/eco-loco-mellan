@@ -168,6 +168,7 @@ export class EcoLoco {
     };
     this._snapshot();
     this._rollExtraProposals();                      // runda 1 → [] (extra-förslag öppnar först runda ≥4)
+    if (this.gm) this._drawEvent();                  // GM: ge spelledaren ett VALBART event redan runda 1 (auto/selfplay rör vi ej → runda 1 fri)
     this._emit('start', { config: c, areas: AREAS });
     this._emit('roundStart', { round: 1 });
     this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: 0 });

@@ -68,6 +68,7 @@ export class ServerNet {
   // ——— RUMS-FLÖDE ———
   startWindow() { this._send({ type: 'startWindow' }); }                 // spelar-STARTA (självspel) → öppna 15 s join-fönster
   enterTutorial() { this._send({ type: 'phaseTutorial' }); }            // klient → server: nått solo-tutorialen
+  tutReady() { this._send({ type: 'tutReady' }); }                      // Gate 3: den här skärmens tutorial är klar (servern väntar in alla)
   tillLobby() { this._send({ type: 'gmcmd', cmd: 'tilllobby' }); }      // SPELLEDARE: omstart → alla till lobbyn
   skipIntro() { this._send({ type: 'gmcmd', cmd: 'skipintro' }); }      // SPELLEDARE: skippa introt/trailern
   pause() { this._send({ type: 'pause' }); }                             // paus: frys bara spelmotorn

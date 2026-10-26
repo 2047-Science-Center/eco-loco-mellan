@@ -116,6 +116,18 @@ let phase = 'lobby';                 // 'lobby' | 'intro' | 'tutorial' | 'spel' 
 const START_WINDOW_SEC = 15;
 let startWindowInt = null, startWindowLeft = null;
 
+// ——— Gate 3 + 4: server-ägd tutorial-barriär + GEMENSAM nedräkning före runda 1 ———
+// Problemet förr: varje skärm körde tutorialen i egen takt och FÖRSTA bänk som klickade klart
+// startade runda 1 åt alla (ingen gemensam grind → osynk, någon fick countdown, någon inte).
+// Nu: varje skärm säger 'tutReady' när den är klar. Servern väntar in ALLA levande människor
+// (eller spelledarens TVINGA START, eller en lång failsafe mot en död bänk), kör EN nedräkning
+// åt alla, och startar sedan runda 1 EN gång. Ingen skärm startar spelet själv längre.
+let tutReady = new Set();            // lag som rapporterat "tutorial klar / redo" (Gate 3)
+let tutReadyFailsafe = null;         // lång failsafe: en död/seg bänk ska aldrig låsa rummet
+const TUT_READY_FAILSAFE_MS = 60000; // 60 s från första "redo" → tvinga gemensam countdown
+let startCountdownInt = null, startCountdownLeft = null;   // Gate 4: gemensam 10→0 (synkad på alla skärmar)
+const START_COUNTDOWN_SEC = 10;
+
 const humanIds = () => TEAMS.filter(id => claims[id] && claims[id] !== 'bot');
 const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 
@@ -222,12 +234,67 @@ function cancelStartWindow(silent) {
   if (!silent) broadcast({ type: 'startWindowCancel' });
 }
 
+// ——— Gate 3: tutorial-barriär — när släpps den gemensamma nedräkningen? ———
+// En skärm säger 'tutReady' när dess tutorial är klar. När alla LEVANDE människor är redo (eller
+// spelledaren tvingar, eller failsafen löser ut) → kör den gemensamma nedräkningen.
+function maybeStartCountdown() {
+  if (started || startCountdownInt) return;
+  const humans = liveHumanIds();
+  if (humans.length === 0) return;
+  if (humans.every(id => tutReady.has(id))) startSharedCountdown();
+}
+// ——— Gate 4: EN nedräkning åt alla, sedan starta runda 1 EN gång ———
+function startSharedCountdown() {
+  if (started || startCountdownInt) return;
+  clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
+  startCountdownLeft = START_COUNTDOWN_SEC;
+  console.log('[spel] GEMENSAM nedräkning → runda 1 (server-ägd grind)');
+  riggPublish('ecoloco/rigg/ceremoni', 'countdown');   // rigg: riser + LED-chase (gatad i spelledarläge → manuell där)
+  broadcast({ type: 'startCountdown', left: startCountdownLeft, total: START_COUNTDOWN_SEC });
+  startCountdownInt = setInterval(() => {
+    startCountdownLeft--;
+    if (startCountdownLeft > 0) {
+      broadcast({ type: 'startCountdown', left: startCountdownLeft, total: START_COUNTDOWN_SEC });
+    } else {
+      clearInterval(startCountdownInt); startCountdownInt = null; startCountdownLeft = null;
+      riggPublish('ecoloco/rigg/ceremoni', 'climax');  // rigg: vitt climax → rundans look (hjärnan)
+      beginGame();
+    }
+  }, 1000);
+}
+function cancelStartCountdown(silent) {
+  if (startCountdownInt) { clearInterval(startCountdownInt); startCountdownInt = null; }
+  startCountdownLeft = null;
+  if (!silent) broadcast({ type: 'startCountdownCancel' });
+}
+
+// Starta själva partiet (EN gång). Rums-flödet når hit via den gemensamma nedräkningen; replay/direkt-
+// start (playAgain, lokalt) når hit via 'startGame'-meddelandet. riggSilent/gmMode rörs INTE här —
+// de ägs av spelledarpanelens läges-toggle (annars nollades "MED spelledare" vid varje start).
+function beginGame() {
+  if (started && engine && !engine.getState().over) return;
+  cancelStartWindow(true);
+  cancelStartCountdown(true);
+  clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
+  stopTrailer(); trailerPlayedAuto = false;
+  for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
+  started = true;
+  phase = 'spel';                              // motorn körs → late-join tar över en bot via claim
+  tutBeats = {}; tutReady = new Set();
+  newEngine();
+  broadcast(lobbyMsg());
+  engine.start();
+}
+
 // ——— Spelledarens OMSTART → alla till lobbyn (när som helst) ———
 // Stoppar allt (fönster/trailer/timer), nollställer started + motorn, sätter phase='lobby' och
 // broadcastar 'tilllobby' så varje klient river ner det den håller på med (overlays, solo-tutorial,
 // trailer) och visar lobbyn. Motorn = null → samma tillstånd som vid serverstart innan första partiet.
 function resetToLobby() {
   cancelStartWindow(true);
+  cancelStartCountdown(true);
+  tutReady = new Set();
+  clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
   stopTrailer();
   broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
   stopTimer();
@@ -545,19 +612,27 @@ wss.on('connection', ws => {
         break;
       }
       case 'startGame': {
-        console.log(`[spel] startGame från ${lag || 'bänk utan lag'}${started && engine && !engine.getState().over ? ' — ignorerad (pågår)' : ''}`);
+        // DIREKT-start: replay (playAgain) och lokalt/dev. RUMS-FLÖDET går numera via tutReady →
+        // gemensam nedräkning → beginGame (ingen skärm startar partiet själv längre). riggSilent/gmMode
+        // sätts INTE om här — de ägs av spelledarpanelens läges-toggle.
+        console.log(`[spel] startGame (direkt) från ${lag || 'bänk utan lag'}${started && engine && !engine.getState().over ? ' — ignorerad (pågår)' : ''}`);
         if (started && engine && !engine.getState().over) break;
-        cancelStartWindow(true);                     // ev. 15 s-fönster är klart nu — stäng tyst
-        stopTrailer(); trailerPlayedAuto = false;   // partiet startar → stoppa ev. trailer, nollställ auto för nästa lobby-cykel
-        for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
-        started = true;
-        phase = 'spel';                              // motorn körs → late-join tar över en bot via claim
-        riggSilent = !!m.spelledare;   // "med spelledare" → spelet tyst mot riggen (manuell styrning)
-        if (riggSilent) console.log('[spel] MED spelledare — riggen styrs manuellt (inga rigg-cues från spelet)');
-        tutBeats = {};
-        newEngine();
-        broadcast(lobbyMsg());
-        engine.start();
+        beginGame();
+        break;
+      }
+      case 'tutReady': {
+        // Gate 3: den här skärmens tutorial är klar. Räkna in laget, meddela alla, och kör den
+        // gemensamma nedräkningen när alla levande människor är redo (failsafe mot död bänk).
+        if (!lag || started) break;
+        if (!tutReady.has(lag)) {
+          tutReady.add(lag);
+          broadcast({ type: 'tutReadyUpdate', klara: [...tutReady], humans: liveHumanIds().length });
+          if (!tutReadyFailsafe) tutReadyFailsafe = setTimeout(() => {
+            console.log('[spel] tutReady-failsafe löste ut → gemensam nedräkning (seg/död bänk)');
+            startSharedCountdown();
+          }, TUT_READY_FAILSAFE_MS);
+          maybeStartCountdown();
+        }
         break;
       }
       case 'selectCard': {
@@ -675,9 +750,12 @@ function handleGmCmd(m) {
     case 'pause':        // {on?:bool} eller toggla — frys bara spelmotorn (paus-knapp / arkadknapp / Blocks)
       setPaused(m.on !== undefined ? !!m.on : !paused);
       break;
-    case 'spelledare':   // {on:bool} → med/utan spelledare (on = spelet tyst mot riggen)
-      riggSilent = !!m.on;
-      console.log(`[spel] läge: ${riggSilent ? 'MED' : 'UTAN'} spelledare (rigg-cues ${riggSilent ? 'AV' : 'PÅ'})`);
+    case 'spelledare':   // {on:bool} → med/utan spelledare. MED = spelet tyst mot riggen OCH GM-läge:
+      riggSilent = !!m.on;                 //   100 % valbart event varje runda + manuell award-stegning.
+      gmMode = riggSilent;                 //   "spelledare" och GM är samma koncept — en ledare styr allt.
+      engine?.setGm(gmMode);
+      rigg?.setGm(gmMode);
+      console.log(`[spel] läge: ${riggSilent ? 'MED' : 'UTAN'} spelledare (GM ${gmMode ? 'PÅ' : 'AV'}, rigg-cues ${riggSilent ? 'AV' : 'PÅ'})`);
       break;
     case 'trailer':      // KOPPLING 2 (huvudväg): spela intro-trailern (video på skärmar + ljussekvens från servern)
       playTrailer();
@@ -694,6 +772,9 @@ function handleGmCmd(m) {
       break;
     case 'tilllobby':    // SPELLEDARE: omstart → alla till lobbyn (när som helst)
       resetToLobby();
+      break;
+    case 'forcestart':   // SPELLEDARE: TVINGA START — kör den gemensamma nedräkningen även om alla inte tryckt redo
+      if (!started && !startCountdownInt) { console.log('[spel] spelledaren TVINGADE start'); startSharedCountdown(); }
       break;
     case 'pengaslapp':   // +10 pengar & +10 material till alla lag — bara under en pågående runda
       if (!started || !engine || engine.getState().over || resolvingNow) break;
