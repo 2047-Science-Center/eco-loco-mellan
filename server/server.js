@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { EcoLoco, AREAS, timerSecFor } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
-import { attachMqtt } from '../src/mqtt.js';
+import { attachMqtt, setPublisher as setBenchPublisher } from '../src/mqtt.js';
 import { attachRigg } from '../src/rigg.js';
 import { newSession } from './persist.js';
 import { buildSlutdel } from '../spec/slutdel.js';
@@ -45,6 +45,13 @@ const riggSend = (t, m) => {
 // även "med spelledare" — spelledaren regisserar bara show-momenten (award m.m.), inte ambienten.
 const AMBIENT_TOPICS = new Set(['ecoloco/rigg/ohalsa', 'ecoloco/rigg/scen']);
 const riggPublish = (t, m) => { if (riggSilent && !AMBIENT_TOPICS.has(t)) return; riggSend(t, m); };
+// Bänkarnas kontrollbord: src/mqtt.js (attachMqtt) bygger topics/innehåll per bänk
+// (ecoloco/<benchId>/money|resources|winner|looser). Här kopplar vi den mot SAMMA broker,
+// RETAINED (-r) så en bänk som startar om / ansluter sent direkt får senaste värdet.
+const benchSend = (t, m) => {
+  execFile('mosquitto_pub', ['-h', RIGG_BROKER, '-p', RIGG_PORT, '-r', '-t', t, '-m', String(m)], () => {});
+};
+setBenchPublisher(benchSend);
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'spec', 'assets.json')));
 const basename = s => String(s).split('/').pop();   // 'assets/audio/rigg/x.mp3' → 'x.mp3' (rigg-ljud-id)
