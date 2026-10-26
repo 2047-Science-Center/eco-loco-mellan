@@ -785,6 +785,7 @@ function openTrade(partnerId = null) {
   $('tb-give').innerHTML = `DU GER (${giveCur} ${curIco(giveCur, 14)})`;
   $('tb-get').innerHTML = `DU FÅR (${getCur} ${curIco(getCur, 14)})`;
   renderTradeModal();
+  const go = $('btn-trade-go'); go.classList.remove('sent'); go.textContent = 'FÖRESLÅ BYTET'; go.disabled = false;   // nollställ ev. "skickad"-låsning
   audio.play('ui_open');
   $('ov-trade').classList.add('open');
 }
@@ -808,13 +809,15 @@ $('give-plus').addEventListener('click', () => { giveAmt = Math.min(E().team(gam
 $('get-minus').addEventListener('click', () => { getAmt = Math.max(1, getAmt - 1); renderTradeModal(); });
 $('get-plus').addEventListener('click', () => { getAmt = getAmt + 1; renderTradeModal(); });
 $('btn-trade-go').addEventListener('click', async () => {
-  $('btn-trade-go').disabled = true;
-  // Byte med ett MÄNSKLIGT lag → servern frågar dem, svaret kan dröja. Visa direkt att förfrågan
-  // är skickad så man inte tror att inget hände och trycker om. (Botar svarar direkt → ingen väntan.)
+  const go = $('btn-trade-go');
+  go.disabled = true;
+  // Byte med ett MÄNSKLIGT lag → servern frågar dem, svaret kan dröja. Själva knappen blir gul och
+  // säger FÖRFRÅGAN SKICKAD (låst) så man inte trycker igen — AVBRYT går fortfarande. (Botar svarar
+  // direkt → ingen väntan.) Återställs när svaret kommit.
   const partnerHuman = ONLINE && lastLobby?.claims?.[tradePartner] === 'human';
-  if (partnerHuman) toast(`📨 Förfrågan skickad till ${teamName(tradePartner)} — väntar på svar …`);
+  if (partnerHuman) { go.classList.add('sent'); go.textContent = 'FÖRFRÅGAN SKICKAD'; }
   const res = await game.trade(tradePartner, giveAmt, giveCur, getAmt, getCur);
-  $('btn-trade-go').disabled = false;
+  go.classList.remove('sent'); go.textContent = 'FÖRESLÅ BYTET'; go.disabled = false;
   if (!res.ok) { toast(`❌ ${res.why || 'bytet gick inte'}`, true); return; }
   toast(`✅ Bytte ${giveAmt} ${CUR_ICON[giveCur]} mot ${getAmt} ${CUR_ICON[getCur]} med ${teamName(tradePartner)}`);
   flashRes(giveCur, -giveAmt); flashRes(getCur, getAmt);

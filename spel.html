@@ -172,6 +172,9 @@
   .propchoice { cursor: pointer; transition: border-color .15s; }
   .propchoice:hover { border-color: var(--gold); }
   .votebtns { display: flex; gap: 18px; }
+  /* Bytesförfrågan skickad till en människa → knappen blir gul + låst (men AVBRYT går fortfarande). */
+  #btn-trade-go.sent { background: var(--led); border-color: var(--led); color: #241E0F; }
+  #btn-trade-go.sent:disabled { opacity: 1; cursor: default; }
   .votebtns button { flex: 1; font: inherit; font-size: 28px; font-weight: 800; letter-spacing: 2px; padding: 20px; border-radius: 14px; cursor: pointer; border: 4px solid; }
   .votebtns .ja { background: #1E4A2C; border-color: #35D97B; color: #C9F5D8; }
   .votebtns .nej { background: #40231E; border-color: #8a4a38; color: #F0CFC5; }
