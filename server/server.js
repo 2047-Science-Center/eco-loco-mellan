@@ -787,6 +787,14 @@ function handleGmCmd(m) {
     case 'forcestart':   // SPELLEDARE: TVINGA START — kör den gemensamma nedräkningen även om alla inte tryckt redo
       if (!started && !startCountdownInt) { console.log('[spel] spelledaren TVINGADE start'); startSharedCountdown(); }
       break;
+    case 'tillrunda1':   // SPELLEDARE: HOPPA DIREKT TILL RUNDA 1 — skippar trailer OCH tutorial, startar partiet nu.
+      // beginGame() avbryter trailer/nedräkning/join-fönster, fyller tomma lag med botar och startar motorn.
+      // Klienter i tutorial/intro hoppar in via 'start'-eventet (convergeToGame / trailerDone).
+      if (started && engine && !engine.getState().over) { console.log('[spel] tillrunda1 ignorerad — parti pågår'); break; }
+      broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
+      console.log('[spel] spelledaren HOPPADE direkt till runda 1');
+      beginGame();
+      break;
     case 'pengaslapp':   // +10 pengar & +10 material till alla lag — bara under en pågående runda
       if (!started || !engine || engine.getState().over || resolvingNow) break;
       engine.pengaslapp();

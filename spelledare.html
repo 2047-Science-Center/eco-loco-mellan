@@ -264,19 +264,17 @@
   <section class="view" data-view="admin">
     <div class="grid3">
       <div class="card">
-        <h2>PARTI</h2>
-        <button class="btn primary" id="lobby-btn">TILL LOBBYN (START / OMSTART)</button>
-        <p class="note">Den enda start-knappen: river ner allt — pågående spel, intro eller tutorial — och tar alla skärmar tillbaka till lobbyn, när som helst. Därifrån startar spelarna själva.</p>
-        <button class="btn" id="attract-btn" style="margin-top:10px">⏮ TILL ATTRACT (NY GRUPP)</button>
-        <p class="note">Tar alla skärmar hela vägen tillbaka till attract-skärmen (STARTA SPELET + attract-filmen i bakgrunden) — redo för en ny grupp.</p>
-        <button class="btn" id="forcestart-btn" style="margin-top:10px">▶ TVINGA START (RUNDA 1)</button>
-        <p class="note">När lagen är klara med tutorialen väntar systemet in alla innan den gemensamma nedräkningen. Tryck här för att köra nedräkningen direkt om en bänk är seg eller tom.</p>
+        <h2>PARTI <span class="hint">— fungerar alltid</span></h2>
+        <p class="note" style="margin-bottom:10px">Fas just nu: <b id="partifas" style="color:var(--gold)">–</b></p>
+        <button class="btn primary" id="lobby-btn">↺ OMSTART → LOBBYN<small>river allt (spel/intro/tutorial) och tar alla till lobbyn</small></button>
+        <button class="btn" id="attract-btn" style="margin-top:10px">⏮ NY GRUPP → ATTRACT<small>hela vägen till attract-skärmen + filmen</small></button>
       </div>
       <div class="card">
-        <h2>INTRO-TRAILER</h2>
-        <button class="btn" id="trailer-btn">SPELA TRAILER</button>
-        <button class="btn" id="skipintro-btn">SKIPPA INTRO</button>
-        <p class="note">Spelar intro-klippet på alla skärmar och kör ljussekvensen från servern (EN källa). Startar även automatiskt när alla fyra lag anslutit i lobbyn. "Skippa intro" hoppar vidare (tutorial/spel) för alla.</p>
+        <h2>STARTA / HOPPA <span class="hint">— grå = går inte i denna fas</span></h2>
+        <button class="btn primary" id="tillrunda1-btn">▶ HOPPA TILL RUNDA 1<small>skippar trailer OCH tutorial — startar partiet nu</small></button>
+        <button class="btn" id="trailer-btn" style="margin-top:10px">🎬 SPELA INTRO-TRAILER<small>spelar trailern på alla skärmar</small></button>
+        <button class="btn" id="skipintro-btn" style="margin-top:10px">⏭ SKIPPA TRAILERN<small>hoppar förbi trailern → tutorial</small></button>
+        <button class="btn" id="forcestart-btn" style="margin-top:10px">⏱ TVINGA NEDRÄKNINGEN<small>kör gemensam nedräkning → runda 1 (om en bänk är seg/tom)</small></button>
       </div>
       <div class="card">
         <h2>MED / UTAN SPELLEDARE <span class="hint">(gäller nästa start)</span></h2>
@@ -338,7 +336,7 @@ const net = new ServerNet();
 net.on('disconnected', () => { setConn(false); });
 net.on('reconnected', () => { setConn(true); render(); });
 ['timer','roundStart','ohalsa','roundEnd','gameEnd','lobby','notis','voteUpdate','paused',
- 'event','award','awardCeremony','awardStep','awardDone','tilllobby',
+ 'event','award','awardCeremony','awardStep','awardDone','tilllobby','tillattract','trailer','trailerDone','start','startGo','startWindow',
  'slutdelStart','slutdelQuestion','slutdelReveal','slutdelDist','slutdelDone'].forEach(ev => net.on(ev, p => onEvent(ev, p)));
 
 const first = await net.connect(null);   // åskådare (inget lag)
@@ -413,6 +411,17 @@ function render() {
 
   // admin
   $('#sl-val').textContent = withSpelledare ? 'MED' : 'UTAN';
+
+  // Start-/hopp-knappar: fas-medvetna så man ser VAD som går just nu (grå = går inte).
+  // net.phase bärs i varje servermeddelande: 'lobby' | 'intro' | 'tutorial' | 'spel' | 'slutdel'.
+  const ph = net.phase || (over ? 'spel' : 'lobby');
+  const FASNAMN = { lobby: 'LOBBY (väntar på spelare)', intro: 'INTRO-TRAILER', tutorial: 'TUTORIAL', spel: 'SPEL PÅGÅR', slutdel: 'SLUTDEL' };
+  $('#partifas').textContent = FASNAMN[ph] || ph.toUpperCase();
+  const foreSpel = ph === 'lobby' || ph === 'intro' || ph === 'tutorial';   // partiet har inte börjat än
+  $('#tillrunda1-btn').disabled = !foreSpel;              // hoppa in när som helst innan spelet börjat
+  $('#trailer-btn').disabled    = !(ph === 'lobby' || ph === 'intro');  // trailern hör till förspelet
+  $('#skipintro-btn').disabled  = ph !== 'intro';         // bara under trailern
+  $('#forcestart-btn').disabled = ph !== 'tutorial';      // nedräkningen gäller när tutorialen körs
 }
 function renderDist(p) {
   if (!p || !p.counts) return;
@@ -489,6 +498,7 @@ $('#slutdel-next').onclick  = () => { net.gmcmd({ cmd: 'slutdel_next' }); if (sl
 $('#lobby-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.tillLobby(); toast('Alla till lobbyn (omstart)'); });
 $('#attract-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'tillattract' }); toast('Alla till attract-skärmen (ny grupp)'); });
 $('#forcestart-btn').onclick = () => { net.gmcmd({ cmd: 'forcestart' }); toast('Tvingar gemensam nedräkning → runda 1'); };
+$('#tillrunda1-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'tillrunda1' }); toast('Hoppar direkt till runda 1 (skippar intro + tutorial)'); });
 $('#trailer-btn').onclick = () => { net.gmcmd({ cmd: 'trailer' }); toast('Spelar intro-trailer'); };
 $('#skipintro-btn').onclick = () => { net.skipIntro(); toast('Skippar introt'); };
 $('#sl-utan').onclick = () => { withSpelledare = false; net.gmcmd({ cmd: 'spelledare', on: false }); render(); toast('Läge: UTAN spelledare (riggen automatisk)'); };
