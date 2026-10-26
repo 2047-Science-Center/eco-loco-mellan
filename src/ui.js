@@ -1585,7 +1585,7 @@ async function runTutorial() {
   // ——— Coach-tips: peka ut surfplattan med spel-coachen innan sista steget ———
   // tutSay visar NÄSTA-knapp och ligger kvar tills spelaren trycker (45 s kiosk-säkring) — ingen auto-timer.
   await tutSay({ ix: 3, focus: null, x: 520, y: 380,
-    txt: `Undrar ni över något under spelet? Vid sidan står en <b>surfplatta med en coach</b> som kan reglerna — fråga den när ni vill. Tryck <b>NÄSTA</b> när ni är redo.` });
+    txt: `Har ni frågor? Vid sidan står en <b>coach</b> som kan reglerna — fråga den när ni vill.` });
   if (tutAbort) return;
 
   // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
@@ -1593,7 +1593,7 @@ async function runTutorial() {
     txt: `Sista steget: avsluta rundan. Efter <b>varje runda</b> delas tre priser ut — årets ledande företag, årets eldsjäl och årets sabotör.` });
   if (tutAbort) return;
   const roundEndP = tutOnce('roundEnd');
-  await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA OMGÅNG</b>. Annars räknas det av självt.', x: 1040, y: 760, focus: '#endwrap',
+  await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA OMGÅNG</b>.', x: 1040, y: 760, focus: '#endwrap',
     until: roundEndP,
     autoDo: () => $('btn-end').click() });
   if (tutAbort) return;
