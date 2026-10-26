@@ -362,6 +362,7 @@
     "proposal_open": "assets/audio/rigg/proposal_open.mp3",
     "pil_blip": "assets/audio/rigg/pil_blip.mp3",
     "spanning": "assets/audio/rigg/spanning.mp3",
+    "countdown_start": "assets/audio/rigg/countdown_start.mp3",
     "larm": "assets/audio/rigg/larm.mp3",
     "happening": "assets/audio/rigg/happening.mp3",
     "event_storm": "assets/audio/rigg/event_storm.mp3",

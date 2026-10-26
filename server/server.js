@@ -249,7 +249,7 @@ function startSharedCountdown() {
   clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
   startCountdownLeft = START_COUNTDOWN_SEC;
   console.log('[spel] GEMENSAM nedräkning → runda 1 (server-ägd grind)');
-  riggPublish('ecoloco/rigg/ceremoni', 'countdown');   // rigg: riser + LED-chase (gatad i spelledarläge → manuell där)
+  riggSend('ecoloco/rigg/ceremoni', 'countdown');   // SYSTEMCEREMONI (ungated, som trailer/paus): riser + LED-chase spelar i BÅDA lägena
   broadcast({ type: 'startCountdown', left: startCountdownLeft, total: START_COUNTDOWN_SEC });
   startCountdownInt = setInterval(() => {
     startCountdownLeft--;
@@ -257,7 +257,7 @@ function startSharedCountdown() {
       broadcast({ type: 'startCountdown', left: startCountdownLeft, total: START_COUNTDOWN_SEC });
     } else {
       clearInterval(startCountdownInt); startCountdownInt = null; startCountdownLeft = null;
-      riggPublish('ecoloco/rigg/ceremoni', 'climax');  // rigg: vitt climax → rundans look (hjärnan)
+      riggSend('ecoloco/rigg/ceremoni', 'climax');  // SYSTEMCEREMONI (ungated): vitt climax → rundans look (hjärnan)
       beginGame();
     }
   }, 1000);

@@ -322,8 +322,8 @@ def _chase_worker():
             if ceremoni_stop.wait(0.33): return
 def apply_ceremoni(payload):
     global ceremoni_stop
-    if payload == "countdown":        # spelstart: riser-soundscape + LED-chase (kulminerar i climax)
-        stop_ambience(); play("spanning")
+    if payload == "countdown":        # spelstart: dramatisk nedräkning (tickande klocka + riser) + LED-chase (kulminerar i climax)
+        stop_ambience(); play("countdown_start")   # mer dramatisk än gamla "spanning"; spanning.mp3 ligger kvar som reserv
         ceremoni_stop = threading.Event()
         threading.Thread(target=_chase_worker, daemon=True).start()
     elif payload == "climax":         # vitt ljus i 3 s, sedan rundans look

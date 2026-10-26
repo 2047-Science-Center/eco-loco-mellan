@@ -36,6 +36,8 @@ const SPEC = [
   ['round_start',   'a calm round-opening cue, the soft two-note authority motif rising a gentle neutral interval with a short produced swell, like a meeting called to order', 1.3, false],
   ['proposal_open', 'a short attention cue, the soft two-note authority motif under a gentle paper-and-gavel motion, calling the room to a vote', 0.9, false],
   ['countdown',     'a nine-second tension builder, a dry clock ticking steadily while a low drone and sub-bass slowly rise, the ticks tightening and accelerating, resolving on one firm decisive low hit', 9.0, false],
+  // Spelstart-nedräkning (ecoloco/rigg/ceremoni=countdown) — mer dramatisk, mer tickande klocka än spanning.
+  ['countdown_start','a ten-second game-start countdown, a mechanical clock ticking and accelerating over a swelling low drone and rising tension riser, climaxing in one huge decisive impact hit', 10.0, false],
 
   // ——— Tryck / kris (ENAD allvarlig institutionell linje; aldrig game-show) ———
   ['kris', 'a grave institutional pressure cue, a slow rising two-tone warning signal swelling under a deep ominous sub-bass drone, dignified and dramatic, not alarmist, no siren wail', 3.0, false],
