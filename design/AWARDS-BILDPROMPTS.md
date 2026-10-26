@@ -18,8 +18,8 @@ De tre prisen (per runda, kan vara null om ingen kvalar):
 - **Det som visas PÅ skärmarna och på ö-kartan (grafer, radar, kart-overlay) → stiliserat/low-poly / retro-UI-grafik.**
 Håll skärm-texter **oläsliga** (glödande indikatorer, siffer-liknande klotter, inga riktiga ord).
 
-## Bildformat — matcha prisutdelnings-kortet
-Visas som en **bred banner** överst i award-kortet. **Generera brett liggande ≈ 3:1** (t.ex. 1536×512), motivet (skärm-raden/kartan) vertikalt centrerat.
+## Bildformat — 16:9 (filmiskt, INTE en tunn banner)
+Award-rutan är idag en liten text-ruta utan bild — den byggs om till att visa klippet **stort, nära helskärm** (filmiskt), med pristitel + vinnarlag som overlay. Därför: **generera i 16:9** (t.ex. 1920×1080), samma format som trailer-materialet och kontrollrums-referensen. Komponera med luft runt motivet så en text-overlay (titel nere/uppe) inte skymmer skärm-raden/kartan.
 
 ---
 
@@ -28,7 +28,7 @@ Visas som en **bred banner** överst i award-kortet. **Generera brett liggande �
 Ekonomin skenar. Kall triumf — rikedom, men ingen värme.
 
 **Prompt (EN):**
-> Dark, cold, cinematic photoreal render of the Centralmakten control room (brutalist 1960s war-room: concrete, analog consoles, dials, tungsten lamps, exactly like the reference). The focus is the row of retro CRT monitors and the big backlit topographic island map above them, all glowing a triumphant **warm gold**: the screens show climbing bar- and line-graphs, rising production/output readouts, a golden harbour and industry at full tilt, meters pegged at maximum — a booming economy. The island map glows gold with bright pulsing nodes. Warm gold light washes the room, dust in the beams, shallow depth of field, film grain, soft vignette. Retro-UI / low-poly screen graphics, photoreal room. Triumphant but cold — success paid for by the island. Wide 3:1 banner, screens/map centered. No legible text, no logos, no UI chrome, no team emblems.
+> Dark, cold, cinematic photoreal render of the Centralmakten control room (brutalist 1960s war-room: concrete, analog consoles, dials, tungsten lamps, exactly like the reference). The focus is the row of retro CRT monitors and the big backlit topographic island map above them, all glowing a triumphant **warm gold**: the screens show climbing bar- and line-graphs, rising production/output readouts, a golden harbour and industry at full tilt, meters pegged at maximum — a booming economy. The island map glows gold with bright pulsing nodes. Warm gold light washes the room, dust in the beams, shallow depth of field, film grain, soft vignette. Retro-UI / low-poly screen graphics, photoreal room. Triumphant but cold — success paid for by the island. 16:9 cinematic frame, screens/map as the focus, room for a text overlay. No legible text, no logos, no UI chrome, no team emblems.
 
 ---
 
@@ -37,7 +37,7 @@ Ekonomin skenar. Kall triumf — rikedom, men ingen värme.
 Ön läker. Den enda äkta värmen i det kalla rummet.
 
 **Prompt (EN):**
-> Dark, cold, cinematic photoreal render of the Centralmakten control room (brutalist concrete war-room, analog consoles, dials, tungsten lamps, like the reference). The focus is the row of retro CRT monitors and the backlit island map above them, now glowing a soft living **green-gold**: the screens show the island healing — a rising green health gauge, a radar sweep over regrowing forest, a small sprout / clean water / a gentle green dawn on one screen. The island map glows with spreading green life-nodes. A warm green-gold light is the one genuinely hopeful glow in the dim concrete room; tender, quiet. Dust in the beams, shallow depth of field, film grain, soft vignette. Retro-UI / low-poly screen graphics, photoreal room. Wide 3:1 banner, screens/map centered. No legible text, no logos, no UI chrome, no team emblems.
+> Dark, cold, cinematic photoreal render of the Centralmakten control room (brutalist concrete war-room, analog consoles, dials, tungsten lamps, like the reference). The focus is the row of retro CRT monitors and the backlit island map above them, now glowing a soft living **green-gold**: the screens show the island healing — a rising green health gauge, a radar sweep over regrowing forest, a small sprout / clean water / a gentle green dawn on one screen. The island map glows with spreading green life-nodes. A warm green-gold light is the one genuinely hopeful glow in the dim concrete room; tender, quiet. Dust in the beams, shallow depth of field, film grain, soft vignette. Retro-UI / low-poly screen graphics, photoreal room. 16:9 cinematic frame, screens/map as the focus, room for a text overlay. No legible text, no logos, no UI chrome, no team emblems.
 
 ---
 
@@ -46,7 +46,7 @@ Ekonomin skenar. Kall triumf — rikedom, men ingen värme.
 Röd-larm. Ön bryts ner på skärmarna.
 
 **Prompt (EN):**
-> Dark, cold, cinematic photoreal render of the Centralmakten control room (brutalist concrete war-room, analog consoles, dials, tungsten lamps, like the reference) under **red alert**: the row of retro CRT monitors and the backlit island map glow a sickly alarm **red**. The screens show the island breaking down — a smoking erupting coastline, black industrial plumes, a plummeting health gauge, flashing red warning readouts, a grey ruined shore. Red warning lamps are lit across the consoles; thin smoke drifts through the room. The island map bleeds red and grey, nodes dying out. Grim, shaming, cold; a faint dying glow. Dust and smoke in the beams, shallow depth of field, film grain, heavy soft vignette. Retro-UI / low-poly screen graphics, photoreal room. Wide 3:1 banner, screens/map centered. No legible text, no logos, no UI chrome, no team emblems.
+> Dark, cold, cinematic photoreal render of the Centralmakten control room (brutalist concrete war-room, analog consoles, dials, tungsten lamps, like the reference) under **red alert**: the row of retro CRT monitors and the backlit island map glow a sickly alarm **red**. The screens show the island breaking down — a smoking erupting coastline, black industrial plumes, a plummeting health gauge, flashing red warning readouts, a grey ruined shore. Red warning lamps are lit across the consoles; thin smoke drifts through the room. The island map bleeds red and grey, nodes dying out. Grim, shaming, cold; a faint dying glow. Dust and smoke in the beams, shallow depth of field, film grain, heavy soft vignette. Retro-UI / low-poly screen graphics, photoreal room. 16:9 cinematic frame, screens/map as the focus, room for a text overlay. No legible text, no logos, no UI chrome, no team emblems.
 
 ---
 
