@@ -1219,7 +1219,7 @@ function resetToLobbyUI() {
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
   doljTrailer();
   ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
-   'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus'].forEach(id => $(id)?.classList.remove('open'));
+   'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus'].forEach(id => $(id)?.classList.remove('open'));
   $('tutveil').style.display = 'none';
   $('tutbox').style.display = 'none';
   $('tutbarrier').style.display = 'none';
