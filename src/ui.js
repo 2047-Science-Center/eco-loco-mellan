@@ -398,6 +398,17 @@ function renderAwardCard(typ, w, footer = '') {
        : `<div class="who" style="font-size:19px;color:var(--dim)">Ön andas ut 😮‍💨</div>`) + footer;
 }
 
+// Slutskärmen (win/lose) ska visas FÖRST när prisceremonin för sista rundan spelats klart.
+// Online driver servern ceremonin (awardCeremony→awardStep→awardDone{over}); gameEnd kan komma FÖRE
+// awardCeremony i auto-läge, så vi väntar alltid in awardDone(over) online. Lokalt (mock) stegar
+// 'award' själv via den seriella kön före gameEnd → då visas slut direkt.
+let pendingSlut = null, slutFailsafe = null;
+function showPendingSlut() {
+  clearTimeout(slutFailsafe); slutFailsafe = null;
+  if (!pendingSlut) return;
+  const s = pendingSlut; pendingSlut = null; showSlut(s);
+}
+
 // SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
   const show = async (typ, w) => {
@@ -425,9 +436,10 @@ game.on('awardStep', p => run(async () => {
   renderAwardCard(p.typ, p.w);
   $('ov-award').classList.add('open');
 }));
-game.on('awardDone', () => run(async () => {
+game.on('awardDone', p => run(async () => {
   $('ov-award').classList.remove('open');
   renderRegs();
+  if (p?.over) showPendingSlut();   // sista rundans ceremoni klar → nu visas slutskärmen
 }));
 
 game.on('roundEnd', () => run(async () => renderRegs()));
@@ -437,6 +449,7 @@ game.on('start', () => run(async () => {
   // Bänk utan lag (åskådare): behåll lobbyn öppen så man kan ta över en dator när som helst.
   if (!(ONLINE && !game.me)) $('ov-start').classList.remove('open');
   $('ov-slut').classList.remove('open');
+  pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null;   // nytt parti → nollställ ev. väntande slutskärm
   map.clearBuildings();
 }));
 
@@ -453,7 +466,13 @@ game.on('roundStart', p => run(async () => {
 
 game.on('gameEnd', p => run(async () => {
   // win/lose-ljud spelas centralt (rigg) — skärmen är tyst.
-  showSlut(p);
+  // Lokalt (mock): 'award' stegade redan klart via kön → visa slut direkt.
+  // Online: servern driver prisceremonin och avslutar med awardDone{over:true}; gameEnd kan komma
+  // FÖRE awardCeremony (auto-läge) → vänta in awardDone. Säkerhetsnät om awardDone aldrig kommer.
+  if (!ONLINE) { showSlut(p); return; }
+  pendingSlut = p;
+  clearTimeout(slutFailsafe);
+  slutFailsafe = setTimeout(() => run(async () => showPendingSlut()), 15000);
 }));
 
 game.on('proposalOpened', p => run(async () => {
