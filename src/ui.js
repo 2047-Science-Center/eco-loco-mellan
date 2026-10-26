@@ -393,9 +393,13 @@ const awardMeta = (typ, w) => ({
 }[typ]);
 function renderAwardCard(typ, w, footer = '') {
   const m = awardMeta(typ, w);
-  $('awardcard').innerHTML = `<div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
+  // Event-korts-struktur: lag-agnostisk prisbild på topp (assets/award/<typ>.png, döljs snällt om
+  // den inte finns än) + ram med titel + vinnarlag (laget färg-/namnges här, bilden är samma för alla).
+  const img = `<img src="assets/award/${typ}.png" alt="" onerror="this.style.display='none'">`;
+  $('awardcard').className = 'awardcard' + (typ === 'sab' ? ' sab' : '');
+  $('awardcard').innerHTML = img + `<div class="aw-tx"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
     (w ? `<div class="who">${logoSVG(w.teamId, 64)}${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
-       : `<div class="who" style="font-size:19px;color:var(--dim)">Ön andas ut 😮‍💨</div>`) + footer;
+       : `<div class="who" style="font-size:19px;color:var(--dim)">Ön andas ut 😮‍💨</div>`) + footer + `</div>`;
 }
 
 // Slutskärmen (win/lose) ska visas FÖRST när prisceremonin för sista rundan spelats klart.
