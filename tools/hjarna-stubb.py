@@ -39,6 +39,8 @@ GREEN_LOOK   = {"h": 120, "s": 100, "v": 90}
 OFF          = {"h": 0, "s": 0, "v": 0}
 PAUS_LOOK    = {"h": 210, "s": 70, "v": 14, "puls": 0}   # lugn, nersläckt blå bas ("fryst") — wave sveper över
 KRIS_LOOK    = {"h": 0, "s": 100, "v": 15, "puls": 40}   # svag, pulserande röd — krisen äger LED-listen tills den släpps
+FINAL_WIN_LOOK  = {"h": 120, "s": 100, "v": 100}         # VINST: starkt firande grönt
+FINAL_LOSE_LOOK = {"h": 0,   "s": 100, "v": 22}          # FÖRLUST: dystert mörkt rött
 KRIS_BLANDARE_SEK = 15.0                                  # blandaren fyrar så länge, sen släcks BARA den (röda pulsen kvar)
 
 # ---- MAPPNING: award -> vinnarsidans look + ljud ----
@@ -265,6 +267,18 @@ def apply_paus(payload):
             set_all(ATTRACT_LOOK)
         prev_sides = prev_spots = None
 
+# VINST/FÖRLUST-FINALE (systemceremoni, ecoloco/rigg/final = "win"/"lose"): distinkt look + ljud så
+# gruppen får en tydlig positiv (vinst) resp. allvarlig (förlust) förstärkning. Håller tills nästa
+# scen-cue (t.ex. slutdelen → scen 'slut', eller attract). Spelar i BÅDA lägena (ej gatad).
+def apply_final(payload):
+    global crisis_active
+    crisis_active = False                     # ev. kvarvarande kris släpper → finalen äger LED-listen
+    stop_ambience()
+    if str(payload).strip() == "win":
+        set_all(FINAL_WIN_LOOK); set_fx("wave", 35); play("win")   # firande grönt svall + vinst-ljud
+    else:
+        set_fx("none"); set_all(FINAL_LOSE_LOOK); play("lose")     # dystert rött + förlust-ljud
+
 def apply_award(payload):
     d = json.loads(payload)
     a = AWARD.get(d.get("typ")); side = LAG_SIDE.get(d.get("lag"))
@@ -343,6 +357,8 @@ def on_semantic(topic, payload):
         apply_ambience(payload); return
     if topic == "ecoloco/rigg/trailer":    # trailer-ljud centralt (skärmarna tysta) — systemceremoni, gäller alltid
         play_trailer(payload); return
+    if topic == "ecoloco/rigg/final":      # vinst/förlust-finale (systemceremoni) — spelar i båda lägena
+        apply_final(payload); return
     if master:
         return                      # GM har tagit över — ignorera spelets cues
     if   topic == "ecoloco/rigg/ohalsa":    apply_ohalsa(payload)
@@ -362,7 +378,7 @@ def on_semantic(topic, payload):
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
               "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
-              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/trailer", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/trailer", "ecoloco/rigg/final", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")

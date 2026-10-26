@@ -926,6 +926,9 @@ function showSlut(p) {
   $('slut-efter').innerHTML = EFTERSNACK[Math.floor(Math.random() * EFTERSNACK.length)];
   slutForlust = !p.won;                              // förlust → knappen tar tillbaka till lobbyn (spelet är avslutat)
   $('btn-again').textContent = p.won ? 'STARTA NYTT SPEL' : 'TILLBAKA TILL LOBBYN';
+  // Spelledarläge: spelarna ska INTE kunna starta om — spelledaren leder avslutningen (slutdel + TILL LOBBYN/ATTRACT).
+  const gmNu = !!E()?.getState()?.gmMode;
+  $('btn-again').style.display = gmNu ? 'none' : '';
   $('ov-slut').classList.add('open');
 }
 let slutForlust = false;
@@ -1093,7 +1096,7 @@ $('btn-attract').addEventListener('click', () => {
   audio.play('ui_tap');
   $('attract-video').pause?.();
   $('ov-attract').classList.remove('open');
-  oppnaNarrativ();
+  // Narrativ-steget borttaget → STARTA SPELET går DIREKT in i lobbyn (ov-start ligger under).
 });
 
 function oppnaNarrativ() {
@@ -1267,6 +1270,12 @@ if (ONLINE) {
     if (lastLobby) renderLobby(lastLobby);
   });
   realGame.on('tilllobby', () => resetToLobbyUI());  // spelledaren tog alla till lobbyn (kan ske mitt i tutorialen)
+  realGame.on('tillattract', () => {                 // spelledaren tog alla hela vägen till ATTRACT-skärmen (ny grupp)
+    // Servern skickar 'tilllobby' FÖRE detta → vyn är redan nollställd; lägg attract-skärmen överst + spela filmen.
+    $('ov-attract').classList.add('open');
+    const v = videoEllerFallback('attract-video', 'attract-fallback', ONB.attract);
+    v && v.play?.().catch(() => {});
+  });
   // Gate 4: SERVERN äger den gemensamma nedräkningen. Rita 10→0 synkat på alla skärmar.
   realGame.on('startCountdown', m => {
     tutInCeremony = true;                      // håll konvergens-läget (även om vi kom hit utan tutorial)

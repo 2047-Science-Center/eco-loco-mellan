@@ -370,6 +370,9 @@ function newEngine() {
     maybeBotProposal(p.round);
   });
   engine.on('gameEnd', () => stopTimer());
+  // VINST/FÖRLUST-FINALE i riggen — SYSTEMCEREMONI (ungated, som trailer/countdown) så den spelar i
+  // BÅDA lägena. Hjärnan ger distinkt look + ljud: win = firande grönt + win-ljud, lose = dystert rött + lose-ljud.
+  engine.on('gameEnd', p => riggSend('ecoloco/rigg/final', p.won ? 'win' : 'lose'));
   engine.on('proposalOpened', () => { checkBotVotes(); });
 }
 
@@ -772,6 +775,11 @@ function handleGmCmd(m) {
       break;
     case 'tilllobby':    // SPELLEDARE: omstart → alla till lobbyn (när som helst)
       resetToLobby();
+      break;
+    case 'tillattract':  // SPELLEDARE: ta alla hela vägen till ATTRACT-skärmen (ny grupp redo att komma in)
+      resetToLobby();                                     // nollställ allt (motor/timers/started) → lobby-läge
+      broadcast({ type: 'event', event: 'tillattract' }); // skärmarna lägger attract-skärmen överst + spelar filmen
+      riggSend('ecoloco/rigg/scen', 'attract');           // riggen till viloläge (ungated → även i spelledarläge)
       break;
     case 'forcestart':   // SPELLEDARE: TVINGA START — kör den gemensamma nedräkningen även om alla inte tryckt redo
       if (!started && !startCountdownInt) { console.log('[spel] spelledaren TVINGADE start'); startSharedCountdown(); }
