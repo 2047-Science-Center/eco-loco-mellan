@@ -88,3 +88,23 @@ tyst melodi-stem (ostinatot/motivet, −12 till −18 dB under dronen) som loopa
 (a) baka in motivet i varje soundscape-fil, eller (b) spela det som ett andra ambience-lager i hjärnan
 (en andra `_amb_worker`-kanal) så det är oberoende av öhälso-dronen. Använd **tvåtons-signaturen** som
 motiv → musiken och SFX:en knyts ihop till en helhet.
+
+---
+
+## VALD: Riktning A — fyra Suno-prompts (samma grundanslag, olika karaktär)
+
+Gemensam bas i alla fyra: sliten PA, harmonium/rörorgel, varm lågdrone, rör-/bandmättnad, tape-hiss +
+wow-flutter, avlägset rumseko, den fallande tvåtons-mollsignaturen. Kör varje Suno-spår genom
+"Centralmaktens PA"-behandlingen efteråt (ffmpeg) så det matchar riggen. I Suno: slå PÅ **Instrumental**.
+
+**1 — "Bättre läge" (positivare melodi-slinga, litet beat, lugnt driv):**
+> Slow institutional broadcast loop with a faint hopeful lift: a tired reed-organ / harmonium plays the soft falling two-note motif, now resolving a touch warmer (Dorian), over a warm low drone heard through an old worn PA — valve-and-tape saturation, tape hiss, wow-flutter, distant room echo. Add a very soft heartbeat pulse / muted sub-kick for gentle forward motion — calm, never busy, no real drum kit. Quietly optimistic, patient. 74 bpm, instrumental, seamless loop.
+
+**2 — "Riktning A med driv" (som A nu, men mer rörelse; inga trummor, litet beat):**
+> Cold institutional broadcast loop with subtle momentum: a harmonium / reed-organ carries the falling two-note minor motif over a warm low drone through an old worn PA — valve-and-tape saturation, tape hiss, wow-flutter, distant room echo. Underneath, a quiet pulsing sub and a faint tape-tick give forward drive, but NO drum kit — just a low heartbeat pulse. Melancholic, controlled, slightly ominous. 68 bpm, instrumental, seamless loop.
+
+**3 — "Entré / attract" (mer beat, sätter tonen när de kommer in i rummet):**
+> Hypnotic dystopian entrance loop that sets the tone for the whole experience: the same worn-PA Centralmakten palette — harmonium / reed-organ, warm low drone, valve-and-tape saturation, tape hiss, wow-flutter, distant room echo, the falling two-note minor motif as a slow hook. Now with a deeper, steadier pulse — a soft deep kick and a muted tape-pulse that draws people in, slow and magnetic, cold but intriguing. No busy drums, no vocals. 84 bpm, instrumental, seamless loop.
+
+**4 — "Award-ceremoni" (spänningsbeat, tydligt avbrott, ingen stor melodi):**
+> Tense ceremonial underscore, a clear break from the ambient world: the Centralmakten worn-PA palette (valve-and-tape saturation, tape hiss, distant room echo) but now rhythm-led — a pulsing low beat, a tight ticking clock pulse, sparse metallic hits and a slowly rising sub, building ceremony and suspense. The falling two-note motif appears only as a cold stab, NOT a melody. Controlled dread, institutional, no vocals. 92 bpm, instrumental, seamless loop.
