@@ -491,5 +491,6 @@ $('#skipintro-btn').onclick = () => { net.skipIntro(); toast('Skippar introt'); 
 $('#sl-utan').onclick = () => { withSpelledare = false; net.gmcmd({ cmd: 'spelledare', on: false }); render(); toast('Läge: UTAN spelledare (riggen automatisk)'); };
 $('#sl-med').onclick  = () => { withSpelledare = true;  net.gmcmd({ cmd: 'spelledare', on: true  }); render(); toast('Läge: MED spelledare (du styr riggen)'); };
 </script>
+<script src="./src/kiosk-exit.js"></script>
 </body>
 </html>
