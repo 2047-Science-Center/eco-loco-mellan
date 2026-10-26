@@ -136,6 +136,8 @@ AMB_FILE = {
 AMB_PRESET = {
     "1": "soundscape_1.mp3", "2": "soundscape_2.mp3", "3": "soundscape_3.mp3",
     "4": "soundscape_4.mp3", "5": "soundscape_5.mp3",
+    # Spelledar-MUSIK-alternativ jämte soundscapen (loopas som ambience):
+    "bra": "musik_bra.mp3", "daligt": "musik_daligt.mp3",
 }
 amb_manual = None   # None = AUTO (ambiencen följer öhälsan); annars en fast preset-fil spelledaren valt
 _amb_target = None   # resolverad sökväg, eller None = tyst
@@ -210,15 +212,15 @@ def apply_ohalsa(payload):
         cur_mode = m
 
 def apply_scen(payload):
-    global cur_mode
+    global cur_mode, amb_manual
     if payload == "attract":
-        cur_mode = None; set_ambience("attract.mp3")
+        cur_mode = None; amb_manual = None; set_ambience("musik_attract.mp3")   # attract-MUSIK (ny grupp startar rent)
         if not crisis_active: set_fx("none"); set_all(ATTRACT_LOOK); spots_off()
     elif payload == "runda":
         cur_mode = None            # nästa ohalsa sätter look + ambience
         if not crisis_active: set_fx("none"); spots_off()   # rensa ev. award-pil/spot efter prisutdelningen
     elif payload == "awards":
-        stop_ambience()            # tyst under awards
+        set_ambience("musik_award.mp3")   # award-MUSIK under ceremonin (tydligt avbrott); award-stingers spelas ovanpå
         if not crisis_active: set_fx("none")
     elif payload == "slut":
         stop_ambience()

@@ -201,6 +201,8 @@
           <button class="btn amb" data-amb="3">③ NEUTRAL<small>balanserad/start</small></button>
           <button class="btn amb" data-amb="4">④ VARM<small>går bra</small></button>
           <button class="btn amb" data-amb="5">⑤ LJUS<small>mycket bra</small></button>
+          <button class="btn amb" data-amb="daligt" style="border-color:var(--led-red)">🎵 DÅLIGT LÄGE<small>musik</small></button>
+          <button class="btn amb" data-amb="bra" style="border-color:var(--led-green)">🎵 BRA LÄGE<small>musik</small></button>
           <button class="btn" id="amb-auto" style="color:var(--gold)">AUTO<small>följer hälsan</small></button>
         </div>
       </div>
@@ -459,7 +461,7 @@ $('#blandare-btn').onclick = (e) => { const on = e.currentTarget.classList.toggl
   net.rigcmd(R + 'gm/blandare', on ? '1' : '0'); toast('Saftblandaren ' + (on ? 'PÅ' : 'AV')); };
 $('#allagron-btn').onclick = () => { net.rigcmd(R + 'gm/alla_grona', '1'); toast('Alla gröna'); };
 // ——— STÄMNING: manuell ambience-preset (1..5) eller AUTO (dirigenten byter ambience-loop) ———
-const AMB_NAMN = { '1': 'Kris', '2': 'Oro', '3': 'Neutral', '4': 'Varm', '5': 'Ljus' };
+const AMB_NAMN = { '1': 'Kris', '2': 'Oro', '3': 'Neutral', '4': 'Varm', '5': 'Ljus', 'bra': 'Bra läge (musik)', 'daligt': 'Dåligt läge (musik)' };
 $$('.amb').forEach(b => b.onclick = () => {
   $$('.amb').forEach(x => x.classList.remove('active')); $('#amb-auto').classList.remove('active'); b.classList.add('active');
   net.rigcmd(R + 'ambience', b.dataset.amb); toast('Stämning: ' + AMB_NAMN[b.dataset.amb]);
