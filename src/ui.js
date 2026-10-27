@@ -1197,10 +1197,9 @@ function korEfterTrailer() {
   const f = efterTrailer; efterTrailer = null;
   f();
 }
-// Tap på trailern → hoppa över (servern stoppar ljussekvensen + säger "klart" till alla skärmar).
-$('ov-trailer').addEventListener('click', () => {
-  if (game.skipTrailer) game.skipTrailer(); else { doljTrailer(); korEfterTrailer(); }
-});
+// GATAD trailer: tryck på skärmen gör INGET — introfilmen ska inte gå att hoppa över/avbryta av
+// spelarna. Den avslutas av sig själv (video slut / trailerDone / failsafe). Spelledaren kan
+// fortfarande skippa den från panelen (SKIPPA INTRO).
 // Nytt parti (replay) → tillåt att trailern + tutorialen körs igen vid nästa STARTA.
 game.on('gameEnd', () => { trailerVisad = false; tutRunning = false; });
 
@@ -1308,7 +1307,10 @@ if (ONLINE) {
   });
   realGame.on('tilllobby', () => resetToLobbyUI());  // spelledaren tog alla till lobbyn (kan ske mitt i tutorialen)
   realGame.on('tillattract', () => {                 // spelledaren tog alla hela vägen till ATTRACT-skärmen (ny grupp)
-    // Servern skickar 'tilllobby' FÖRE detta → vyn är redan nollställd; lägg attract-skärmen överst + spela filmen.
+    // Ny grupp → nollställ trailer-minnet EXPLICIT så introfilmen spelas igen vid nästa STARTA
+    // (förlita dig inte på tilllobby-ordningen). Servern nollställer sina trailer-flaggor i resetToLobby.
+    trailerVisad = false; efterTrailer = null;
+    clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
     $('ov-attract').classList.add('open');
     const v = videoEllerFallback('attract-video', 'attract-fallback', ONB.attract);
     v && v.play?.().catch(() => {});
