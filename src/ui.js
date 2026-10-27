@@ -889,6 +889,16 @@ function propDefs() {
     { type: 'lojalitet', pic: '🤝', rubrik: 'Grön utdelning', tx: `Går det igenom: varje JA-lag får <b>+${c.lojalitetBonus} ${ico('pengar', 14)}</b>,<br>varje NEJ-lag betalar <b>${c.lojalitetBoter} ${ico('pengar', 14)}</b>. Öns hälsa +${c.lojalitetOh}.`, ja: `JA — jag tar +${c.lojalitetBonus} ${ico('pengar', 14)}` },
     { type: 'marknadsavtal', pic: '📈', rubrik: 'Marknadsavtal', tx: `Bonus <b>+${c.marknadsavtalBonus} ${ico('pengar', 14)} till alla</b> — men <b>bara om exakt 3 av 4</b> röstar JA.<br>En måste avstå.`, ja: 'JA — jag är med' },
     { type: 'gronstod', pic: '💊', rubrik: 'Riktat grönt stöd', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)} → hela potten<br>går till grönaste laget (<b>${gron.namn}</b>).`, ja: `JA — jag skänker ${c.gronCost} ${ico('pengar', 14)}` },
+    // ── NYA testförslag ──
+    { type: 'grannskatt', pic: '💰', rubrik: 'Grannskatt', tx: `De <b>två rikaste</b> betalar ${c.grannskattAmount} ${ico('pengar', 14)} var →<br>delas på de två fattigaste.`, ja: 'JA — ta från de rika' },
+    { type: 'sektorblockad', pic: '🚫', rubrik: 'Sektorblockad', tx: `Nästa runda får <b>motståndarsektorn</b><br>inte bygga smutsigt.`, ja: 'JA — blockera dem' },
+    { type: 'allians', pic: '🫂', rubrik: 'Allians', tx: `Varje <b>JA-lag</b> får +${c.alliansBonus} ${ico('pengar', 14)},<br>varje <b>NEJ-lag</b> betalar ${c.alliansBoter} ${ico('pengar', 14)}.`, ja: `JA — gå med` },
+    { type: 'kustvakt', pic: '🌊', rubrik: 'Kustvakt', tx: `<b>Räven + Örnen</b> betalar ${c.kustvaktAmount} ${ico('pengar', 14)} var<br>för stormskydd → ön +${c.kustvaktOh}.`, ja: 'JA — skydda kusten' },
+    { type: 'tvillingsatsning', pic: '👯', rubrik: 'Tvillingsatsning', tx: `<b>Oxen + Björnen</b>: om BÅDA röstar JA betalar de<br>${c.tvillingAmount} ${ico('pengar', 14)} var och ön +${c.tvillingOh}. Annars inget.`, ja: 'JA — vi satsar ihop' },
+    { type: 'utslappshandel', pic: '🏭', rubrik: 'Utsläppshandel', tx: `Värsta boven betalar ${c.utslappAmount} ${ico('pengar', 14)} till<br>grönaste laget — ön ${c.utslappOh}.`, ja: 'JA' },
+    { type: 'naturreservat', pic: '🌳', rubrik: 'Naturreservat', tx: `Ön <b>+${c.naturreservatOh}</b> — men <b>ingen</b> får<br>bygga nästa runda.`, ja: 'JA — pausa för naturen' },
+    { type: 'raddningsfond', pic: '🤲', rubrik: 'Räddningsfond', tx: `Alla fyra betalar ${c.raddningsfondCost} ${ico('pengar', 14)}<br>→ ön <b>+${c.raddningsfondOh}</b>.`, ja: 'JA — alla bidrar' },
+    { type: 'byggboom', pic: '🏗️', rubrik: 'Byggboom', tx: `Nästa runda: ${c.byggboomRabatt} ${ico('material', 14)} billigare per bygge,<br>men ön <b>${c.byggboomOh}</b> nu.`, ja: 'JA — billigare bygge' },
   ];
 }
 // Grund-3 + rundans extra (server-auktoritativa i S.extraProposals). INGEN klient-lokal slump här.
@@ -899,14 +909,18 @@ function visibleProps() {
   return show.map(type => defs.find(d => d.type === type)).filter(Boolean);
 }
 $('btn-prop').addEventListener('click', () => {
-  if (E().getState().proposal || resolving) return;
+  const S = E().getState();
+  if ((S.proposal && !S.proposal.resolved) || S.proposedBy?.includes(game.me) || resolving) return;
   audio.play('ui_tap');
-  $('proplist').innerHTML = visibleProps().map(p => `
-    <div class="propcard propchoice" data-type="${p.type}">
+  const used = S.usedProposals || [];   // förslagstyper som redan lagts denna runda → gråas ut
+  $('proplist').innerHTML = visibleProps().map(p => {
+    const taget = used.includes(p.type);
+    return `<div class="propcard propchoice${taget ? ' used' : ''}" data-type="${p.type}"${taget ? ' aria-disabled="true"' : ''}>
       <div class="pic">${p.pic}</div>
-      <div class="tx"><b style="color:var(--text)">${p.rubrik}</b><br>${p.tx}</div>
-    </div>`).join('');
-  document.querySelectorAll('.propchoice').forEach(el => el.addEventListener('click', () => {
+      <div class="tx"><b style="color:var(--text)">${p.rubrik}</b>${taget ? ' <span style="color:var(--gold)">· LAGT</span>' : ''}<br>${p.tx}</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.propchoice:not(.used)').forEach(el => el.addEventListener('click', () => {
     $('ov-choose').classList.remove('open');
     game.openProposal(el.dataset.type);
   }));

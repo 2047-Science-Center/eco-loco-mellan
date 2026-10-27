@@ -46,7 +46,7 @@ export const DEFAULT_CONFIG = {
   // visas dessutom extraProposalsPerRound slumpade extra-förslag/runda (roterar).
   // Motorn väljer dem server-auktoritativt → S.extraProposals (se _rollExtraProposals).
   extraProposalsFromRound: 4,  // först fr.o.m. denna runda dyker extra-förslag upp (runda 1–3 = bara grund-3)
-  extraProposalsPerRound: 2,   // exakt så många extra-förslag/runda (utöver grund-3)
+  extraProposalsPerRound: 4,   // exakt så många extra-förslag/runda (utöver grund-3) → 3+4 = 7 att välja på
   krisProposalOh: 20,          // öhälsa under detta → SOS Krispaket ligger ALLTID bland förslagen (även före gate-rundan)
 
   // Belopp för de NYA extra-förslagen. Konservativt satta — Klara/Josef får tuna.
@@ -61,12 +61,29 @@ export const DEFAULT_CONFIG = {
   marknadsavtalBonus: 8,    // 📈 Marknadsavtal: 🪙 till ALLA fyra lag — men bara om EXAKT 3 röstade ja
   marknadsavtalOh: 2,       // 📈 Marknadsavtal: litet öhälso-lyft vid exakt 3 ja
   // (💊 Riktat grönt stöd återanvänder gronCost som ja-röstarnas insats → ingen egen ratt.)
+
+  // ─── NYA testförslag (Klara 2026-10-27) ───
+  grannskattAmount: 12,     // 💰 Grannskatt: 🪙 som vardera av de TVÅ rikaste betalar → delas på de två fattigaste
+  alliansBonus: 8,          // 🤝 Allians: 🪙 till varje JA-lag
+  alliansBoter: 8,          // 🤝 Allians: 🪙 som varje NEJ-lag betalar
+  kustvaktAmount: 8,        // 🌊 Kustvakt: 🪙 som Räven + Örnen betalar var
+  kustvaktOh: 10,           // 🌊 Kustvakt: öhälso-lyft
+  tvillingAmount: 12,       // 👯 Tvillingsatsning: 🪙 vardera av paret (Oxen+Björnen) betalar — bara om BÅDA röstar ja
+  tvillingOh: 18,           // 👯 Tvillingsatsning: stort öhälso-lyft om båda är med
+  utslappAmount: 15,        // 🏭 Utsläppshandel: 🪙 som värsta boven betalar till grönaste laget
+  utslappOh: -6,            // 🏭 Utsläppshandel: öhälso-smäll (köper rätten att smutsa)
+  raddningsfondCost: 5,     // 🤲 Gemensam räddningsfond: 🪙 som ALLA fyra betalar
+  raddningsfondOh: 15,      // 🤲 Gemensam räddningsfond: öhälso-lyft
+  naturreservatOh: 12,      // 🌳 Naturreservat: öhälso-lyft; INGEN får bygga nästa runda
+  byggboomRabatt: 5,        // 🏗️ Byggboom: 🧱 rabatt på varje bygge nästa runda
+  byggboomOh: -10,          // 🏗️ Byggboom: öhälso-smäll nu
 };
 
 // Extra-förslagens typ-id (ur design/FORSLAGSPOOL-FORSLAG.md §3, ENBART [BYGG]-märkta —
 // återanvänder primitiverna P1–P6, kräver INGEN ny motor-mekanik). [NY MEK]-förslagen
 // (blockad/utslappstak/katastroffond) är medvetet UTELÄMNADE (kräver nytt state).
-export const EXTRA_PROPOSAL_POOL = ['krispaket', 'sektorskatt', 'solidaritet', 'lojalitet', 'marknadsavtal', 'gronstod'];
+export const EXTRA_PROPOSAL_POOL = ['krispaket', 'sektorskatt', 'solidaritet', 'lojalitet', 'marknadsavtal', 'gronstod',
+  'grannskatt', 'sektorblockad', 'allians', 'kustvakt', 'tvillingsatsning', 'utslappshandel', 'naturreservat', 'raddningsfond', 'byggboom'];
 
 // Ett område = ett lag. Områdesfärg = lagfärg. sektor styr valuta-beroendet.
 // id = internt områdesnamn (används i MQTT/rigg — ändra ALDRIG). namn = lagets visningsnamn (djuret).
@@ -156,6 +173,10 @@ export class EcoLoco {
     this.S = {
       round: 1, oh: c.ohStart, lastDelta: 0, over: false,
       banDirtyThisRound: false, banDirtyNextRound: false,
+      banAllThisRound: false, banAllNextRound: false,              // 🌳 Naturreservat: byggstopp
+      banDirtySektorThisRound: null, banDirtySektorNextRound: null, // 🚫 Sektorblockad: smutsig-stopp för en sektor
+      buildDiscountThisRound: 0, buildDiscountNextRound: 0,         // 🏗️ Byggboom: 🧱-rabatt/bygge
+      usedProposals: [],                                           // förslagstyper som redan lagts denna runda
       inCrisis: false, krisReplaysLeft: c.krisMaxReplay,   // kris-mekanik: följer med i getState() → klient + spelledarpult
       proposal: null, proposedBy: [], gronQueued: 0, extraProposals: [],
       eventPool: EVENTS.map(e => e.id), drawnEvents: [], pendingEvent: null,
@@ -190,11 +211,14 @@ export class EcoLoco {
     const t = this.team(teamId);
     const card = handFor(teamId).find(c => c.tier === tier);
     if (!card) return { ok: false, reason: 'okänt kort' };
+    if (this.S.banAllThisRound) return { ok: false, reason: 'byggstopp denna runda (naturreservat)' };
     if (this.S.banDirtyThisRound && tier === 'smutsig') return { ok: false, reason: 'smutsig förbjuden denna runda' };
-    if (!this._canAfford(t, card)) {
-      return { ok: false, reason: 'har inte råd', need: { pengar: Math.max(0, card.kp - t.pengar), material: Math.max(0, card.km - t.material) } };
+    if (this.S.banDirtySektorThisRound === t.sektor && tier === 'smutsig') return { ok: false, reason: 'smutsig förbjuden för din sektor denna runda' };
+    const kmEff = Math.max(0, card.km - (this.S.buildDiscountThisRound || 0));   // 🏗️ Byggboom-rabatt på material
+    if (t.pengar < card.kp || t.material < kmEff) {
+      return { ok: false, reason: 'har inte råd', need: { pengar: Math.max(0, card.kp - t.pengar), material: Math.max(0, kmEff - t.material) } };
     }
-    t.pengar -= card.kp; t.material -= card.km;
+    t.pengar -= card.kp; t.material -= kmEff;
     t.choice = card.tier;                              // sista valet (UI-markering)
     (t._roundCards ||= []).push(card);                 // FLER BYGGEN/RUNDA: alla rundans byggen räknas vid bokslut
     // Varje bygge får en egen slot direkt (så flera byggen samma runda inte hamnar på samma plats).
@@ -244,9 +268,11 @@ export class EcoLoco {
   openProposal(type, byTeamId) {
     if (!this._proposalAllowed(type)) return;        // icke-aktuellt extra-förslag → ignoreras (server-auktoritativt)
     if ((this.S.proposedBy || []).includes(byTeamId)) return;   // laget har redan lagt sitt förslag denna runda
+    if ((this.S.usedProposals || []).includes(type)) return;    // förslagstypen är redan lagd denna runda (ett annat lag tog den)
     const p = this.S.proposal;
     if (p && !p.resolved) return;                    // ett i taget — vänta tills nuvarande avgjorts
     (this.S.proposedBy ||= []).push(byTeamId);
+    (this.S.usedProposals ||= []).push(type);
     this.S.proposal = { type, by: byTeamId, votes: {}, resolved: false, passed: false };
     this._emit('proposalOpened', { type, by: byTeamId });
   }
@@ -337,6 +363,54 @@ export class EcoLoco {
         this.S.teams.forEach(t => { if (p.votes[t.id]) { const pay = Math.min(this.cfg.gronCost, t.pengar); t.pengar -= pay; pot += pay; } });
         const target = this._greenest();
         if (target) target.pengar += pot;
+
+      // ─── NYA testförslag ───
+      } else if (p.type === 'grannskatt') {
+        // 💰 De TVÅ rikaste betalar var sin slant → delas på de två fattigaste.
+        const rank = this.leaderboards().bors;   // rikast först
+        const rika = rank.slice(0, 2).map(r => this.team(r.id));
+        const fattiga = rank.slice(-2).map(r => this.team(r.id));
+        let pot = 0;
+        rika.forEach(t => { const pay = Math.min(this.cfg.grannskattAmount, t.pengar); t.pengar -= pay; pot += pay; });
+        const share = Math.floor(pot / (fattiga.length || 1));
+        fattiga.forEach(t => t.pengar += share);
+      } else if (p.type === 'sektorblockad') {
+        // 🚫 Nästa runda får den ANDRA sektorn (än förslagsläggarens) inte bygga smutsigt.
+        const by = this.team(p.by);
+        this.S.banDirtySektorNextRound = by && by.sektor === 'pengar' ? 'material' : 'pengar';
+      } else if (p.type === 'allians') {
+        // 🤝 JA-lag får bonus, NEJ-lag betalar böter (koalition vs utanförskap).
+        this.S.teams.forEach(t => {
+          if (p.votes[t.id]) t.pengar += this.cfg.alliansBonus;
+          else t.pengar = Math.max(0, t.pengar - this.cfg.alliansBoter);
+        });
+      } else if (p.type === 'kustvakt') {
+        // 🌊 De två havsnära lagen (Räven + Örnen) betalar för stormskydd → ön +hälsa.
+        ['tundra', 'stad'].forEach(id => { const t = this.team(id); if (t) t.pengar = Math.max(0, t.pengar - this.cfg.kustvaktAmount); });
+        this.S.gronQueued += this.cfg.kustvaktOh;
+      } else if (p.type === 'tvillingsatsning') {
+        // 👯 Paret Oxen+Björnen: BARA om BÅDA röstade ja betalar de och ön lyfts stort (annars inget).
+        if (p.votes.aker && p.votes.skog) {
+          ['aker', 'skog'].forEach(id => { const t = this.team(id); if (t) t.pengar = Math.max(0, t.pengar - this.cfg.tvillingAmount); });
+          this.S.gronQueued += this.cfg.tvillingOh;
+        }
+      } else if (p.type === 'utslappshandel') {
+        // 🏭 Värsta boven köper rätten att smutsa: betalar grönaste laget; ön tar en smäll.
+        const bov = this.worstPolluter(), gron = this._greenest();
+        if (bov && gron) { const pay = Math.min(this.cfg.utslappAmount, bov.pengar); bov.pengar -= pay; gron.pengar += pay; }
+        this.S.gronQueued += this.cfg.utslappOh;
+      } else if (p.type === 'naturreservat') {
+        // 🌳 Ön +hälsa, men INGEN får bygga nästa runda.
+        this.S.gronQueued += this.cfg.naturreservatOh;
+        this.S.banAllNextRound = true;
+      } else if (p.type === 'raddningsfond') {
+        // 🤲 Alla fyra betalar lika → ön +hälsa (oavsett röst, om förslaget går igenom).
+        this.S.teams.forEach(t => t.pengar = Math.max(0, t.pengar - this.cfg.raddningsfondCost));
+        this.S.gronQueued += this.cfg.raddningsfondOh;
+      } else if (p.type === 'byggboom') {
+        // 🏗️ Billigare byggen nästa runda (material-rabatt) men ön tar en smäll nu.
+        this.S.buildDiscountNextRound = this.cfg.byggboomRabatt;
+        this.S.gronQueued += this.cfg.byggboomOh;
       }
     }
     this._emit('proposalResolved', { type: p.type, votes: { ...p.votes }, passed: p.passed, yesCount });
@@ -409,8 +483,11 @@ export class EcoLoco {
     this._emit('award', { round: this.S.round, ...this._computeAwards() });
 
     // nollställ rund-scope
-    this.S.gronQueued = 0; this.S.proposal = null; this.S.proposedBy = [];
+    this.S.gronQueued = 0; this.S.proposal = null; this.S.proposedBy = []; this.S.usedProposals = [];
     this.S.banDirtyThisRound = this.S.banDirtyNextRound; this.S.banDirtyNextRound = false;
+    this.S.banAllThisRound = this.S.banAllNextRound; this.S.banAllNextRound = false;                               // 🌳 Naturreservat
+    this.S.banDirtySektorThisRound = this.S.banDirtySektorNextRound; this.S.banDirtySektorNextRound = null;        // 🚫 Sektorblockad
+    this.S.buildDiscountThisRound = this.S.buildDiscountNextRound; this.S.buildDiscountNextRound = 0;              // 🏗️ Byggboom
     this.S.teams.forEach(t => { t.choice = null; t._roundOh = 0; t._roundCards = []; });
 
     this._emit('roundEnd', { round: this.S.round });

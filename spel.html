@@ -171,6 +171,7 @@
   .propcard .tx b { color: var(--led-green); }
   .propchoice { cursor: pointer; transition: border-color .15s; }
   .propchoice:hover { border-color: var(--gold); }
+  .propchoice.used { opacity: .42; filter: grayscale(.7); cursor: not-allowed; pointer-events: none; }   /* förslaget redan lagt denna runda */
   .votebtns { display: flex; gap: 18px; }
   /* Förslaget lagt denna runda → grå/gul, tydligt inte tryckbar (ett förslag per lag/runda). */
   #btn-prop.lagt { background: #2a2824; border-color: var(--gold); color: var(--gold); opacity: 1; }
