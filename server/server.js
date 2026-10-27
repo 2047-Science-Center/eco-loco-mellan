@@ -138,7 +138,8 @@ const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, state: engine ? { ...engine.getState(), gmMode, riggSilent, started } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
-  return { type: 'lobby', started, claims: Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])) };
+  return { type: 'lobby', started, spelledare: riggSilent,   // spelledare på → klienterna gömmer STARTA (spelledaren styr starten)
+    claims: Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -753,6 +754,7 @@ function handleGmCmd(m) {
       engine?.setGm(gmMode);
       rigg?.setGm(gmMode);
       console.log(`[gm] GM-läge = ${gmMode}`);
+      broadcast(lobbyMsg());   // spegla läget till klienterna (STARTA-knappens synlighet)
       break;
     case 'pause':        // {on?:bool} eller toggla — frys bara spelmotorn (paus-knapp / arkadknapp / Blocks)
       setPaused(m.on !== undefined ? !!m.on : !paused);
@@ -763,6 +765,7 @@ function handleGmCmd(m) {
       engine?.setGm(gmMode);
       rigg?.setGm(gmMode);
       console.log(`[spel] läge: ${riggSilent ? 'MED' : 'UTAN'} spelledare (GM ${gmMode ? 'PÅ' : 'AV'}, rigg-cues ${riggSilent ? 'AV' : 'PÅ'})`);
+      broadcast(lobbyMsg());   // spegla läget till klienterna (STARTA-knappens synlighet)
       break;
     case 'trailer':      // KOPPLING 2 (huvudväg): spela intro-trailern (video på skärmar + ljussekvens från servern)
       playTrailer();

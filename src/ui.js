@@ -252,6 +252,8 @@ let startWindowLeft = null;   // 15 s start-fönster: sekunder kvar (null = inge
 let tutRunning = false;       // solo-tutorialen kör (gard mot dubbelstart vid late-join/claim)
 let tutAbort = false;         // omstart mitt i tutorialen → avbryt den rent
 let tutInCeremony = false;    // tutorialen är i slut-ceremonin (redo→nedräkning) — konvergerar själv mot spelet
+let vantarLag = false;        // väntläge efter tutorial: visar "X/Y lag klara" tills den gemensamma nedräkningen börjar
+let lastTutReady = null;      // senaste tutReadyUpdate {klara, humans} från servern
 const _tutAborters = [];      // väntare som väcks när tutorialen ska avbrytas
 function run(step) {
   queue.push(step);
@@ -1041,7 +1043,12 @@ function renderLobby(m) {
     b.addEventListener('click', () => { audio.unlock(); game.claim(b.dataset.lag); }));
 
   const btn = $('btn-start');
-  if (phase === 'pagar') { btn.style.display = 'none'; $('startnote').style.display = 'none'; }
+  if (m.spelledare) {
+    // MED SPELLEDARE: spelarna startar inte själva — spelledaren styr starten från panelen.
+    btn.style.display = 'none';
+    $('startnote').style.display = 'block';
+    $('startnote').textContent = 'Spelledaren startar spelet — luta er tillbaka 🎬';
+  } else if (phase === 'pagar') { btn.style.display = 'none'; $('startnote').style.display = 'none'; }
   else {
     btn.style.display = '';
     btn.disabled = false;   // startbar när som helst — tomma lag körs av bottar
@@ -1258,6 +1265,7 @@ function fireTutAbort() { tutAbort = true; while (_tutAborters.length) _tutAbort
 function resetToLobbyUI() {
   fireTutAbort();                               // avbryt ev. pågående solo-tutorial rent
   tutRunning = false; tutInCeremony = false;
+  vantarLag = false; lastTutReady = null;       // nollställ väntläget/lag-räknaren
   startWindowLeft = null;
   efterTrailer = null;
   trailerVisad = false;                         // BUGFIX: annars hoppas trailern över nästa parti efter "TILL LOBBYN" (nollades bara vid gameEnd)
@@ -1321,8 +1329,14 @@ if (ONLINE) {
     v && v.play?.().catch(() => {});
   });
   // Gate 4: SERVERN äger den gemensamma nedräkningen. Rita 10→0 synkat på alla skärmar.
+  // Väntläge efter tutorial: uppdatera "X/Y lag klara" medan vi väntar in alla lag.
+  realGame.on('tutReadyUpdate', m => {
+    lastTutReady = m;
+    if (vantarLag) { $('cd-lbl').textContent = 'VÄNTAR PÅ DE ANDRA LAGEN'; $('cd-num').textContent = `${m.klara.length}/${m.humans}`; }
+  });
   realGame.on('startCountdown', m => {
     tutInCeremony = true;                      // håll konvergens-läget (även om vi kom hit utan tutorial)
+    vantarLag = false;                         // alla är inne → sluta visa lag-räknaren
     $('cd-lbl').textContent = 'SPELET BÖRJAR OM';
     const el = $('cd-num');
     el.textContent = m.left;
@@ -1468,7 +1482,8 @@ function tutSay({ ix, txt, x, y, focus }) {
 async function startCeremony() {
   tutInCeremony = true;                       // från och med nu konvergerar skärmen mot spelet (rebuildFromState)
   $('ov-ready').classList.add('open');
-  await Promise.race([new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_confirm'); res(); }; }), tutAbortP()]);
+  // "ÄR DU REDO?" visas en kort stund (tryck går fortare) → sedan vidare till väntläget automatiskt.
+  await Promise.race([new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_confirm'); res(); }; }), delay(5000), tutAbortP()]);
   if (tutAbort) return;
   $('ov-ready').classList.remove('open');
 
@@ -1479,8 +1494,9 @@ async function startCeremony() {
     // 10→0 synkat på alla skärmar) och startar runda 1 åt alla samtidigt (realGame 'start' →
     // convergeToGame). INGEN lokal nedräkning, INGEN lokal startGame → aldrig mer osynk.
     realGame.net.tutReady();
+    vantarLag = true;                         // väntläge → tutReadyUpdate uppdaterar "X/Y lag klara"
     $('cd-lbl').textContent = 'VÄNTAR PÅ DE ANDRA LAGEN';
-    $('cd-num').textContent = '…';
+    $('cd-num').textContent = lastTutReady ? `${lastTutReady.klara.length}/${lastTutReady.humans}` : '…';
     $('ov-countdown').classList.remove('hot');
     $('ov-countdown').classList.add('open');
     return;                                   // resten drivs av serverns events
