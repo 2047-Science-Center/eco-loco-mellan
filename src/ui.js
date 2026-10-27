@@ -275,7 +275,7 @@ game.on('resolveStart', () => run(async () => {
 
 game.on('build', p => run(async () => {
   const b = manifest.buildings[p.card.asset];
-  map.placeBuilding(p.area, p.slotIndex, b.file);
+  map.placeBuilding(p.area, p.slotIndex, b.file, 135, { namn: p.card.namn, oh: p.card.oh, lagNamn: teamName(p.teamId) });
   audio.play(`build_${p.card.tier}`);
   if (p.teamId !== game.me) toast(`${teamName(p.teamId)} byggde ${p.card.namn} <span class="${p.card.oh > 0 ? 'ohplus' : 'ohminus'}">${fmtOh(p.card.oh)}</span>`);
   renderMe(); renderTeams();
@@ -1077,7 +1077,10 @@ function rebuildFromState(S) {
   if (!S || !S.teams) return;
   $('roundnum').textContent = S.round;
   map.clearBuildings();
-  for (const t of S.teams) t.slots.forEach((b, i) => map.placeBuilding(t.id, i, manifest.buildings[b.asset].file));
+  for (const t of S.teams) t.slots.forEach((b, i) => {
+    const c = handFor(t.id).find(x => x.tier === b.tier);   // härled namn + öhälso-effekt för info-rutan
+    map.placeBuilding(t.id, i, manifest.buildings[b.asset].file, 135, c ? { namn: c.namn, oh: c.oh, lagNamn: teamName(t.id) } : null);
+  });
   updateOh({ value: S.oh, mode: ohMode(S.oh), delta: S.lastDelta });
   $('krisglow').classList.toggle('on', !!S.inCrisis);   // kris-glöden följer statet (återanslutning/övertag/omspel)
   renderTeams(); renderRegs();

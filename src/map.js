@@ -197,6 +197,34 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     document.head.appendChild(st);
   }
 
+  // — Info-ruta för klickbara byggnader (ritas överst) —
+  const tipLayer = el('g');
+  svg.appendChild(tipLayer);
+  let activeTip = null;
+  function hideTip() { if (activeTip) { activeTip.remove(); activeTip = null; } }
+  function showTip(foot, info) {
+    hideTip();
+    const w = 380, h = 156, pad = 16;
+    let x = foot.x - w / 2; x = Math.max(VB.x + 12, Math.min(x, VB.x + VB.w - w - 12));
+    let y = foot.y - 150 - h; if (y < VB.y + 12) y = foot.y + 44;   // under byggnaden om det inte får plats ovanför
+    const g = el('g', { style: 'pointer-events:none' });
+    g.appendChild(el('rect', { x, y, width: w, height: h, rx: 18, fill: '#14120E', opacity: 0.96, stroke: '#4A443A', 'stroke-width': 2 }));
+    const lines = [
+      { t: info.namn, size: 32, weight: 800, fill: '#EFE8D6' },
+      { t: `${info.oh > 0 ? '+' : ''}${info.oh} öhälsa`, size: 28, weight: 700, fill: info.oh > 0 ? '#3DD68C' : info.oh < 0 ? '#F0564B' : '#C9BfA6' },
+      { t: info.lagNamn, size: 25, weight: 700, fill: '#C9A94F' },
+    ];
+    lines.forEach((ln, i) => {
+      const t = el('text', { x: x + w / 2, y: y + pad + 32 + i * 42, 'text-anchor': 'middle', 'font-size': ln.size, 'font-weight': ln.weight, fill: ln.fill });
+      t.textContent = ln.t;
+      g.appendChild(t);
+    });
+    tipLayer.appendChild(g);
+    activeTip = g;
+  }
+  // Klick på tom karta/hav → stäng ev. öppen info-ruta (byggnads-klick stoppar bubblingen).
+  svg.addEventListener('click', hideTip);
+
   container.appendChild(svg);
 
   function setOhalsaMode(m) {
@@ -210,11 +238,16 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   setOhalsaMode(mode);
 
   // Byggnad droppar på slot. size i kartbildens pixlar (~135 ≈ assetsens naturliga skala här).
-  function placeBuilding(area, slotIndex, href, size = 135) {
+  function placeBuilding(area, slotIndex, href, size = 135, info = null) {
     const s = (slots[area] || [])[slotIndex];
     if (!s) return null;
     const foot = clampToIsland(s.x, s.y);
     const g = el('g', { 'data-building': `${area}-${slotIndex}`, 'data-y': foot.y });
+    // Klickbar byggnad → visa info-ruta (namn · öhälso-effekt · vilket lag som byggde).
+    if (info) {
+      g.style.cursor = 'pointer';
+      g.addEventListener('click', ev => { ev.stopPropagation(); showTip(foot, info); });
+    }
     // kontaktskugga: grundar den grövre tilen mot den (nu texturerade) ytan
     g.appendChild(el('ellipse', {
       cx: foot.x, cy: foot.y + size * 0.06, rx: size * 0.34, ry: size * 0.14,
@@ -233,6 +266,6 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   return {
     svg, setOhalsaMode, placeBuilding,
     showSlots(v) { slotLayer.style.display = v ? '' : 'none'; },
-    clearBuildings() { buildLayer.replaceChildren(); },
+    clearBuildings() { hideTip(); buildLayer.replaceChildren(); },
   };
 }
