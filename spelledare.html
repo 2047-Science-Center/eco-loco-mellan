@@ -48,7 +48,7 @@
     font-family:var(--font-disp);font-size:16px;font-weight:800;letter-spacing:2px;cursor:pointer}
   .tabs button.sel{background:var(--panel2);color:var(--gold);box-shadow:inset 0 3px 0 var(--gold)}
 
-  main{padding:16px 22px}
+  main{padding:16px 22px 130px}   /* botten-marginal så sista knapparna inte göms bakom den fasta flik-raden (skrollbart) */
   .view{display:none}
   .view.sel{display:block}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start}
@@ -273,7 +273,8 @@
       </div>
       <div class="card">
         <h2>STARTA / HOPPA <span class="hint">— grå = går inte i denna fas</span></h2>
-        <button class="btn primary" id="tillrunda1-btn">▶ HOPPA TILL RUNDA 1<small>skippar trailer OCH tutorial — startar partiet nu</small></button>
+        <button class="btn primary" id="startspel-btn">▶ STARTA SPELET<small>kör hela flödet: intro-trailer → tutorial → nedräkning → runda 1</small></button>
+        <button class="btn" id="tillrunda1-btn" style="margin-top:10px">⏩ HOPPA TILL RUNDA 1<small>skippar trailer OCH tutorial — startar partiet direkt</small></button>
         <button class="btn" id="trailer-btn" style="margin-top:10px">🎬 SPELA INTRO-TRAILER<small>spelar trailern på alla skärmar</small></button>
         <button class="btn" id="skipintro-btn" style="margin-top:10px">⏭ SKIPPA TRAILERN<small>hoppar förbi trailern → tutorial</small></button>
         <button class="btn" id="forcestart-btn" style="margin-top:10px">⏱ TVINGA NEDRÄKNINGEN<small>kör gemensam nedräkning → runda 1 (om en bänk är seg/tom)</small></button>
@@ -427,6 +428,7 @@ function render() {
   const FASNAMN = { lobby: 'LOBBY (väntar på spelare)', intro: 'INTRO-TRAILER', tutorial: 'TUTORIAL', spel: 'SPEL PÅGÅR', slutdel: 'SLUTDEL' };
   $('#partifas').textContent = FASNAMN[ph] || ph.toUpperCase();
   const foreSpel = ph === 'lobby' || ph === 'intro' || ph === 'tutorial';   // partiet har inte börjat än
+  $('#startspel-btn').disabled  = ph !== 'lobby';         // hela flödet startas bara från lobbyn
   $('#tillrunda1-btn').disabled = !foreSpel;              // hoppa in när som helst innan spelet börjat
   $('#trailer-btn').disabled    = !(ph === 'lobby' || ph === 'intro');  // trailern hör till förspelet
   $('#skipintro-btn').disabled  = ph !== 'intro';         // bara under trailern
@@ -507,6 +509,7 @@ $('#slutdel-next').onclick  = () => { net.gmcmd({ cmd: 'slutdel_next' }); if (sl
 $('#lobby-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.tillLobby(); toast('Alla till lobbyn (omstart)'); });
 $('#attract-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'tillattract' }); toast('Alla till attract-skärmen (ny grupp)'); });
 $('#forcestart-btn').onclick = () => { net.gmcmd({ cmd: 'forcestart' }); toast('Tvingar gemensam nedräkning → runda 1'); };
+$('#startspel-btn').onclick = () => { net.gmcmd({ cmd: 'startspel' }); toast('Startar spelet (intro → tutorial → nedräkning)'); };
 $('#tillrunda1-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'tillrunda1' }); toast('Hoppar direkt till runda 1 (skippar intro + tutorial)'); });
 $('#trailer-btn').onclick = () => { net.gmcmd({ cmd: 'trailer' }); toast('Spelar intro-trailer'); };
 $('#skipintro-btn').onclick = () => { net.skipIntro(); toast('Skippar introt'); };

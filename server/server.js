@@ -791,6 +791,10 @@ function handleGmCmd(m) {
     case 'forcestart':   // SPELLEDARE: TVINGA START — kör den gemensamma nedräkningen även om alla inte tryckt redo
       if (!started && !startCountdownInt) { console.log('[spel] spelledaren TVINGADE start'); startSharedCountdown(); }
       break;
+    case 'startspel':    // SPELLEDARE: STARTA SPELET — kör hela det normala flödet (trailer → tutorial →
+      // gemensam nedräkning → runda 1) på alla skärmar. Samma signal som när join-fönstret löper ut.
+      if (!started && phase === 'lobby') { console.log('[spel] spelledaren STARTADE spelet (fullt flöde)'); broadcast({ type: 'startGo' }); }
+      break;
     case 'tillrunda1':   // SPELLEDARE: HOPPA DIREKT TILL RUNDA 1 — skippar trailer OCH tutorial, startar partiet nu.
       // beginGame() avbryter trailer/nedräkning/join-fönster, fyller tomma lag med botar och startar motorn.
       // Klienter i tutorial/intro hoppar in via 'start'-eventet (convergeToGame / trailerDone).
