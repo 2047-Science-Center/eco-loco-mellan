@@ -101,6 +101,8 @@ let cer = null;                // prisutdelning som SERVERN dirigerar (båda lä
 let cerTimer = null;           // selfplay: auto-stegarens timer (server-dirigerad lockstep skärm+rigg)
 const CEREMONY_STEP_MS = 8000; // selfplay: tid per pris (skärm + rigg kliver i exakt denna takt)
 let resolvingNow = false;
+const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjorts innan nästa får läggas (hinner visa resultatet)
+let proposalCooldownUntil = 0;
 // KOPPLING 2 — intro-trailer: trailerPlaying = kör just nu (gardar både command- och auto-vägen
 // mot dubbelstart). trailerPlayedAuto = auto-vägen har fyrat denna lobby-cykel (nollas vid startGame).
 let trailerPlaying = false, trailerPlayedAuto = false, trailerTimers = [];
@@ -379,6 +381,7 @@ function newEngine() {
   // BÅDA lägena. Hjärnan ger distinkt look + ljud: win = firande grönt + win-ljud, lose = dystert rött + lose-ljud.
   engine.on('gameEnd', p => riggSend('ecoloco/rigg/final', p.won ? 'win' : 'lose'));
   engine.on('proposalOpened', () => { checkBotVotes(); });
+  engine.on('proposalResolved', () => { proposalCooldownUntil = Date.now() + PROPOSAL_COOLDOWN_MS; });   // kö-paus innan nästa förslag
 }
 
 function roundFull() { return timerSecFor(engine.cfg, engine.getState().round); }
@@ -516,8 +519,9 @@ function maybeBotProposal(round) {
   if (round < 2 || Math.random() > 0.35) return;
   setTimeout(() => {
     const S = engine.getState();
-    if (S.over || S.proposal || resolvingNow) return;
-    const bots = TEAMS.filter(id => claims[id] === 'bot');
+    if (S.over || (S.proposal && !S.proposal.resolved) || resolvingNow || Date.now() < proposalCooldownUntil) return;   // bara ett oavgjort i taget + kö-paus
+    // ett förslag per lag/runda → välj en bot som inte redan lagt sitt förslag
+    const bots = TEAMS.filter(id => claims[id] === 'bot' && !(S.proposedBy || []).includes(id));
     if (!bots.length) return;
     const by = bots[Math.floor(Math.random() * bots.length)];
     // Grund-3 öhälso-viktat (som förr). Fr.o.m. runda 4: boten kan även välja ur rundans
@@ -662,8 +666,13 @@ wss.on('connection', ws => {
         break;
       }
       case 'openProposal': {
-        if (!lag || engine.getState().proposal || resolvingNow) break;
+        // ETT FÖRSLAG PER LAG/RUNDA: blockera bara om ett förslag är OAVGJORT just nu (inte om det
+        // senaste redan avgjorts). Motorn nekar lag som redan lagt sitt förslag denna runda.
+        const pp = engine.getState().proposal;
+        if (!lag || resolvingNow || (pp && !pp.resolved) || Date.now() < proposalCooldownUntil) break;
+        const before = engine.getState().proposal;
         engine.openProposal(m.ptype, lag);
+        if (engine.getState().proposal === before) break;   // motorn nekade (redan lagt / ej tillåtet)
         engine.vote(lag, true);
         broadcast({ type: 'voteUpdate' });
         checkBotVotes();

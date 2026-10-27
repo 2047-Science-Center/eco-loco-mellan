@@ -172,6 +172,8 @@
   .propchoice { cursor: pointer; transition: border-color .15s; }
   .propchoice:hover { border-color: var(--gold); }
   .votebtns { display: flex; gap: 18px; }
+  /* Förslaget lagt denna runda → grå/gul, tydligt inte tryckbar (ett förslag per lag/runda). */
+  #btn-prop.lagt { background: #2a2824; border-color: var(--gold); color: var(--gold); opacity: 1; }
   /* Bytesförfrågan skickad till en människa → knappen blir gul + låst (men AVBRYT går fortfarande). */
   #btn-trade-go.sent { background: var(--led); border-color: var(--led); color: #241E0F; }
   #btn-trade-go.sent:disabled { opacity: 1; cursor: default; }
@@ -451,7 +453,7 @@
     <aside class="col-others">
       <div class="panel toplist"><h3 id="toplist-h">TOPPLISTA</h3><div id="toplist"></div></div>
       <div class="panel klimat-mirror"><div id="reg-klimat-mirror"></div></div>
-      <div class="panel politik"><button class="bigbtn" id="btn-prop">LÄGG FÖRSLAG</button><div class="politik-sub">Ett förslag per runda · 3 av 4 JA avgör</div></div>
+      <div class="panel politik"><button class="bigbtn" id="btn-prop">LÄGG FÖRSLAG</button><div class="politik-sub">Ett förslag per lag · 3 av 4 JA avgör</div></div>
     </aside>
   </div>
 

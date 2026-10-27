@@ -157,13 +157,13 @@ export class EcoLoco {
       round: 1, oh: c.ohStart, lastDelta: 0, over: false,
       banDirtyThisRound: false, banDirtyNextRound: false,
       inCrisis: false, krisReplaysLeft: c.krisMaxReplay,   // kris-mekanik: följer med i getState() → klient + spelledarpult
-      proposal: null, gronQueued: 0, extraProposals: [],
+      proposal: null, proposedBy: [], gronQueued: 0, extraProposals: [],
       eventPool: EVENTS.map(e => e.id), drawnEvents: [], pendingEvent: null,
       teams: AREAS.map(a => ({
         id: a.id, namn: a.namn, farg: a.farg, sektor: a.sektor,
         pengar: c.startPengar, material: c.startMaterial,
         incP: 0, incM: 0, built: 0, impactPos: 0, impactNeg: 0, totalImpact: 0,
-        choice: null, log: [], slots: [], // slots: index-ordning för placerade byggnader
+        choice: null, _roundCards: [], log: [], slots: [], // slots: index-ordning för placerade byggnader
         _roundStartWealth: 0, _roundOh: 0, _roundGain: 0,
       })),
     };
@@ -195,9 +195,11 @@ export class EcoLoco {
       return { ok: false, reason: 'har inte råd', need: { pengar: Math.max(0, card.kp - t.pengar), material: Math.max(0, card.km - t.material) } };
     }
     t.pengar -= card.kp; t.material -= card.km;
-    t.choice = card.tier;
-    // Byggnaden placeras på nästa lediga slot (slots fylls i byggd-ordning; commit sker vid bokslut).
+    t.choice = card.tier;                              // sista valet (UI-markering)
+    (t._roundCards ||= []).push(card);                 // FLER BYGGEN/RUNDA: alla rundans byggen räknas vid bokslut
+    // Varje bygge får en egen slot direkt (så flera byggen samma runda inte hamnar på samma plats).
     const slotIndex = t.slots.length;
+    t.slots.push({ tier: card.tier, asset: card.asset });
     this._emit('build', { teamId, area: teamId, card, slotIndex, cost: { pengar: card.kp, material: card.km } });
     return { ok: true, card };
   }
@@ -237,9 +239,14 @@ export class EcoLoco {
     return (this.S?.extraProposals || []).includes(type);
   }
 
-  // ACTION: politik. Ett förslag/runda. type: grund-3 ('gron'|'skatt'|'forbud') + rundans extra (S.extraProposals).
+  // ACTION: politik. ETT förslag per LAG per runda (byTeamId får lägga ett, inte två). Förslagen
+  // avgörs ett i taget. type: grund-3 ('gron'|'skatt'|'forbud') + rundans extra (S.extraProposals).
   openProposal(type, byTeamId) {
     if (!this._proposalAllowed(type)) return;        // icke-aktuellt extra-förslag → ignoreras (server-auktoritativt)
+    if ((this.S.proposedBy || []).includes(byTeamId)) return;   // laget har redan lagt sitt förslag denna runda
+    const p = this.S.proposal;
+    if (p && !p.resolved) return;                    // ett i taget — vänta tills nuvarande avgjorts
+    (this.S.proposedBy ||= []).push(byTeamId);
     this.S.proposal = { type, by: byTeamId, votes: {}, resolved: false, passed: false };
     this._emit('proposalOpened', { type, by: byTeamId });
   }
@@ -358,14 +365,15 @@ export class EcoLoco {
     let delta = 0;
     this.S.teams.forEach(t => {
       let oh = 0, namn = '—';
-      if (t.choice) {
-        const card = handFor(t.id).find(x => x.tier === t.choice);
-        oh = card.oh; namn = card.namn;
+      const cards = t._roundCards || [];   // FLER BYGGEN/RUNDA: summera ALLA rundans byggen (slots committas i selectCard)
+      for (const card of cards) {
+        oh += card.oh;
         delta += card.oh; t.totalImpact += card.oh; t.built++;
-        t.slots.push({ tier: card.tier, asset: card.asset });
         if (card.oh > 0) t.impactPos += card.oh; else if (card.oh < 0) t.impactNeg += card.oh;
         t.incP += card.gp; t.incM += card.gm;
       }
+      if (cards.length === 1) namn = cards[0].namn;
+      else if (cards.length > 1) namn = `${cards.length} byggen`;
       t._roundOh = oh;
       t.log.unshift({ round: this.S.round, namn, oh });
     });
@@ -401,9 +409,9 @@ export class EcoLoco {
     this._emit('award', { round: this.S.round, ...this._computeAwards() });
 
     // nollställ rund-scope
-    this.S.gronQueued = 0; this.S.proposal = null;
+    this.S.gronQueued = 0; this.S.proposal = null; this.S.proposedBy = [];
     this.S.banDirtyThisRound = this.S.banDirtyNextRound; this.S.banDirtyNextRound = false;
-    this.S.teams.forEach(t => { t.choice = null; t._roundOh = 0; });
+    this.S.teams.forEach(t => { t.choice = null; t._roundOh = 0; t._roundCards = []; });
 
     this._emit('roundEnd', { round: this.S.round });
 

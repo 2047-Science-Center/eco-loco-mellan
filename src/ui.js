@@ -243,6 +243,7 @@ addEventListener('resize', fit); fit();
 let resolving = false;
 let picked = null;
 let expanded = null;
+const flerByggen = () => !!lastLobby?.spelledare;   // MED SPELLEDARE: fler byggen/runda tillåts (testläge)
 let voteOpenFor = null;
 let klarLag = new Set();   // lag som tryckt AVSLUTA denna runda (online)
 const queue = [];
@@ -599,6 +600,18 @@ function renderMe() {
   if (t.incM) inc.push(`＋${t.incM} ${ico('material', 15)}`);
   $('me-inc').innerHTML = inc.length ? inc.join('  ') + ' i inkomst varje runda' : '';
   renderHandAfford();
+  renderPropBtn();
+}
+
+// LÄGG FÖRSLAG-knappen: ett förslag per lag/runda. Har laget redan lagt → grå/gul "FÖRSLAG LAGT".
+function renderPropBtn() {
+  const btn = $('btn-prop'); if (!btn || !game.me) return;
+  const S = E().getState();
+  const lagt = !!S?.proposedBy?.includes(game.me);
+  const propOpen = !!(S?.proposal && !S.proposal.resolved);
+  btn.classList.toggle('lagt', lagt);
+  if (lagt) { btn.disabled = true; btn.innerHTML = `${ico('rosta', 22)} FÖRSLAG LAGT ✓`; }
+  else { btn.disabled = propOpen || resolving; btn.innerHTML = `${ico('rosta', 22)} LÄGG FÖRSLAG`; }
 }
 
 function flashRes(cur, amount) {
@@ -685,7 +698,7 @@ function renderHand() {
   $('cards').parentElement.classList.remove('hand-locked');
   document.querySelectorAll('#cards .card').forEach(el => {
     el.addEventListener('click', ev => {
-      if (picked || resolving) return;
+      if ((picked && !flerByggen()) || resolving) return;   // MED SPELLEDARE: bygg hur många du vill
       const tier = el.dataset.tier;
       if (ev.target.classList.contains('kop')) { buyCard(tier); return; }
       audio.play('ui_tap');
@@ -721,6 +734,13 @@ async function buyCard(tier) {
   if (!res.ok) {
     if (res.need) toast(`Har inte råd — saknar ${res.need.pengar ? res.need.pengar + ' ' + ico('pengar', 14) + ' ' : ''}${res.need.material ? res.need.material + ' ' + ico('material', 14) : ''}. Byt med ett annat lag!`, true);
     else toast(res.reason || res.why || 'gick inte', true);
+    return;
+  }
+  if (flerByggen()) {
+    // MED SPELLEDARE: ingen låsning — bygg igen med uppdaterade resurser.
+    picked = null; expanded = null;
+    $('endwrap').classList.add('pulse');
+    renderHand(); renderMe(); renderTeams();
     return;
   }
   picked = tier; expanded = null;
