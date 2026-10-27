@@ -154,6 +154,39 @@ app.get('/utvardering/count', (_req, res) => {
   res.json({ count: n })
 })
 
+// Admin: liten sida för Klara — antal svar + nedladdningsknapp + senaste svaren. Bokmärk /utvardering/admin.
+app.get('/utvardering/admin', (_req, res) => {
+  const rows = fs.existsSync(UTV_FILE)
+    ? fs.readFileSync(UTV_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean) : []
+  const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+  const fmt = v => esc(Array.isArray(v) ? v.join(' | ') : v)
+  const cols = ['tid', 'alder', 'forVem', 'roligast', 'tankvackt']
+  const last = rows.slice(-10).reverse()
+  const trs = last.map(r => '<tr>' + cols.map(c => `<td>${fmt(r[c]).slice(0, 90)}</td>`).join('') + '</tr>').join('')
+  res.type('html').send(`<!doctype html><html lang="sv"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Utvärderingar — Maktspelet</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#14120e;color:#eee;margin:0 auto;padding:28px;max-width:900px}
+  h1{font-size:24px;margin:0 0 4px} h3{margin:28px 0 6px} .sub{color:#aaa;margin:0 0 18px}
+  .big{font-size:52px;font-weight:800;color:#C9A94F;line-height:1}
+  a.btn{display:inline-block;margin:18px 0;background:#C9A94F;color:#14120e;font-weight:800;font-size:20px;padding:16px 32px;border-radius:12px;text-decoration:none}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #333;vertical-align:top}
+  th{color:#C9A94F;text-transform:uppercase;font-size:11px;letter-spacing:1px}
+  .note{color:#888;font-size:13px;margin-top:26px;line-height:1.7}
+</style></head><body>
+  <h1>Utvärderingar — Maktspelet</h1>
+  <p class="sub">Besökarnas svar efter spelet.</p>
+  <div class="big">${rows.length}</div><p class="sub">svar totalt</p>
+  <a class="btn" href="/utvardering/export.csv">⬇ Ladda ner alla som CSV (Excel)</a>
+  <h3>Senaste ${last.length} svaren</h3>
+  <table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+  <tbody>${trs || '<tr><td colspan="5" style="color:#888">Inga svar än.</td></tr>'}</tbody></table>
+  <p class="note">CSV:en öppnas direkt i Excel/Numbers (flerval blir "a | b"). Uppdatera sidan för färska siffror.<br>
+  Du når den här sidan på <b>http://&lt;nuc&gt;:${PORT}/utvardering/admin</b> — på plats via LAN, på distans via Tailscale.</p>
+</body></html>`)
+})
+
 app.listen(PORT, () => {
   console.log(`[strateg] Maktspelet-coach igång på http://localhost:${PORT}  (modell: ${MODEL}, keyed: ${Boolean(openai)})`)
   console.log(`[strateg] System-prompt = narrativ (${NARRATIVE.length} tecken) + auto-genererat sifferblock ur spec/engine.js (${SYSTEM_PROMPT.length - NARRATIVE.length} tecken).`)
