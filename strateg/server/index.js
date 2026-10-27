@@ -154,10 +154,45 @@ app.get('/utvardering/count', (_req, res) => {
   res.json({ count: n })
 })
 
-// Admin: liten sida för Klara — antal svar + nedladdningsknapp + senaste svaren. Bokmärk /utvardering/admin.
+// ── Slutdel/parti-data: läs spelets summary.json:er (samma NUC, samma klon) → CSV ──
+// SESSIONS_DIR = spelserverns data/sessions/ (default: ../../data/sessions relativt strateg/server/).
+// Sätt SESSIONS_DIR i .env om spelet körs från en annan klon på NUC:en.
+const SESSIONS_DIR = process.env.SESSIONS_DIR || path.join(__dirname, '..', '..', 'data', 'sessions')
+function readSummaries() {
+  try {
+    if (!fs.existsSync(SESSIONS_DIR)) return []
+    return fs.readdirSync(SESSIONS_DIR).filter(f => f.endsWith('.summary.json'))
+      .map(f => { try { return JSON.parse(fs.readFileSync(path.join(SESSIONS_DIR, f), 'utf8')) } catch { return null } })
+      .filter(Boolean)
+  } catch { return [] }
+}
+function sessionsCsv() {
+  const sums = readSummaries()
+  const qids = []; const qfraga = {}
+  for (const s of sums) for (const [id, p] of Object.entries(s.podium || {})) { if (!qids.includes(id)) qids.push(id); if (p && p.fraga) qfraga[id] = p.fraga }
+  qids.sort()
+  const cell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"'
+  const dist = p => p && p.counts ? Object.entries(p.counts).map(([o, n]) => `${o}: ${n}`).join(' | ') : ''
+  const vinnare = s => { const t = (s.teams || []).slice().sort((a, b) => (b.kapital || 0) - (a.kapital || 0))[0]; return t ? t.namn : '' }
+  const header = ['parti', 'slutohalsa', 'utfall', 'anledning', 'rikast', 'lage', ...qids.map(id => qfraga[id] || id)]
+  const rows = sums.map(s => [
+    s.sessionId || '', s.slutOhalsa ?? '', s.won === true ? 'Vann' : s.won === false ? 'Förlorade' : '',
+    s.reason || '', vinnare(s), s.gmMode ? 'MED spelledare' : 'UTAN spelledare',
+    ...qids.map(id => dist(s.podium && s.podium[id])),
+  ])
+  return [header.map(cell).join(','), ...rows.map(r => r.map(cell).join(','))].join('\n')
+}
+app.get('/sessioner/export.csv', (_req, res) => {
+  try { res.type('text/csv; charset=utf-8').set('Content-Disposition', 'attachment; filename="slutdel-partier.csv"').send('﻿' + sessionsCsv()) }
+  catch (err) { res.status(500).send('fel: ' + err.message) }
+})
+app.get('/sessioner/count', (_req, res) => res.json({ count: readSummaries().length }))
+
+// Admin: en sida för Klara — BÅDA utvärderingarna, var sin nedladdningsknapp. Bokmärk /utvardering/admin.
 app.get('/utvardering/admin', (_req, res) => {
   const rows = fs.existsSync(UTV_FILE)
     ? fs.readFileSync(UTV_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean) : []
+  const sessN = readSummaries().length
   const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
   const fmt = v => esc(Array.isArray(v) ? v.join(' | ') : v)
   const cols = ['tid', 'alder', 'forVem', 'roligast', 'tankvackt']
@@ -167,23 +202,38 @@ app.get('/utvardering/admin', (_req, res) => {
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Utvärderingar — Maktspelet</title>
 <style>
   body{font-family:system-ui,sans-serif;background:#14120e;color:#eee;margin:0 auto;padding:28px;max-width:900px}
-  h1{font-size:24px;margin:0 0 4px} h3{margin:28px 0 6px} .sub{color:#aaa;margin:0 0 18px}
-  .big{font-size:52px;font-weight:800;color:#C9A94F;line-height:1}
-  a.btn{display:inline-block;margin:18px 0;background:#C9A94F;color:#14120e;font-weight:800;font-size:20px;padding:16px 32px;border-radius:12px;text-decoration:none}
+  h1{font-size:24px;margin:0 0 18px} h2{font-size:18px;margin:0 0 2px} h3{margin:28px 0 6px} .sub{color:#aaa;margin:0 0 10px;font-size:14px}
+  .cards{display:flex;flex-wrap:wrap;gap:18px}
+  .card{flex:1 1 300px;background:#1b1813;border:1px solid #333;border-radius:14px;padding:20px 22px}
+  .pill{font-size:11px;color:#C9A94F;border:1px solid #C9A94F;border-radius:999px;padding:2px 10px;margin-left:6px;vertical-align:middle}
+  .big{font-size:48px;font-weight:800;color:#C9A94F;line-height:1;margin:6px 0 2px}
+  a.btn{display:inline-block;margin-top:14px;background:#C9A94F;color:#14120e;font-weight:800;font-size:17px;padding:14px 26px;border-radius:12px;text-decoration:none}
   table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
   th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #333;vertical-align:top}
   th{color:#C9A94F;text-transform:uppercase;font-size:11px;letter-spacing:1px}
   .note{color:#888;font-size:13px;margin-top:26px;line-height:1.7}
 </style></head><body>
   <h1>Utvärderingar — Maktspelet</h1>
-  <p class="sub">Besökarnas svar efter spelet.</p>
-  <div class="big">${rows.length}</div><p class="sub">svar totalt</p>
-  <a class="btn" href="/utvardering/export.csv">⬇ Ladda ner alla som CSV (Excel)</a>
-  <h3>Senaste ${last.length} svaren</h3>
+  <div class="cards">
+    <div class="card">
+      <h2>Besökar-utvärderingar <span class="pill">strateg-plattan</span></h2>
+      <p class="sub">En rad per besökare (12 frågor efter spelet).</p>
+      <div class="big">${rows.length}</div><p class="sub">svar totalt</p>
+      <a class="btn" href="/utvardering/export.csv">⬇ Ladda ner CSV</a>
+    </div>
+    <div class="card">
+      <h2>Slutdel / partier <span class="pill">podie-svaren</span></h2>
+      <p class="sub">En rad per parti (lagens reflektioner + utfall).</p>
+      <div class="big">${sessN}</div><p class="sub">partier med data</p>
+      <a class="btn" href="/sessioner/export.csv">⬇ Ladda ner CSV</a>
+      ${sessN === 0 ? '<p class="sub" style="color:#c0392b">Hittar inga partier — kör spelet från samma klon som strateg, eller sätt SESSIONS_DIR i .env.</p>' : ''}
+    </div>
+  </div>
+  <h3>Senaste ${last.length} besökar-svaren</h3>
   <table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
   <tbody>${trs || '<tr><td colspan="5" style="color:#888">Inga svar än.</td></tr>'}</tbody></table>
-  <p class="note">CSV:en öppnas direkt i Excel/Numbers (flerval blir "a | b"). Uppdatera sidan för färska siffror.<br>
-  Du når den här sidan på <b>http://&lt;nuc&gt;:${PORT}/utvardering/admin</b> — på plats via LAN, på distans via Tailscale.</p>
+  <p class="note">Två separata CSV-filer, en knapp var. Öppnas direkt i Excel/Numbers (flerval blir "a | b"). Uppdatera sidan för färska siffror.<br>
+  Du når sidan på <b>http://&lt;nuc&gt;:${PORT}/utvardering/admin</b> — på plats via LAN, på distans via Tailscale.</p>
 </body></html>`)
 })
 
