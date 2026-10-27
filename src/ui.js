@@ -1274,7 +1274,7 @@ function resetToLobbyUI() {
   trailerVisad = false;                         // BUGFIX: annars hoppas trailern över nästa parti efter "TILL LOBBYN" (nollades bara vid gameEnd)
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
   doljTrailer();
-  ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
+  ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-roll', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
    'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus'].forEach(id => $(id)?.classList.remove('open'));
   $('tutveil').style.display = 'none';
   $('tutbox').style.display = 'none';
@@ -1539,6 +1539,22 @@ async function runTutorial() {
   tut.startGame();
   await delay(500);
   if (tutAbort) return;
+
+  // ——— LAG-IDENTITET: vem är du, vad ansvarar du för, vad producerar du? ———
+  {
+    const a = AREAS.find(x => x.id === myLag);
+    const TERRAIN = { aker: 'Åkermarken', skog: 'Skogen', tundra: 'Tundran', stad: 'Staden' };
+    if (a) {
+      $('roll-logo').innerHTML = logoSVG(myLag, 180);
+      $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span>`;
+      $('roll-tx').innerHTML = `Du ansvarar för <b>${TERRAIN[myLag] || a.namn}</b> och producerar `
+        + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`;
+      $('ov-roll').classList.add('open');
+      await Promise.race([delay(5000), new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);
+      $('ov-roll').onclick = null; $('ov-roll').classList.remove('open');
+      if (tutAbort) return;
+    }
+  }
 
   // ——— INTRO: vad går spelet ut på? (3 rutor, klicka igenom, highlightar relevant yta) ———
   await tutSay({ ix: 0, focus: '.res', x: 300, y: 380,
