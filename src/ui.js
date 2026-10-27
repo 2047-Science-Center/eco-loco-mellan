@@ -405,7 +405,7 @@ function renderAwardCard(typ, w, footer = '') {
   $('awardcard').className = 'awardcard' + (typ === 'sab' ? ' sab' : '');
   $('awardcard').innerHTML = img + `<div class="aw-tx"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
     (w ? `<div class="who">${logoSVG(w.teamId, 64)}${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
-       : `<div class="who" style="font-size:19px;color:var(--dim)">Ön andas ut 😮‍💨</div>`) + footer + `</div>`;
+       : `<div class="who" style="font-size:19px;color:var(--dim)">${typ === 'sab' ? 'Alla skötte klimatet i år — ingen bov 🌱' : 'Ön andas ut 😮‍💨'}</div>`) + footer + `</div>`;
 }
 
 // Slutskärmen (win/lose) ska visas FÖRST när prisceremonin för sista rundan spelats klart.
@@ -413,6 +413,7 @@ function renderAwardCard(typ, w, footer = '') {
 // awardCeremony i auto-läge, så vi väntar alltid in awardDone(over) online. Lokalt (mock) stegar
 // 'award' själv via den seriella kön före gameEnd → då visas slut direkt.
 let pendingSlut = null, slutFailsafe = null;
+let cerNastaRunda = null;   // online: "RUNDA N"-bannern hålls tills prisceremonin är klar (awardDone) så den syns NÄR nya rundan börjar
 function showPendingSlut() {
   clearTimeout(slutFailsafe); slutFailsafe = null;
   if (!pendingSlut) return;
@@ -449,7 +450,9 @@ game.on('awardStep', p => run(async () => {
 game.on('awardDone', p => run(async () => {
   $('ov-award').classList.remove('open');
   renderRegs();
-  if (p?.over) showPendingSlut();   // sista rundans ceremoni klar → nu visas slutskärmen
+  if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
+  // Prisceremonin klar → nu (när nya rundan faktiskt börjar) visas "RUNDA N"-popupen.
+  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; await banner(`RUNDA ${r}`, false, 1800); }
 }));
 
 game.on('roundEnd', () => run(async () => renderRegs()));
@@ -459,14 +462,16 @@ game.on('start', () => run(async () => {
   // Bänk utan lag (åskådare): behåll lobbyn öppen så man kan ta över en dator när som helst.
   if (!(ONLINE && !game.me)) $('ov-start').classList.remove('open');
   $('ov-slut').classList.remove('open');
-  pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null;   // nytt parti → nollställ ev. väntande slutskärm
+  pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null; cerNastaRunda = null;   // nytt parti → nollställ ev. väntande slutskärm/banner
   map.clearBuildings();
 }));
 
 game.on('roundStart', p => run(async () => {
   $('roundnum').textContent = p.round;
   if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
-  if (p.round > 1) { await banner(`RUNDA ${p.round}`, false, 1300); }   // round_start-ljud spelas centralt (rigg)
+  // round_start-ljud spelas centralt (rigg). Online: håll "RUNDA N" tills prisceremonin är klar
+  // (roundStart kommer medan ceremonin fortfarande spelas) → bannras i awardDone. Lokalt: visa direkt.
+  if (p.round > 1) { if (ONLINE) cerNastaRunda = p.round; else await banner(`RUNDA ${p.round}`, false, 1300); }
   picked = null; expanded = null; resolving = false; klarLag = new Set();
   renderHand(); renderMe(); renderTeams(); renderRegs();
   $('btn-prop').disabled = false;
