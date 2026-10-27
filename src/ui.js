@@ -31,7 +31,7 @@ const MODE_LABEL = {
   bra: 'Bra', mycketbra: 'Mycket bra',
 };
 const TIER_LABEL = { smutsig: 'SMUTSIG', standard: 'STANDARD', gron: 'GRÖN' };
-const CUR_ICON = { pengar: '🪙', material: '🧱' };
+const CUR_ICON = { pengar: ico('pengar', 15), material: ico('material', 15) };   // fasett-ikoner (ej emoji) — RAMVERK §3
 const teamName = id => AREAS.find(a => a.id === id).namn;
 const fmtOh = v => (v > 0 ? '+' + v : v) + (v > 0 ? ' 🌱' : ' 🏭');
 
@@ -311,9 +311,9 @@ function eventKonsHTML(p) {
   const chips = [];
   (p.effekter || []).forEach(e => {
     const parts = [];
-    if (e.egen)     parts.push(chip(e.egen, e.sektor === 'pengar' ? '🪙' : '🧱'));
-    if (e.pengar)   parts.push(chip(e.pengar, '🪙'));
-    if (e.material) parts.push(chip(e.material, '🧱'));
+    if (e.egen)     parts.push(chip(e.egen, e.sektor === 'pengar' ? ico('pengar', 14) : ico('material', 14)));
+    if (e.pengar)   parts.push(chip(e.pengar, ico('pengar', 14)));
+    if (e.material) parts.push(chip(e.material, ico('material', 14)));
     if (parts.length) chips.push(`<div class="kons">${logoSVG(e.teamId, 26)} ${teamName(e.teamId)} ${parts.join(' ')}</div>`);
   });
   if (p.oh) chips.push(`<div class="kons oh">🏝 öns hälsa ${chip(p.oh, p.oh > 0 ? '🌱' : '🏭')}</div>`);
@@ -595,9 +595,9 @@ function renderMe() {
   $('me-pengar').textContent = t.pengar;
   $('me-material').textContent = t.material;
   const inc = [];
-  if (t.incP) inc.push(`＋${t.incP} 🪙`);
-  if (t.incM) inc.push(`＋${t.incM} 🧱`);
-  $('me-inc').textContent = inc.length ? inc.join('  ') + ' i inkomst varje runda' : '';
+  if (t.incP) inc.push(`＋${t.incP} ${ico('pengar', 15)}`);
+  if (t.incM) inc.push(`＋${t.incM} ${ico('material', 15)}`);
+  $('me-inc').innerHTML = inc.length ? inc.join('  ') + ' i inkomst varje runda' : '';
   renderHandAfford();
 }
 
@@ -607,7 +607,7 @@ function flashRes(cur, amount) {
   const chip = document.createElement('span');
   chip.className = 'floatchip';
   chip.style.color = amount > 0 ? 'var(--led-green)' : 'var(--led-red)';
-  chip.textContent = `${amount > 0 ? '+' : ''}${amount} ${CUR_ICON[cur]}`;
+  chip.innerHTML = `${amount > 0 ? '+' : ''}${amount} ${CUR_ICON[cur]}`;
   box.appendChild(chip);
   setTimeout(() => { box.classList.remove('flash-up', 'flash-down'); chip.remove(); }, 1400);
 }
@@ -719,7 +719,7 @@ function renderHandAfford() {
 async function buyCard(tier) {
   const res = await game.selectCard(tier);
   if (!res.ok) {
-    if (res.need) toast(`Har inte råd — saknar ${res.need.pengar ? res.need.pengar + ' 🪙 ' : ''}${res.need.material ? res.need.material + ' 🧱' : ''}. Byt med ett annat lag!`, true);
+    if (res.need) toast(`Har inte råd — saknar ${res.need.pengar ? res.need.pengar + ' ' + ico('pengar', 14) + ' ' : ''}${res.need.material ? res.need.material + ' ' + ico('material', 14) : ''}. Byt med ett annat lag!`, true);
     else toast(res.reason || res.why || 'gick inte', true);
     return;
   }
@@ -859,16 +859,16 @@ function propDefs() {
   const c = E().cfg, bov = E().worstPolluter(), rik = E().richest(), gron = E()._greenest();
   return [
     // ── Grund-3 (ligger alltid kvar) ──
-    { type: 'gron', pic: '🌱', rubrik: 'Grön satsning', tx: `Alla som röstar JA betalar ${c.gronCost} 🪙.<br>Öns hälsa går <b>upp +${c.gronGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} 🪙` },
-    { type: 'skatt', pic: '💸', rubrik: 'Miljöskatt', tx: `Värsta boven (<b>${bov.namn}</b>) betalar ${c.taxAmount} 🪙<br>som delas mellan de andra lagen.`, ja: 'JA — beskatta boven' },
+    { type: 'gron', pic: '🌱', rubrik: 'Grön satsning', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)}.<br>Öns hälsa går <b>upp +${c.gronGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} ${ico('pengar', 14)}` },
+    { type: 'skatt', pic: '💸', rubrik: 'Miljöskatt', tx: `Värsta boven (<b>${bov.namn}</b>) betalar ${c.taxAmount} ${ico('pengar', 14)}<br>som delas mellan de andra lagen.`, ja: 'JA — beskatta boven' },
     { type: 'forbud', pic: '🚫', rubrik: 'Förbjud smutsig', tx: `Nästa runda kan <b>ingen</b> bygga det smutsiga kortet.`, ja: 'JA — förbjud smutsig' },
     // ── Extra-förslag (roterar; visas bara när de ligger i S.extraProposals) ──
-    { type: 'krispaket', pic: '🆘', rubrik: 'Krispaket', tx: `Alla som röstar JA betalar ${c.gronCost} 🪙.<br>Går det igenom lyfts öns hälsa <b>+${c.krispaketGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} 🪙` },
-    { type: 'sektorskatt', pic: '🏝', rubrik: 'Sektorskatt', tx: `Pengar-lagen betalar ${c.sektorskattAmount} 🪙 var<br>som delas mellan material-lagen.`, ja: 'JA — beskatta pengar-sektorn' },
-    { type: 'solidaritet', pic: '👑', rubrik: 'Solidaritetsskatt', tx: `Rikaste laget (<b>${rik.namn}</b>) betalar ${c.solidaritetPengar} 🪙 + ${c.solidaritetMaterial} 🧱<br>som delas mellan de tre andra.`, ja: 'JA — beskatta rikaste' },
-    { type: 'lojalitet', pic: '🤝', rubrik: 'Grön utdelning', tx: `Går det igenom: varje JA-lag får <b>+${c.lojalitetBonus} 🪙</b>,<br>varje NEJ-lag betalar <b>${c.lojalitetBoter} 🪙</b>. Öns hälsa +${c.lojalitetOh}.`, ja: `JA — jag tar +${c.lojalitetBonus} 🪙` },
-    { type: 'marknadsavtal', pic: '📈', rubrik: 'Marknadsavtal', tx: `Bonus <b>+${c.marknadsavtalBonus} 🪙 till alla</b> — men <b>bara om exakt 3 av 4</b> röstar JA.<br>En måste avstå.`, ja: 'JA — jag är med' },
-    { type: 'gronstod', pic: '💊', rubrik: 'Riktat grönt stöd', tx: `Alla som röstar JA betalar ${c.gronCost} 🪙 → hela potten<br>går till grönaste laget (<b>${gron.namn}</b>).`, ja: `JA — jag skänker ${c.gronCost} 🪙` },
+    { type: 'krispaket', pic: '🆘', rubrik: 'Krispaket', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)}.<br>Går det igenom lyfts öns hälsa <b>+${c.krispaketGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} ${ico('pengar', 14)}` },
+    { type: 'sektorskatt', pic: '🏝', rubrik: 'Sektorskatt', tx: `Pengar-lagen betalar ${c.sektorskattAmount} ${ico('pengar', 14)} var<br>som delas mellan material-lagen.`, ja: 'JA — beskatta pengar-sektorn' },
+    { type: 'solidaritet', pic: '👑', rubrik: 'Solidaritetsskatt', tx: `Rikaste laget (<b>${rik.namn}</b>) betalar ${c.solidaritetPengar} ${ico('pengar', 14)} + ${c.solidaritetMaterial} ${ico('material', 14)}<br>som delas mellan de tre andra.`, ja: 'JA — beskatta rikaste' },
+    { type: 'lojalitet', pic: '🤝', rubrik: 'Grön utdelning', tx: `Går det igenom: varje JA-lag får <b>+${c.lojalitetBonus} ${ico('pengar', 14)}</b>,<br>varje NEJ-lag betalar <b>${c.lojalitetBoter} ${ico('pengar', 14)}</b>. Öns hälsa +${c.lojalitetOh}.`, ja: `JA — jag tar +${c.lojalitetBonus} ${ico('pengar', 14)}` },
+    { type: 'marknadsavtal', pic: '📈', rubrik: 'Marknadsavtal', tx: `Bonus <b>+${c.marknadsavtalBonus} ${ico('pengar', 14)} till alla</b> — men <b>bara om exakt 3 av 4</b> röstar JA.<br>En måste avstå.`, ja: 'JA — jag är med' },
+    { type: 'gronstod', pic: '💊', rubrik: 'Riktat grönt stöd', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)} → hela potten<br>går till grönaste laget (<b>${gron.namn}</b>).`, ja: `JA — jag skänker ${c.gronCost} ${ico('pengar', 14)}` },
   ];
 }
 // Grund-3 + rundans extra (server-auktoritativa i S.extraProposals). INGEN klient-lokal slump här.
@@ -905,7 +905,7 @@ function openVoteModal(p) {
     if (bild) $('vote-pic').innerHTML = `<img src="${bild}" alt="" style="width:200px;height:120px;object-fit:cover;border-radius:12px;display:block">`;
     else $('vote-pic').textContent = '🤝';
     $('vote-tx').innerHTML = `<b style="color:var(--text)">${ev.rubrik || ''}</b><br>${ev.rostFraga || ev.text || ''}`;
-    $('btn-ja').textContent = `JA — ta ${ev.ja ?? ''} 🪙`;
+    $('btn-ja').innerHTML = `JA — ta ${ev.ja ?? ''} ${ico('pengar', 14)}`;
     $('vote-btns').style.display = p.by === game.me ? 'none' : 'flex';
     renderVoteState();
     $('ov-vote').classList.add('open');
@@ -915,7 +915,7 @@ function openVoteModal(p) {
   $('vote-sub').textContent = `${teamName(p.by)} föreslår — det krävs 3 av 4 JA`;
   $('vote-pic').textContent = def.pic;
   $('vote-tx').innerHTML = `<b style="color:var(--text)">${def.rubrik}</b><br>${def.tx}`;
-  $('btn-ja').textContent = def.ja;
+  $('btn-ja').innerHTML = def.ja;
   $('vote-btns').style.display = p.by === game.me ? 'none' : 'flex';
   renderVoteState();
   $('ov-vote').classList.add('open');
