@@ -385,6 +385,7 @@ def main():
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")
     threading.Thread(target=_amb_worker, daemon=True).start()
+    apply_scen("attract")   # viloläge direkt vid start: attract-MUSIK + attract-look spelas tills ett parti börjar
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, text=True)
     try:
         for line in proc.stdout:

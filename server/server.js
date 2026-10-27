@@ -308,6 +308,7 @@ function resetToLobby() {
   for (const id of TEAMS) if (claims[id] === 'bot') claims[id] = null;   // släpp botarna, behåll människornas platser
   engine = null; rigg = null; session = null;
   phase = 'lobby';
+  riggSend('ecoloco/rigg/scen', 'attract');   // tillbaka till viloläge → attract-MUSIK på centralhögtalaren igen (ungated)
   console.log('[spel] OMSTART → lobbyn (allt nollställt)');
   broadcast({ type: 'event', event: 'tilllobby' });
   broadcast(lobbyMsg());
