@@ -391,11 +391,17 @@ const awardMeta = (typ, w) => ({
   eld: { em: '🌱', rubrik: 'Årets eldsjäl',          val: w ? `+${w.varde} öhälsa` : '',  cls: 'ohplus' },
   sab: { em: '💀', rubrik: 'Årets sabotör',          val: w ? `${w.varde} öhälsa` : '',   cls: 'ohminus' },
 }[typ]);
+// Lag-agnostiska prisbilder (kontrollrummets skärmar) — samma bild oavsett vinnarlag.
+const AWARD_BILD = {
+  led: 'assets/framgangsrik_foretag01.png',
+  eld: 'assets/eldsjal01.png',
+  sab: 'assets/sabotor_01.png',
+};
 function renderAwardCard(typ, w, footer = '') {
   const m = awardMeta(typ, w);
-  // Event-korts-struktur: lag-agnostisk prisbild på topp (assets/award/<typ>.png, döljs snällt om
-  // den inte finns än) + ram med titel + vinnarlag (laget färg-/namnges här, bilden är samma för alla).
-  const img = `<img src="assets/award/${typ}.png" alt="" onerror="this.style.display='none'">`;
+  // Event-korts-struktur: lag-agnostisk prisbild på topp (döljs snällt om filen saknas) + ram med
+  // titel + vinnarlag (laget färg-/namnges här, bilden är samma för alla).
+  const img = `<img src="${AWARD_BILD[typ] || ''}" alt="" onerror="this.style.display='none'">`;
   $('awardcard').className = 'awardcard' + (typ === 'sab' ? ' sab' : '');
   $('awardcard').innerHTML = img + `<div class="aw-tx"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
     (w ? `<div class="who">${logoSVG(w.teamId, 64)}${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
@@ -1250,6 +1256,7 @@ function resetToLobbyUI() {
   tutRunning = false; tutInCeremony = false;
   startWindowLeft = null;
   efterTrailer = null;
+  trailerVisad = false;                         // BUGFIX: annars hoppas trailern över nästa parti efter "TILL LOBBYN" (nollades bara vid gameEnd)
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
   doljTrailer();
   ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
@@ -1506,6 +1513,18 @@ async function runTutorial() {
   tut.startGame();
   await delay(500);
   if (tutAbort) return;
+
+  // ——— INTRO: vad går spelet ut på? (3 rutor, klicka igenom, highlightar relevant yta) ———
+  await tutSay({ ix: 0, focus: '.res', x: 300, y: 380,
+    txt: '🎯 Målet: bli <b>rikast</b>. Den som har mest <b>pengar + material</b> tillsammans när spelet är slut vinner.' });
+  if (tutAbort) return;
+  await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190,
+    txt: '⏱ Ni spelar <b>8 rundor</b> totalt. Varje runda bygger ni, byter och röstar.' });
+  if (tutAbort) return;
+  await tutSay({ ix: 0, focus: '.ohbar', x: 520, y: 190,
+    txt: '🏝 Men håll <b>öns hälsa över 60</b> till slutet — annars <b>kollapsar hela ön och ingen vinner</b>. Ni sitter i samma båt.' });
+  if (tutAbort) return;
+
   $('timertxt').textContent = '–:––';
   await banner('ÖVNING — RUNDA 0', false, 1400);
   if (tutAbort) return;

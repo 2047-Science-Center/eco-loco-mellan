@@ -290,6 +290,13 @@
         <h2>SKÄRMLÄGE (config.mode)</h2>
         <p class="note">Sätts per skärm i <code>assets.json</code> eller <code>?mode=</code> i skärmens URL — går inte att fjärrväxla i nuvarande bygge.</p>
       </div>
+      <div class="card">
+        <h2>UTVÄRDERINGAR (CSV)</h2>
+        <p class="note">Ladda ner svaren till datorn — öppnas i Excel/Numbers. Hämtas från strateg-NUC:en (port 8790).</p>
+        <a class="btn" id="dl-besokare" target="_blank" rel="noopener">⬇ BESÖKAR-SVAR</a>
+        <a class="btn" id="dl-partier" target="_blank" rel="noopener" style="margin-top:8px">⬇ SLUTDEL / PARTI-SVAR</a>
+        <a class="note" id="utv-admin" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;color:var(--gold)">Öppna full översikt →</a>
+      </div>
     </div>
   </section>
 </main>
@@ -505,6 +512,12 @@ $('#trailer-btn').onclick = () => { net.gmcmd({ cmd: 'trailer' }); toast('Spelar
 $('#skipintro-btn').onclick = () => { net.skipIntro(); toast('Skippar introt'); };
 $('#sl-utan').onclick = () => { withSpelledare = false; net.gmcmd({ cmd: 'spelledare', on: false }); render(); toast('Läge: UTAN spelledare (riggen automatisk)'); };
 $('#sl-med').onclick  = () => { withSpelledare = true;  net.gmcmd({ cmd: 'spelledare', on: true  }); render(); toast('Läge: MED spelledare (du styr riggen)'); };
+// Utvärderingar: länka till strateg-serverns CSV-export (samma NUC, port 8790).
+(() => { const base = `//${location.hostname}:8790`;
+  const set = (id, p) => { const a = $('#' + id); if (a) a.href = base + p; };
+  set('dl-besokare', '/utvardering/export.csv');
+  set('dl-partier', '/sessioner/export.csv');
+  set('utv-admin', '/utvardering/admin'); })();
 </script>
 <script src="./src/kiosk-exit.js"></script>
 </body>
