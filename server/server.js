@@ -633,16 +633,14 @@ wss.on('connection', ws => {
         break;
       }
       case 'tutReady': {
-        // Gate 3: den här skärmens tutorial är klar. Räkna in laget, meddela alla, och kör den
-        // gemensamma nedräkningen när alla levande människor är redo (failsafe mot död bänk).
+        // Gate 3: den här skärmens tutorial är klar. Nedräkningen startar FÖRST när ALLA levande
+        // människor är redo — ingen blank tids-tvång (den startade spelet i förtid medan långsamma
+        // lag fortfarande körde tutorialen). Övergivna skärmar faller ur via hjärtslaget (→ bot), och
+        // idle-skärmars tutorial auto-slutförs av beat-failsafes → de rapporterar också 'redo' till slut.
         if (!lag || started) break;
         if (!tutReady.has(lag)) {
           tutReady.add(lag);
           broadcast({ type: 'tutReadyUpdate', klara: [...tutReady], humans: liveHumanIds().length });
-          if (!tutReadyFailsafe) tutReadyFailsafe = setTimeout(() => {
-            console.log('[spel] tutReady-failsafe löste ut → gemensam nedräkning (seg/död bänk)');
-            startSharedCountdown();
-          }, TUT_READY_FAILSAFE_MS);
           maybeStartCountdown();
         }
         break;
@@ -748,6 +746,7 @@ wss.on('connection', ws => {
       if (started && !engine.getState().over) broadcast({ type: 'notis', text: `🤖 ${NAMN[lag]} tappade kontakten — styrs nu av datorn` });
       broadcast(lobbyMsg());
       if (started) { klar.delete(lag); awardsKlar(lag); checkBotVotes(); maybeResolve(); }
+      else { tutReady.delete(lag); maybeStartCountdown(); }   // tappad skärm i förspelet → de kvarvarande redo-lagen kan starta
     }
   });
 });

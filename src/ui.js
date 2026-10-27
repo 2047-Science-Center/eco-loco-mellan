@@ -333,7 +333,7 @@ game.on('event', p => run(async () => {
     $('ov-event').classList.toggle('warn', warn);
     $('ov-event').classList.add('open');
     await delay(500);                               // hinner läsas innan tryck registreras
-    await clickOrTimeout($('ov-event'), resolving ? 6000 : 8000);
+    await clickOrTimeout($("ov-event"), resolving ? 6000 : 30000);
     $('ov-event').classList.remove('open');
     await delay(200);
   } else {                                          // t.ex. pengasläpp (ingen bild) → banner + toast
@@ -361,7 +361,7 @@ game.on('crisis', p => run(async () => {
     $('ov-event').classList.add('warn');
     $('ov-event').classList.add('open');
     await delay(500);                               // hinner läsas innan tryck registreras
-    await clickOrTimeout($('ov-event'), resolving ? 6000 : 8000);
+    await clickOrTimeout($("ov-event"), resolving ? 6000 : 30000);
     $('ov-event').classList.remove('open');
     await delay(200);
     // .krisglow ligger KVAR — släcks först vid crisis{on:false}
@@ -1299,6 +1299,17 @@ function joinPhase(ph) {
 
 // Omstart (spelledaren) → riv ner allt på den här skärmen och visa lobbyn.
 function fireTutAbort() { tutAbort = true; while (_tutAborters.length) _tutAborters.shift()('abort'); }
+// Väntläget efter tutorialen: små diamanter (en per lag, grön = redo) + liten "X/Y lag redo"-text
+// — inte den stora nedräkningssiffran.
+function renderWaitDots(m) {
+  const klara = m?.klara?.length ?? 0, humans = m?.humans ?? 4;
+  $('cd-num').style.display = 'none';
+  $('cd-dots').innerHTML = Array.from({ length: humans }, (_, i) => `<i class="${i < klara ? 'on' : ''}"></i>`).join('');
+  $('cd-dots').style.display = 'flex';
+  $('cd-sub').textContent = `${klara}/${humans} lag redo`;
+  $('cd-sub').style.display = 'block';
+}
+
 function resetToLobbyUI() {
   fireTutAbort();                               // avbryt ev. pågående solo-tutorial rent
   tutRunning = false; tutInCeremony = false;
@@ -1369,11 +1380,12 @@ if (ONLINE) {
   // Väntläge efter tutorial: uppdatera "X/Y lag klara" medan vi väntar in alla lag.
   realGame.on('tutReadyUpdate', m => {
     lastTutReady = m;
-    if (vantarLag) { $('cd-lbl').textContent = 'VÄNTAR PÅ DE ANDRA LAGEN'; $('cd-num').textContent = `${m.klara.length}/${m.humans}`; }
+    if (vantarLag) { $('cd-lbl').textContent = 'VÄNTAR PÅ DE ANDRA LAGEN'; renderWaitDots(m); }
   });
   realGame.on('startCountdown', m => {
     tutInCeremony = true;                      // håll konvergens-läget (även om vi kom hit utan tutorial)
     vantarLag = false;                         // alla är inne → sluta visa lag-räknaren
+    $('cd-dots').style.display = 'none'; $('cd-sub').style.display = 'none'; $('cd-num').style.display = '';   // tillbaka till stora nedräkningssiffran
     $('cd-lbl').textContent = 'SPELET BÖRJAR OM';
     const el = $('cd-num');
     el.textContent = m.left;
@@ -1449,7 +1461,10 @@ function tutFocus(sel) {
 // RUMS-FLÖDE: ett löfte som resolvar till 'abort' när spelledaren tar alla till lobbyn mitt i tutorialen.
 // Varje väntepunkt i tutorialen racear mot detta → tutorialen släpper direkt och runTutorial returnerar.
 function tutAbortP() { return new Promise(res => { if (tutAbort) res('abort'); else _tutAborters.push(res); }); }
-async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 12000 }) {
+// Ingen "hoppa över"-knapp och ingen kort auto-timer: spelaren måste GÖRA steget (bygga/byta/rösta)
+// för att komma vidare. En lång inaktivitets-limit (autoMs) gör ändå steget åt en övergiven skärm
+// så en bänk utan spelare kan drivas vidare (bot) och inget fastnar.
+async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 60000 }) {
   if (tutAbort) return;                       // omstart under tutorialen → visa ingenting mer
   tutFocus(focus);
   const b = $('tutbox');
@@ -1458,12 +1473,11 @@ async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 12000 }) 
   [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
   audio.play('ui_tap');
   let tmo = null;
-  const skipP = new Promise(res => { $('tut-skip').onclick = () => res('skip'); });
-  const timeP = new Promise(res => { tmo = setTimeout(() => res('timeout'), autoMs); });
-  const r = await Promise.race([until, skipP, timeP, tutAbortP()]);
+  const timeP = new Promise(res => { tmo = setTimeout(() => res('timeout'), autoMs); });   // inaktivitets-limit (ej snabb auto)
+  const r = await Promise.race([until, timeP, tutAbortP()]);
   clearTimeout(tmo);
   if (r === 'abort') { b.style.display = 'none'; tutFocus(null); return; }
-  if (r === 'skip' || r === 'timeout') { await autoDo?.(); await Promise.race([until, delay(4000), tutAbortP()]); }  // handlingen görs åt dig
+  if (r === 'timeout') { await autoDo?.(); await Promise.race([until, delay(4000), tutAbortP()]); }  // inaktiv → handlingen görs åt en
   b.style.display = 'none';
   tutFocus(null);
 }
@@ -1531,9 +1545,9 @@ async function startCeremony() {
     // 10→0 synkat på alla skärmar) och startar runda 1 åt alla samtidigt (realGame 'start' →
     // convergeToGame). INGEN lokal nedräkning, INGEN lokal startGame → aldrig mer osynk.
     realGame.net.tutReady();
-    vantarLag = true;                         // väntläge → tutReadyUpdate uppdaterar "X/Y lag klara"
+    vantarLag = true;                         // väntläge → tutReadyUpdate uppdaterar diamanterna
     $('cd-lbl').textContent = 'VÄNTAR PÅ DE ANDRA LAGEN';
-    $('cd-num').textContent = lastTutReady ? `${lastTutReady.klara.length}/${lastTutReady.humans}` : '…';
+    renderWaitDots(lastTutReady);             // små diamanter + "X/Y lag redo" (ej den stora siffran)
     $('ov-countdown').classList.remove('hot');
     $('ov-countdown').classList.add('open');
     return;                                   // resten drivs av serverns events

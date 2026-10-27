@@ -366,6 +366,9 @@
   #ov-countdown .cd-lbl { font-size: 28px; letter-spacing: 6px; color: var(--dim); font-weight: 800; margin-bottom: 8px; }
   #ov-countdown .cd-num { font-family: var(--font-num); font-size: 220px; font-weight: 800; line-height: 1; color: var(--gold); text-shadow: 0 0 60px rgba(201,169,79,.5); animation: cdpop .9s ease; }
   #ov-countdown.hot .cd-num { color: var(--oh-red); text-shadow: 0 0 70px rgba(240,86,75,.6); }
+  #ov-countdown .cd-dots { gap: 14px; margin: 10px 0 0; }
+  #ov-countdown .cd-dots i { width: 22px; height: 22px; }
+  #ov-countdown .cd-sub { font-size: 20px; letter-spacing: 1px; color: var(--dim); font-weight: 700; margin-top: 12px; }
   @keyframes cdpop { from { transform: scale(1.45); opacity: .25; } to { transform: scale(1); opacity: 1; } }
 
   /* Motion-polish: award-entré, timer-brådska, röd-zon-larm */
@@ -484,6 +487,8 @@
   <div class="overlay" id="ov-countdown" style="background:rgba(8,7,5,.96);z-index:17;flex-direction:column">
     <div class="cd-lbl" id="cd-lbl">SPELET BÖRJAR OM</div>
     <div class="cd-num" id="cd-num">10</div>
+    <div class="pdots" id="cd-dots" style="display:none"></div>
+    <div class="cd-sub" id="cd-sub" style="display:none"></div>
   </div>
   <!-- Lag-identitet: visas i början av tutorialen (vem är du, vad ansvarar du för, vad producerar du) -->
   <div class="overlay" id="ov-roll" style="background:rgba(8,7,5,.95);z-index:16;flex-direction:column;gap:22px;text-align:center">
@@ -589,7 +594,6 @@
     <div class="footer">
       <div class="beatdots" id="tut-dots"><i></i><i></i><i></i><i></i></div>
       <div class="fbtns">
-        <button class="skip" id="tut-skip">HOPPA ÖVER ›</button>
         <button class="tut-next" id="tut-next">NÄSTA ›</button>
       </div>
     </div>
