@@ -490,7 +490,7 @@ game.on('award', p => run(async () => {
 
 // GM-LÄGE: servern dirigerar — skärmen visar det pris spelledaren klickar fram (ingen auto-stegning).
 game.on('awardCeremony', () => run(async () => {
-  $('awardcard').innerHTML = `<div class="em">🏅</div><h4>Prisutdelning</h4>` +
+  $('awardcard').innerHTML = `<img src="assets/slut/prisutdelning-start.png" alt="" style="width:min(420px,60vw);height:auto;border-radius:12px;margin:0 auto 10px;display:block"><div class="em">🏅</div><h4>Prisutdelning</h4>` +
     `<div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div>`;
   $('ov-award').classList.add('open');
 }));
@@ -1078,12 +1078,16 @@ const EFTERSNACK = [
   '💬 <b>Prata om det:</b> Vilket politiskt förslag hade behövts tidigare?',
 ];
 function showSlut(p) {
-  // KRÖNING: vinst → vinnarlagets bild upphöjd (borgmästaren); förlust → ingen bild (ön föll, alla lika).
+  // KRÖNING: vinst → vinnarlagets segrarbild (ÅRETS FÖRETAG); förlust → ön-kollapsade-bilden.
   const simg = $('slut-img');
+  simg.style.cssText = `display:block;width:min(560px,70vw);height:auto;border-radius:14px;border:3px solid ${p.won ? 'var(--gold)' : 'var(--oh-red)'};box-shadow:0 10px 40px #000;margin:0 auto 14px`;
   if (p.won && p.winner) {
-    simg.src = `assets/makt/${p.winner.teamId}.png`;
-    simg.style.cssText = 'display:block;width:min(560px,70vw);height:auto;border-radius:14px;border:3px solid var(--gold);box-shadow:0 10px 40px #000;margin:0 auto 14px';
-  } else { simg.style.display = 'none'; simg.removeAttribute('src'); }
+    simg.onerror = () => { simg.onerror = null; simg.src = `assets/makt/${p.winner.teamId}.png`; };   // saknas segrarbild (t.ex. tundra ännu) → lagets maktbild
+    simg.src = `assets/slut/arets-foretag-${p.winner.teamId}.png`;
+  } else {
+    simg.onerror = null;
+    simg.src = 'assets/slut/on-dog.png';
+  }
   const vfarg = (p.winner && AREAS.find(x => x.id === p.winner.teamId)?.farg) || 'var(--gold)';   // vinnarlagets egen färg
   $('slut-title').innerHTML = p.won ? `👑 <span style="color:${vfarg}">${p.winner.namn.toUpperCase()}</span> BLIR BORGMÄSTARE!` : '💀 ÖN FÖLL';
   $('slut-title').className = 'big ' + (p.won ? 'win' : 'lose');
