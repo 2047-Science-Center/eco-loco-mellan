@@ -46,7 +46,7 @@ export const DEFAULT_CONFIG = {
   // visas dessutom extraProposalsPerRound slumpade extra-förslag/runda (roterar).
   // Motorn väljer dem server-auktoritativt → S.extraProposals (se _rollExtraProposals).
   extraProposalsFromRound: 4,  // först fr.o.m. denna runda dyker extra-förslag upp (runda 1–3 = bara grund-3)
-  extraProposalsPerRound: 4,   // exakt så många extra-förslag/runda (utöver grund-3) → 3+4 = 7 att välja på
+  extraProposalsPerRound: 3,   // exakt så många extra-förslag/runda (utöver grund-3) → 3+3 = 6 att välja på
   krisProposalOh: 20,          // öhälsa under detta → SOS Krispaket ligger ALLTID bland förslagen (även före gate-rundan)
 
   // Belopp för de NYA extra-förslagen. Konservativt satta — Klara/Josef får tuna.
