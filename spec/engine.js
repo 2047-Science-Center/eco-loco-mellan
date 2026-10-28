@@ -32,7 +32,8 @@ export const DEFAULT_CONFIG = {
   // "Blandaren = kris-linjen": en deterministisk, hänvisningsbar kris-gräns som biter MITT i spelet
   // (dagens enda mitt-i-död = öh ≤ 0 nås i praktiken aldrig av en reagerande grupp). Vinstvillkoret
   // (öh ≥ threshold på sista rundan → rikaste vinner) och 0-golvet (backstop) är ORÖRDA.
-  krisGrind: false,   // AV (Klaras test 2026): ingen mitt-i-spelet-kollaps när öh är låg. Spelet avgörs på sista rundan (threshold) + 0-golvet. Sätt true för att återaktivera kris/omspel/game-over nedan.
+  krisGrind: true,    // PÅ: tydlig kris deklareras när öh är låg (röd look + siren via 'crisis'-eventet).
+  krisGameOver: false, // AV (Klaras test 2026): en olöst kris dödar INTE automatiskt nästa runda — krisen fortsätter bara (varning kvar). Spelet avgörs på sista rundan + 0-golvet. Sätt true för gammal auto-död.
   krisZon: 20,        // öh ≤ 20 vid bokslut (utan aktiv kris) → KRIS startar. = ohMode 'superdaligt' + hjärnans kris.wav-gräns.
   krisReset: 35,      // öh ≥ 35 vid bokslut (med aktiv kris) → krisen LÖST. 15 p hysteres (= redZone) hindrar flimmer.
   krisReplay: true,   // olöst kris vid deadline → rollback + spela OM rundan (false = krisen fortsätter utan omspel).
@@ -551,8 +552,11 @@ export class EcoLoco {
       this._emit('crisis', { on: false, oh: this.S.oh, replaysLeft: this.S.krisReplaysLeft });
       return 'advance';
     }
-    // Aktiv kris, fortfarande olöst vid deadline → FÖRLORAT. Josef: ett förlorat spel ska AVSLUTAS
-    // (inte spelas om) → game over. Klienten går då tillbaka till lobbyn (gameEnd, won=false).
+    // Aktiv kris, fortfarande olöst vid deadline.
+    // krisGameOver AV (default nu): INGEN auto-död — krisen fortsätter bara (röd varning kvar) och
+    // spelet rullar vidare; ön kan fortfarande räddas eller nå 0-golvet/sista rundan.
+    if (!c.krisGameOver) return 'advance';
+    // krisGameOver PÅ (gammalt beteende): ett förlorat spel AVSLUTAS → game over.
     this._end(false, 'Ön kollapsade — krisen löstes aldrig i tid.');
     return 'gameover';
   }
