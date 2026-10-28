@@ -448,7 +448,7 @@ let roundPowerTeam = null;  // MAKT-ROTATION: vilket lag som styr politiken denn
 function showPowerBanner(powerTeam) {
   if (!powerTeam) return Promise.resolve();
   const namn = teamName(powerTeam);
-  $('power-logo').innerHTML = logoSVG(powerTeam, 140);
+  $('power-img').src = `assets/makt/${powerTeam}.png`;          // en scen-bild per lag (assets/makt/)
   if (game.me === powerTeam) {
     $('power-rubrik').innerHTML = 'NI HAR DEN POLITISKA MAKTEN!';
     $('power-tx').innerHTML = 'Välj vilket förslag ön ska rösta om den här rundan.<br>Lyssna på de andra företagen — eller driv er egen agenda!';
@@ -462,7 +462,7 @@ function showPowerBanner(powerTeam) {
     let done = false;
     const finish = () => { if (done) return; done = true; $('ov-power').onclick = null; clearTimeout(tmo); $('ov-power').classList.remove('open'); res(); };
     $('ov-power').onclick = finish;
-    const tmo = setTimeout(finish, 8000);
+    const tmo = setTimeout(finish, 15000);   // auto-fortsätt efter 15 s så man hinner läsa
   });
 }
 function showPendingSlut() {
