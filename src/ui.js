@@ -1679,11 +1679,13 @@ async function runTutorial() {
   {
     const a = AREAS.find(x => x.id === myLag);
     const TERRAIN = { aker: 'Åkermarken', skog: 'Skogen', tundra: 'Tundran', stad: 'Staden' };
+    const ANIMAL = { aker: '🐂', skog: '🐻', tundra: '🦊', stad: '🦅' };
     if (a) {
       $('roll-logo').innerHTML = logoSVG(myLag, 180);
-      $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span>`;
+      $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span> ${ANIMAL[myLag] || ''}`;
       $('roll-tx').innerHTML = `Du ansvarar för <b>${TERRAIN[myLag] || a.namn}</b> och producerar `
-        + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`;
+        + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`
+        + `<br><br>Kan ditt företag bli öns nästa <b>borgmästare</b>?`;
       $('ov-roll').classList.add('open');
       await Promise.race([new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);   // ingen auto-timeout: vänta på tryck (obemannad skärm fångas av 90 s idle→bot)
       $('ov-roll').onclick = null; $('ov-roll').classList.remove('open');
@@ -1693,13 +1695,13 @@ async function runTutorial() {
 
   // ——— INTRO: vad går spelet ut på? (3 rutor, klicka igenom, highlightar relevant yta) ———
   await tutSay({ ix: 0, focus: '.res', x: 300, y: 380, hold: true,
-    txt: '🎯 Målet: bli <b>rikast</b>. Den som har mest <b>pengar + material</b> tillsammans när spelet är slut vinner.' });
+    txt: '🏛️ <b>Ön behöver en ny borgmästare!</b><br>Fyra företag tävlar om makten. Det <b>rikaste</b> företaget när spelet är slut får styra ön!' });
   if (tutAbort) return;
   await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190, hold: true,
-    txt: '⏱ Ni spelar <b>8 rundor</b> totalt. Varje runda bygger ni, byter och röstar.' });
+    txt: '⏱️ <b>Ni har 8 rundor på er!</b><br>Bygg, handla och påverka ön genom <b>politiska beslut</b>.' });
   if (tutAbort) return;
   await tutSay({ ix: 0, focus: '.ohbar', x: 520, y: 190, hold: true,
-    txt: '🏝 Men håll <b>öns hälsa över 60</b> till slutet — annars <b>kollapsar hela ön och ingen vinner</b>. Ni sitter i samma båt.' });
+    txt: '🏝️ <b>Men det finns en hake!</b><br>Om <b>öns hälsa sjunker under 60</b> när spelet är slut kollapsar ön. Då förlorar alla – och ingen blir borgmästare!' });
   if (tutAbort) return;
 
   $('timertxt').textContent = '–:––';
