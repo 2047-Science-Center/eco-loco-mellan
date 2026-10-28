@@ -569,6 +569,21 @@ export class EcoLoco {
     this.S.pendingEvent = EVENTS.find(e => e.id === id) || null;
   }
 
+  // GM: spelledaren VÄLJER själv rundans händelse (reagerar på hur spelet utvecklas) i stället för
+  // slumpen. Byter bara VILKEN händelse som ligger pending — händelsernas effekter/utfall är oförändrade.
+  // Får bytas tills den körts (resolveEventDecision). Tillåter vilken som helst (manuell översyr slår poolen).
+  chooseEvent(id) {
+    if (!this.gm || !this.S) return;
+    const ev = EVENTS.find(e => e.id === id);
+    if (!ev) return;
+    const pi = this.S.eventPool.indexOf(id);
+    if (pi >= 0) this.S.eventPool.splice(pi, 1);                 // ur poolen → slumpen ger inte samma igen
+    if (!this.S.drawnEvents.includes(id)) this.S.drawnEvents.push(id);
+    this.S.pendingEvent = ev;
+  }
+  // GM: slumpa fram rundans händelse på nytt (spelledaren vill lämna över till slumpen igen).
+  drawRandomEvent() { if (this.gm && this.S) this._drawEvent(); }
+
   // Spelledaren svarar på rundans händelseförslag (GM-läge). ja = kör, nej = hoppa. Idempotent.
   resolveEventDecision(beslut) {
     const ev = this.S?.pendingEvent;

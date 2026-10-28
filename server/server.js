@@ -15,7 +15,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { EcoLoco, AREAS, timerSecFor } from '../spec/engine.js';
+import { EcoLoco, AREAS, timerSecFor, EVENTS } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { attachMqtt, setPublisher as setBenchPublisher } from '../src/mqtt.js';
 import { attachRigg } from '../src/rigg.js';
@@ -171,7 +171,9 @@ const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 // claims (lag → 'human'|'bot'|null) rider med i VARJE meddelande så spelledarpanelens stations-lista
 // alltid är färsk (ett lag som tappar sin skärm blir 'bot' → syns direkt på pulten).
 function claimKinds() { return Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])); }
-function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), state: engine ? { ...engine.getState(), gmMode, riggSilent, started } : null })); }
+// Händelsekatalogen (id + rubrik + typ) — statisk, följer med i state så spelledarpanelen kan erbjuda VÄLJ HÄNDELSE.
+const EVENT_KATALOG = EVENTS.map(e => ({ id: e.id, rubrik: e.rubrik, typ: e.typ }));
+function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), state: engine ? { ...engine.getState(), gmMode, riggSilent, started, eventKatalog: EVENT_KATALOG } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, spelledare: riggSilent,   // spelledare på → klienterna gömmer STARTA (spelledaren styr starten)
@@ -831,6 +833,12 @@ wss.on('connection', ws => {
 // ——— Retur-kanal: spelledarpanel → server (ecoloco/spel/gm, ICKE-retained) ———
 // Samma mosquitto_sub-spawn-mönster som tools/hjarna-stubb.py — ingen ny npm-dep.
 // Payload = {cmd:...}. ENDAST spelledar-initierade kommandon; allt är fas-gardat & idempotent.
+// Push nytt pending-händelseförslag till spelledarpanelen (state bär pendingEvent) + riggen (eventforslag-topic).
+function broadcastEventforslag() {
+  const pe = engine?.getState().pendingEvent;
+  if (pe) riggPublish('ecoloco/rigg/eventforslag', JSON.stringify({ id: pe.id, namn: pe.rubrik, text: pe.text }));
+  broadcast({ type: 'event', event: 'eventforslag', payload: pe ? { id: pe.id, rubrik: pe.rubrik, text: pe.text } : null });
+}
 function handleGmCmd(m) {
   if (!m || typeof m.cmd !== 'string') return;
   switch (m.cmd) {
@@ -909,6 +917,20 @@ function handleGmCmd(m) {
         if (engine.getState().pendingEvent?.id !== pe.id) return;   // omstart/omspel hann ändra läget
         engine.resolveEventDecision('ja');                          // visar händelsen (+ event-ljud via rigg.js)
       }, RIGG_EVENT_DELAY_MS);
+      break;
+    }
+    case 'valjEvent': {   // {id} → spelledaren väljer SJÄLV rundans händelse (byter pending; går att byta tills den körts)
+      if (!gmMode || !started || !engine || engine.getState().over) break;
+      if (eventFiring) break;                                      // en händelse körs redan (cue + 3 s) → ignorera
+      engine.chooseEvent(m.id);
+      broadcastEventforslag();
+      break;
+    }
+    case 'slumpaEvent': {   // spelledaren lämnar tillbaka till slumpen → dra en ny händelse
+      if (!gmMode || !started || !engine || engine.getState().over) break;
+      if (eventFiring) break;
+      engine.drawRandomEvent();
+      broadcastEventforslag();
       break;
     }
     case 'award_next': {   // GM: stega prisutdelningen ett pris — skärm + rigg i exakt takt (delad med selfplay)

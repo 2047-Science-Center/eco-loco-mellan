@@ -74,6 +74,12 @@
   .btn .prog{font-family:var(--font-num);font-size:16px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.25)}
   .row{display:grid;gap:12px}
   .row.two{grid-template-columns:1fr 1fr}
+  .row.pick{grid-template-columns:1fr auto;align-items:stretch}
+  .eventpick{margin-top:4px;border-top:1px solid var(--edge);padding-top:12px}
+  .eventpick label{display:block;font-size:12px;color:var(--dim);letter-spacing:.5px;margin-bottom:8px}
+  .eventpick select{background:var(--panel2);color:var(--text);border:2px solid var(--edge);border-radius:10px;padding:0 12px;font:inherit;font-size:16px;min-height:var(--tap)}
+  .eventpick select:disabled{opacity:.5}
+  #event-slumpa{width:auto;padding:0 18px;flex-direction:row;font-size:15px}
   .row.auto{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 
   .masterbar{display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:14px;
@@ -184,6 +190,13 @@
         <div class="row two">
           <button class="btn ja" id="event-ja" disabled>KÖR · JA</button>
           <button class="btn nej" id="event-nej" disabled>HOPPA · NEJ</button>
+        </div>
+        <div class="eventpick">
+          <label>Välj själv utifrån spelet — eller lämna till slumpen</label>
+          <div class="row pick">
+            <select id="event-val" disabled></select>
+            <button class="btn safe" id="event-slumpa" disabled title="Dra en ny slumpmässig händelse">🎲 SLUMPA</button>
+          </div>
         </div>
       </div>
 
@@ -380,7 +393,7 @@ const LAG = [
 const net = new ServerNet();
 net.on('disconnected', () => { setConn(false); });
 net.on('reconnected', () => { setConn(true); render(); });
-['timer','roundStart','ohalsa','roundEnd','gameEnd','lobby','notis','voteUpdate','paused',
+['timer','roundStart','ohalsa','roundEnd','gameEnd','lobby','notis','voteUpdate','paused','eventforslag',
  'event','award','awardCeremony','awardStep','awardDone','tilllobby','tillattract','trailer','trailerDone','start','startGo','startWindow',
  'klarUpdate','tutReadyUpdate',
  'slutdelStart','slutdelQuestion','slutdelReveal','slutdelDist','slutdelDone'].forEach(ev => net.on(ev, p => onEvent(ev, p)));
@@ -450,8 +463,14 @@ function render() {
   const pe = s.pendingEvent;
   const hasEv = gmOn && s.started && !s.over && pe;
   $('#event-rubrik').textContent = hasEv ? (pe.rubrik || 'Händelse') : 'Ingen händelse väntar';
-  $('#event-text').textContent = hasEv ? (pe.text || '') : 'I spelledarläge dras en händelse varje runda — kör eller hoppa den här.';
+  $('#event-text').textContent = hasEv ? (pe.text || '') : 'I spelledarläge dras en händelse varje runda — kör, hoppa eller byt den här.';
   $('#event-ja').disabled = !hasEv; $('#event-nej').disabled = !hasEv;
+  // händelseväljaren: bygg optionslistan en gång (katalogen är statisk), markera den som ligger pending
+  const kanValja = gmOn && s.started && !s.over;
+  const sel = $('#event-val'), kat = s.eventKatalog || [];
+  if (sel._n !== kat.length) { sel.innerHTML = kat.map(e => `<option value="${e.id}">${e.rubrik}</option>`).join(''); sel._n = kat.length; }
+  if (pe) sel.value = pe.id;
+  sel.disabled = !kanValja; $('#event-slumpa').disabled = !kanValja;
 
   // slutdel
   const over = !!s.over;
@@ -524,6 +543,8 @@ const PRIS = { led: '🏆 Ledande', foretagare: '🏆 Ledande', eld: '🌱 Eldsj
 $('#award-btn').onclick = () => { net.gmcmd({ cmd: 'award_next' }); toast('Nästa pris'); };
 $('#event-ja').onclick  = () => { net.gmcmd({ cmd: 'event', beslut: 'ja' }); toast('Kör händelsen'); };
 $('#event-nej').onclick = () => { net.gmcmd({ cmd: 'event', beslut: 'nej' }); toast('Hoppar händelsen'); };
+$('#event-val').onchange = () => { net.gmcmd({ cmd: 'valjEvent', id: $('#event-val').value }); toast('Bytte rundans händelse'); };
+$('#event-slumpa').onclick = () => { net.gmcmd({ cmd: 'slumpaEvent' }); toast('Slumpar ny händelse'); };
 $('#pausbtn').onclick   = () => { net.gmcmd({ cmd: 'pause', on: !paused }); };
 $('#pengbtn').onclick   = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'pengaslapp' }); toast('Pengasläpp (+10/+10 till alla)'); });
 $('#gm-switch').onclick = () => {
