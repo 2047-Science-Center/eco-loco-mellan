@@ -1691,7 +1691,7 @@ async function runTutorial() {
       $('roll-logo').innerHTML = `<img src="assets/makt/${myLag}.png" alt="" style="width:min(640px,70vw);height:auto;border-radius:16px;border:3px solid var(--edge2);box-shadow:0 10px 40px #000">`;   // lagets egen maktbild i stället för badge
       $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span> ${ANIMAL[myLag] || ''}`;
       $('roll-tx').innerHTML = `Du ansvarar för <b>${TERRAIN[myLag] || a.namn}</b> och producerar `
-        + `<b>${a.sektor === 'material' ? 'material' : 'pengar'}</b>.`      // inga ikoner — bilden räcker
+        + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`
         + `<br><br>Kan ditt företag bli öns nästa <b>borgmästare</b>?`;
       $('ov-roll').classList.add('open');
       await Promise.race([new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);   // ingen auto-timeout: vänta på tryck (obemannad skärm fångas av 90 s idle→bot)
