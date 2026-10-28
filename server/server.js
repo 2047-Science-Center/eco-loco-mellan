@@ -126,6 +126,7 @@ const CEREMONY_STEP_MS = 8000; // selfplay: tid per pris (skärm + rigg kliver i
 let resolvingNow = false;
 let eventFiring = false;        // en spelledar-händelse körs (rigg-cue + 3 s fördröjning innan den visas)
 const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjorts innan nästa får läggas (hinner visa resultatet)
+const BOT_POWER_WAIT_S = 60;         // en bot med makten väntar så här många sek IN I rundan innan den lägger sitt förslag (människor hinner ringa & påverka)
 let proposalCooldownUntil = 0;
 // Inaktiva skärmar → bot: idleMs räknar AKTIV speltid (medan rundtimern tickar) sedan laget senast
 // gjorde något. Prisutdelning/paus räknas INTE (vakten står still då), och klockan persistar över
@@ -404,7 +405,7 @@ function newEngine() {
       if (pe) riggPublish('ecoloco/rigg/eventforslag', JSON.stringify({ id: pe.id, namn: pe.rubrik, text: pe.text }));
     }
     if (p.round > 1) pauseForAwards(); else startTimer();   // runda 2+: timern väntar tills prisutdelningen klickats igenom
-    maybeBotProposal(p.round);
+    // (maybeBotProposal triggas numera av rundtimern, BOT_POWER_WAIT_S in i rundan — inte här)
   });
   // OMSPEL (kris olöst): rundan raderas och spelas om. Ingen prisceremoni (rundan är ogjord) → starta
   // rundtimern direkt, i stället för pauseForAwards. 'roundReplay' broadcastas redan via relay-loopen ovan.
@@ -412,8 +413,7 @@ function newEngine() {
   // samspelet skärm↔rigg vid omspel i GM-läge bör verifieras i rummet.
   engine.on('roundReplay', p => {
     resolvingNow = false; klar = new Set(); cer = null; clearTimeout(cerTimer);   // avbryt ev. påbörjad auto-ceremoni (rundan är ogjord)
-    startTimer();
-    maybeBotProposal(p.round);
+    startTimer();   // maybeBotProposal triggas av timern (BOT_POWER_WAIT_S in i rundan)
   });
   engine.on('gameEnd', () => stopTimer());
   // VINST/FÖRLUST-FINALEN (ecoloco/rigg/final) skickas inte längre direkt här, utan som KRÖNING EFTER
@@ -429,11 +429,14 @@ function startTimer() {
   const full = roundFull();
   timerLeft = full;
   let countdownFired = false;                 // 10 s-nedräkningen fyras en gång per runda
+  let botFired = false;                        // maktbotens förslag läggs en gång, BOT_POWER_WAIT_S in i rundan
   broadcast({ type: 'timer', left: timerLeft, full });
   timerInt = setInterval(() => {
     if (paused) return;   // pausad → frys nedräkningen. Inget rigg-cue skickas, så ambiencen loopar vidare.
     timerLeft--;
     broadcast({ type: 'timer', left: timerLeft, full });
+    // ~1 min in i rundan → en bot med makten lägger sitt förslag (människor har hunnit ringa & påverka).
+    if (!botFired && timerLeft <= full - BOT_POWER_WAIT_S) { botFired = true; maybeBotProposal(); }
     // 10 s kvar → NEDRÄKNING i riggen (ljus + ljud), samma cue som spelledarens NEDRÄKNING-knapp.
     // SYSTEMCEREMONI (ungated via riggSend) så den spelar i BÅDA lägena — även "med spelledare".
     if (timerLeft <= 10 && timerLeft > 0 && !countdownFired) { countdownFired = true; riggSend('ecoloco/rigg/countdown', 1); }
@@ -576,35 +579,35 @@ function maybeResolve() {
   if (liveHumanIds().every(id => klar.has(id))) { stopTimer(); forceResolve(); }
 }
 
-function maybeBotProposal(round) {
-  if (round < 2) return;
-  setTimeout(() => {
-    const S = engine.getState();
-    if (S.over || (S.proposal && !S.proposal.resolved) || resolvingNow || Date.now() < proposalCooldownUntil) return;   // bara ett oavgjort i taget + kö-paus
-    // MAKT-ROTATION: har rundan ett maktlag är det BARA det laget som får lägga förslag.
-    const power = S.powerTeam;
-    let by;
-    if (power) {
-      if (claims[power] !== 'bot') return;                        // maktlaget är en människa → de bestämmer själva
-      if ((S.proposedBy || []).includes(power)) return;           // maktlaget (bot) har redan lagt sitt
-      by = power;                                                 // en bot med makten lägger ALLTID ett förslag (så rundan har en politisk fråga)
-    } else {
-      if (Math.random() > 0.35) return;                           // ingen makt-runda (runda 1) → gammal slump
-      const bots = TEAMS.filter(id => claims[id] === 'bot' && !(S.proposedBy || []).includes(id));
-      if (!bots.length) return;
-      by = bots[Math.floor(Math.random() * bots.length)];
-    }
-    // Grund-3 öhälso-viktat (som förr). Fr.o.m. runda 4: boten kan även välja ur rundans
-    // extra-pool (S.extraProposals); i kris prioriteras Krispaket. Samma logik som src/ui.js pickBotProposal.
-    const base = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')
-               : Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud');
-    const extra = (S.round >= 4 && Array.isArray(S.extraProposals)) ? S.extraProposals : [];
-    let type = base;
-    if (extra.length && Math.random() < 0.4) {
-      type = (S.oh < 45 && extra.includes('krispaket')) ? 'krispaket' : extra[Math.floor(Math.random() * extra.length)];
-    }
-    engine.openProposal(type, by);
-  }, 2500);
+// Lägg maktbotens (eller en fri-runda-bots) förslag NU. Triggas av rundtimern BOT_POWER_WAIT_S in i
+// rundan (se startTimer) — inte vid rundstart — så en bot med makten väntar ~1 min och människorna
+// hinner ringa och påverka innan boten bestämmer.
+function maybeBotProposal() {
+  const S = engine.getState();
+  if (!S || S.round < 2) return;                                // runda 1 = inga bot-förslag
+  if (S.over || (S.proposal && !S.proposal.resolved) || resolvingNow || Date.now() < proposalCooldownUntil) return;   // bara ett oavgjort i taget + kö-paus
+  // MAKT-ROTATION: har rundan ett maktlag är det BARA det laget som får lägga förslag.
+  const power = S.powerTeam;
+  let by;
+  if (power) {
+    if (claims[power] !== 'bot') return;                        // maktlaget är en människa → de bestämmer själva
+    if ((S.proposedBy || []).includes(power)) return;           // maktlaget (bot) har redan lagt sitt
+    by = power;                                                 // en bot med makten lägger ett förslag (så rundan har en politisk fråga)
+  } else {
+    const bots = TEAMS.filter(id => claims[id] === 'bot' && !(S.proposedBy || []).includes(id));
+    if (!bots.length) return;
+    by = bots[Math.floor(Math.random() * bots.length)];
+  }
+  // Grund-3 öhälso-viktat (som förr). Fr.o.m. runda 4: boten kan även välja ur rundans
+  // extra-pool (S.extraProposals); i kris prioriteras Krispaket. Samma logik som src/ui.js pickBotProposal.
+  const base = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')
+             : Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud');
+  const extra = (S.round >= 4 && Array.isArray(S.extraProposals)) ? S.extraProposals : [];
+  let type = base;
+  if (extra.length && Math.random() < 0.4) {
+    type = (S.oh < 45 && extra.includes('krispaket')) ? 'krispaket' : extra[Math.floor(Math.random() * extra.length)];
+  }
+  engine.openProposal(type, by);
 }
 
 // Bot-svar på byteserbjudande (samma logik som mock-läget i ui.js)
