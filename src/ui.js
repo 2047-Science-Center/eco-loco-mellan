@@ -1084,13 +1084,14 @@ function showSlut(p) {
     simg.src = `assets/makt/${p.winner.teamId}.png`;
     simg.style.cssText = 'display:block;width:min(560px,70vw);height:auto;border-radius:14px;border:3px solid var(--gold);box-shadow:0 10px 40px #000;margin:0 auto 14px';
   } else { simg.style.display = 'none'; simg.removeAttribute('src'); }
-  $('slut-title').textContent = p.won ? `👑 ${p.winner.namn.toUpperCase()} BLIR BORGMÄSTARE!` : '💀 ÖN FÖLL';
+  const vfarg = (p.winner && AREAS.find(x => x.id === p.winner.teamId)?.farg) || 'var(--gold)';   // vinnarlagets egen färg
+  $('slut-title').innerHTML = p.won ? `👑 <span style="color:${vfarg}">${p.winner.namn.toUpperCase()}</span> BLIR BORGMÄSTARE!` : '💀 ÖN FÖLL';
   $('slut-title').className = 'big ' + (p.won ? 'win' : 'lose');
   $('slut-why').innerHTML = p.won
     ? `Öns hälsa slutade på <b style="color:var(--led-green)">${p.oh}</b> — över målet ${p.threshold}. Då vinner det rikaste laget.`
     : p.reason;
   $('slut-cards').innerHTML =
-    (p.won ? `<div class="award"><div class="em">🏆</div><h4>Vinnare — rikast</h4><div class="who">${logoSVG(p.winner.teamId, 64)}${p.winner.namn}${p.winner.teamId === game.me ? ' (du!)' : ''}<span class="val">${p.winner.kapital} kapital</span></div></div>` : '') +
+    (p.won ? `<div class="award"><div class="em">🏆</div><h4>Vinnare — rikast</h4><div class="who">${logoSVG(p.winner.teamId, 64)}<span style="color:${vfarg}">${p.winner.namn}</span>${p.winner.teamId === game.me ? ' (du!)' : ''}<span class="val">${p.winner.kapital} kapital</span></div></div>` : '') +
     (p.klimatbov ? `<div class="award" style="border-color:var(--edge2)"><div class="em">🏭</div><h4>Klimatbov</h4><div class="who">${logoSVG(p.klimatbov.teamId, 64)}${p.klimatbov.namn}${p.klimatbov.teamId === game.me ? ' (du…)' : ''}<span class="val ohminus">${p.klimatbov.skada} öhälsa</span></div></div>` : '');
   $('slut-efter').innerHTML = EFTERSNACK[Math.floor(Math.random() * EFTERSNACK.length)];
   slutForlust = !p.won;                              // förlust → knappen tar tillbaka till lobbyn (spelet är avslutat)
@@ -1690,7 +1691,7 @@ async function runTutorial() {
       $('roll-logo').innerHTML = `<img src="assets/makt/${myLag}.png" alt="" style="width:min(640px,70vw);height:auto;border-radius:16px;border:3px solid var(--edge2);box-shadow:0 10px 40px #000">`;   // lagets egen maktbild i stället för badge
       $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span> ${ANIMAL[myLag] || ''}`;
       $('roll-tx').innerHTML = `Du ansvarar för <b>${TERRAIN[myLag] || a.namn}</b> och producerar `
-        + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`
+        + `<b>${a.sektor === 'material' ? 'material' : 'pengar'}</b>.`      // inga ikoner — bilden räcker
         + `<br><br>Kan ditt företag bli öns nästa <b>borgmästare</b>?`;
       $('ov-roll').classList.add('open');
       await Promise.race([new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);   // ingen auto-timeout: vänta på tryck (obemannad skärm fångas av 90 s idle→bot)
