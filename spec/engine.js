@@ -69,10 +69,8 @@ export const DEFAULT_CONFIG = {
   alliansBoter: 8,          // 🤝 Allians: 🪙 som varje NEJ-lag betalar
   kustvaktAmount: 8,        // 🌊 Kustvakt: 🪙 som Räven + Örnen betalar var
   kustvaktOh: 10,           // 🌊 Kustvakt: öhälso-lyft
-  skogsvardAmount: 8,       // 🌲 Skogsvård: 🪙 som Oxen + Björnen betalar var (speglar kustvakt för material-laget)
-  skogsvardOh: 10,          // 🌲 Skogsvård: öhälso-lyft (återställd skog & mark)
-  tvillingAmount: 12,       // 👯 Tvillingsatsning: 🪙 vardera av paret (Oxen+Björnen) betalar — bara om BÅDA röstar ja
-  tvillingOh: 18,           // 👯 Tvillingsatsning: stort öhälso-lyft om båda är med
+  skogsvardAmount: 8,       // 🪵 Skogsvård: 🪙 som Oxen + Björnen betalar var (speglar kustvakt för material-laget)
+  skogsvardOh: 10,          // 🪵 Skogsvård: öhälso-lyft (återställd skog & mark)
   utslappAmount: 15,        // 🏭 Utsläppshandel: 🪙 som värsta boven betalar till grönaste laget
   utslappOh: -6,            // 🏭 Utsläppshandel: öhälso-smäll (köper rätten att smutsa)
   raddningsfondCost: 5,     // 🤲 Gemensam räddningsfond: 🪙 som ALLA fyra betalar
@@ -86,7 +84,7 @@ export const DEFAULT_CONFIG = {
 // återanvänder primitiverna P1–P6, kräver INGEN ny motor-mekanik). [NY MEK]-förslagen
 // (blockad/utslappstak/katastroffond) är medvetet UTELÄMNADE (kräver nytt state).
 export const EXTRA_PROPOSAL_POOL = ['krispaket', 'sektorskatt', 'solidaritet', 'lojalitet', 'marknadsavtal', 'gronstod',
-  'grannskatt', 'sektorblockad', 'allians', 'kustvakt', 'tvillingsatsning', 'utslappshandel', 'naturreservat', 'raddningsfond', 'byggboom', 'skogsvard'];
+  'grannskatt', 'sektorblockad', 'allians', 'kustvakt', 'utslappshandel', 'naturreservat', 'raddningsfond', 'byggboom', 'skogsvard'];
 
 // Ett område = ett lag. Områdesfärg = lagfärg. sektor styr valuta-beroendet.
 // id = internt områdesnamn (används i MQTT/rigg — ändra ALDRIG). namn = lagets visningsnamn (djuret).
@@ -393,15 +391,9 @@ export class EcoLoco {
         ['tundra', 'stad'].forEach(id => { const t = this.team(id); if (t) t.pengar = Math.max(0, t.pengar - this.cfg.kustvaktAmount); });
         this.S.gronQueued += this.cfg.kustvaktOh;
       } else if (p.type === 'skogsvard') {
-        // 🌲 Oxen + Björnen betalar för att återställa skadad skog & mark → ön +hälsa (speglar kustvakt, material-sidan).
+        // 🪵 Oxen + Björnen betalar för att återställa skadad skog & mark → ön +hälsa (speglar kustvakt, material-sidan).
         ['aker', 'skog'].forEach(id => { const t = this.team(id); if (t) t.pengar = Math.max(0, t.pengar - this.cfg.skogsvardAmount); });
         this.S.gronQueued += this.cfg.skogsvardOh;
-      } else if (p.type === 'tvillingsatsning') {
-        // 👯 Paret Oxen+Björnen: BARA om BÅDA röstade ja betalar de och ön lyfts stort (annars inget).
-        if (p.votes.aker && p.votes.skog) {
-          ['aker', 'skog'].forEach(id => { const t = this.team(id); if (t) t.pengar = Math.max(0, t.pengar - this.cfg.tvillingAmount); });
-          this.S.gronQueued += this.cfg.tvillingOh;
-        }
       } else if (p.type === 'utslappshandel') {
         // 🏭 Värsta boven köper rätten att smutsa: betalar grönaste laget; ön tar en smäll.
         const bov = this.worstPolluter(), gron = this._greenest();

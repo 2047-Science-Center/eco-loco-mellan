@@ -193,7 +193,8 @@
   .stepper { display: flex; align-items: center; justify-content: center; gap: 14px; }
   .stepper button { width: 58px; height: 58px; border-radius: 12px; background: var(--panel2); color: var(--text); border: 3px solid var(--edge2); font-size: 30px; font-weight: 800; cursor: pointer; }
   .stepper .amt { font-family: var(--font-num); font-size: 40px; color: var(--led); min-width: 100px; }
-  .tradearrow { font-size: 44px; }
+  .tradearrow { font-size: 36px; width: 74px; height: 74px; flex: none; border-radius: 14px; background: var(--panel2); color: var(--led); border: 3px solid var(--gold); cursor: pointer; line-height: 1; transition: transform .12s; }
+  .tradearrow:active { transform: scale(0.92) rotate(180deg); }
   .partnerrow { display: flex; gap: 12px; margin: 10px 0 18px; align-items: stretch; }
   .partnerrow button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 14px; font: inherit; color: var(--text); font-weight: 800; font-size: 17px; cursor: pointer; }
   .partnerrow button.sel { border-color: var(--gold); }
@@ -537,7 +538,7 @@
     <div class="tradegrid">
       <div class="tradebox"><div class="who" id="tb-give">DU GER</div>
         <div class="stepper"><button id="give-minus">−</button><span class="amt" id="give-amt">10</span><button id="give-plus">＋</button></div></div>
-      <div class="tradearrow">⇄</div>
+      <button class="tradearrow" id="trade-swap" title="Byt håll">⇄</button>
       <div class="tradebox"><div class="who" id="tb-get">DU FÅR</div>
         <div class="stepper"><button id="get-minus">−</button><span class="amt" id="get-amt">10</span><button id="get-plus">＋</button></div></div>
     </div>

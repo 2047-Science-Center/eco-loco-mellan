@@ -852,14 +852,18 @@ function openTrade(partnerId = null) {
   const partners = tradePartnersByNeed();
   tradePartner = partnerId || partners[0].id;
   giveAmt = 10; getAmt = 10;
-  $('trade-give-lbl').innerHTML = `${giveCur} ${curIco(giveCur, 16)}`;
-  $('trade-get-lbl').innerHTML = `${getCur} ${curIco(getCur, 16)}`;
-  $('tb-give').innerHTML = `DU GER (${giveCur} ${curIco(giveCur, 14)})`;
-  $('tb-get').innerHTML = `DU FÅR (${getCur} ${curIco(getCur, 14)})`;
+  renderTradeLabels();
   renderTradeModal();
   const go = $('btn-trade-go'); go.classList.remove('sent'); go.textContent = 'FÖRESLÅ BYTET'; go.disabled = false;   // nollställ ev. "skickad"-låsning
   audio.play('ui_open');
   $('ov-trade').classList.add('open');
+}
+// Riktnings-etiketterna (vilken valuta man ger/får) — egen funktion så swap-knappen kan rita om dem.
+function renderTradeLabels() {
+  $('trade-give-lbl').innerHTML = `${giveCur} ${curIco(giveCur, 16)}`;
+  $('trade-get-lbl').innerHTML = `${getCur} ${curIco(getCur, 16)}`;
+  $('tb-give').innerHTML = `DU GER (${giveCur} ${curIco(giveCur, 14)})`;
+  $('tb-get').innerHTML = `DU FÅR (${getCur} ${curIco(getCur, 14)})`;
 }
 function renderTradeModal() {
   $('partners').innerHTML = tradePartnersByNeed().map((t, i) => `
@@ -874,6 +878,12 @@ function renderTradeModal() {
   $('give-amt').textContent = giveAmt;
   $('get-amt').textContent = getAmt;
 }
+// ⇄ Byt håll: ge det du annars skulle få (och tvärtom). Partnerlistan rankas efter getCur → ritas om.
+$('trade-swap').addEventListener('click', () => {
+  audio.play('ui_tap');
+  [giveCur, getCur] = [getCur, giveCur];
+  renderTradeLabels(); renderTradeModal();
+});
 $('btn-trade').addEventListener('click', () => { audio.play('ui_tap'); openTrade(); });
 $('btn-trade-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-trade').classList.remove('open'); });
 // Ta tillbaka laget efter bot-övertagande → claim (servern låter en människa återta en bot mitt i spel).
@@ -931,8 +941,7 @@ function propDefs() {
     { type: 'sektorblockad', pic: '🚧', rubrik: 'Sektorblockad', tx: `Nästa runda får <b>motståndarsektorn</b><br>inte bygga smutsigt.`, ja: 'JA — blockera dem' },
     { type: 'allians', pic: '🫂', rubrik: 'Allians', tx: `Varje <b>JA-lag</b> får +${c.alliansBonus} ${ico('pengar', 14)},<br>varje <b>NEJ-lag</b> betalar ${c.alliansBoter} ${ico('pengar', 14)}.`, ja: `JA — gå med` },
     { type: 'kustvakt', pic: '🌊', rubrik: 'Kustvakt', tx: `<b>Räven + Örnen</b> betalar ${c.kustvaktAmount} ${ico('pengar', 14)} var<br>för stormskydd → ön +${c.kustvaktOh}.`, ja: 'JA — skydda kusten' },
-    { type: 'skogsvard', pic: '🌲', rubrik: 'Skogsvård', tx: `<b>Oxen + Björnen</b> betalar ${c.skogsvardAmount} ${ico('pengar', 14)} var<br>för att återställa skadad skog och mark → ön +${c.skogsvardOh}.`, ja: 'JA — återställ naturen' },
-    { type: 'tvillingsatsning', pic: '👯', rubrik: 'Tvillingsatsning', tx: `<b>Oxen + Björnen</b>: om BÅDA röstar JA betalar de<br>${c.tvillingAmount} ${ico('pengar', 14)} var och ön +${c.tvillingOh}. Annars inget.`, ja: 'JA — vi satsar ihop' },
+    { type: 'skogsvard', pic: '🪵', rubrik: 'Skogsvård', tx: `<b>Oxen + Björnen</b> betalar ${c.skogsvardAmount} ${ico('pengar', 14)} var<br>för att återställa skadad skog och mark → ön +${c.skogsvardOh}.`, ja: 'JA — återställ naturen' },
     { type: 'utslappshandel', pic: '🏭', rubrik: 'Utsläppshandel', tx: `Värsta boven betalar ${c.utslappAmount} ${ico('pengar', 14)} till<br>grönaste laget — ön ${c.utslappOh}.`, ja: 'JA' },
     { type: 'naturreservat', pic: '🌳', rubrik: 'Naturreservat', tx: `Ön <b>+${c.naturreservatOh}</b> — men <b>ingen</b> får<br>bygga nästa runda.`, ja: 'JA — pausa för naturen' },
     { type: 'raddningsfond', pic: '🤲', rubrik: 'Räddningsfond', tx: `Alla fyra betalar ${c.raddningsfondCost} ${ico('pengar', 14)}<br>→ ön <b>+${c.raddningsfondOh}</b>.`, ja: 'JA — alla bidrar' },
