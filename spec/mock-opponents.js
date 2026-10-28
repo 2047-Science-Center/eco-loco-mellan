@@ -69,6 +69,10 @@ export function mockOpponentsVote(engine, humans) {
     if (p.type === 'lojalitet') yes = t.pengar >= engine.cfg.lojalitetBoter || Math.random() < 0.5;
     if (p.type === 'marknadsavtal') yes = Math.random() < 0.6;            // koordination: oftast ja
     if (p.type === 'gronstod') yes = (t.id === gron.id) || Math.random() < 0.35;
+    // 🌲 Skogsvård: betalarna (Oxen/Björnen) nappar om ön behöver det och de har råd; övriga får nyttan gratis → oftast ja.
+    if (p.type === 'skogsvard') yes = (t.id === 'aker' || t.id === 'skog')
+      ? (S.oh < 55 && t.pengar >= engine.cfg.skogsvardAmount)
+      : (S.oh < 60 || Math.random() < 0.5);
     engine.vote(t.id, yes);
   });
 }

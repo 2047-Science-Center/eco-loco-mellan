@@ -931,6 +931,7 @@ function propDefs() {
     { type: 'sektorblockad', pic: '🚧', rubrik: 'Sektorblockad', tx: `Nästa runda får <b>motståndarsektorn</b><br>inte bygga smutsigt.`, ja: 'JA — blockera dem' },
     { type: 'allians', pic: '🫂', rubrik: 'Allians', tx: `Varje <b>JA-lag</b> får +${c.alliansBonus} ${ico('pengar', 14)},<br>varje <b>NEJ-lag</b> betalar ${c.alliansBoter} ${ico('pengar', 14)}.`, ja: `JA — gå med` },
     { type: 'kustvakt', pic: '🌊', rubrik: 'Kustvakt', tx: `<b>Räven + Örnen</b> betalar ${c.kustvaktAmount} ${ico('pengar', 14)} var<br>för stormskydd → ön +${c.kustvaktOh}.`, ja: 'JA — skydda kusten' },
+    { type: 'skogsvard', pic: '🌲', rubrik: 'Skogsvård', tx: `<b>Oxen + Björnen</b> betalar ${c.skogsvardAmount} ${ico('pengar', 14)} var<br>för att återställa skadad skog och mark → ön +${c.skogsvardOh}.`, ja: 'JA — återställ naturen' },
     { type: 'tvillingsatsning', pic: '👯', rubrik: 'Tvillingsatsning', tx: `<b>Oxen + Björnen</b>: om BÅDA röstar JA betalar de<br>${c.tvillingAmount} ${ico('pengar', 14)} var och ön +${c.tvillingOh}. Annars inget.`, ja: 'JA — vi satsar ihop' },
     { type: 'utslappshandel', pic: '🏭', rubrik: 'Utsläppshandel', tx: `Värsta boven betalar ${c.utslappAmount} ${ico('pengar', 14)} till<br>grönaste laget — ön ${c.utslappOh}.`, ja: 'JA' },
     { type: 'naturreservat', pic: '🌳', rubrik: 'Naturreservat', tx: `Ön <b>+${c.naturreservatOh}</b> — men <b>ingen</b> får<br>bygga nästa runda.`, ja: 'JA — pausa för naturen' },
