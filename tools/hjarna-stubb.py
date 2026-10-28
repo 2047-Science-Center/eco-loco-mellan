@@ -284,7 +284,12 @@ def apply_final(payload):
 def apply_award(payload):
     d = json.loads(payload)
     a = AWARD.get(d.get("typ")); side = LAG_SIDE.get(d.get("lag"))
-    if not a or not side: return
+    if not a or not side:
+        # ingen vinnare (typ "ingen" / INGEN BOV, eller ceremonins avslutande clear) → släck pilen helt,
+        # ingen ny spot; visa en lugn grön "ön andas ut" på alla sidor (scen=runda/ohalsa sätter sedan looken).
+        if not crisis_active:
+            set_fx("none"); spots_off(); set_all({"h": 130, "s": 60, "v": 70})
+        return
     set_fx("none")
     for n in (1, 2, 3, 4):
         set_side(n, a["look"] if n == side else OFF)

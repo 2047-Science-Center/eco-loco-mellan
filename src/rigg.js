@@ -95,8 +95,12 @@ export function attachRigg(engine, opts = {}) {
     setGm(on) { gm = !!on; },
     // GM-ceremonin (servern dirigerar): öppna scenen → ett pris i taget → stäng/återställ.
     beginAwards() { P('ecoloco/rigg/scen', 'awards'); },
-    showAward(typ, w) { if (w) P('ecoloco/rigg/award', { typ: RIG_TYP[typ], lag: w.teamId }); },
+    showAward(typ, w) {
+      if (w) P('ecoloco/rigg/award', { typ: RIG_TYP[typ], lag: w.teamId });
+      else   P('ecoloco/rigg/award', { typ: 'ingen', lag: null });   // ingen vinnare (t.ex. INGEN BOV) → släck ev. kvarvarande pil, ingen ny
+    },
     endAwards(isOver) {
+      P('ecoloco/rigg/award', { typ: 'ingen', lag: null });          // ceremonin slut → säkerställ att pilen är släckt (semantisk clear, oberoende av scen-hanteringen)
       if (isOver) P('ecoloco/rigg/scen', 'slut');
       else { P('ecoloco/rigg/scen', 'runda'); P('ecoloco/rigg/ohalsa', lastOh); }
     },
