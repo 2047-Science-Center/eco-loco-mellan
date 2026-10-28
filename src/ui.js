@@ -1800,6 +1800,10 @@ async function runTutorial() {
   await tutSay({ ix: 2, focus: '.ohbar', x: 520, y: 190,
     txt: `Ditt förslag gick igenom ✅ — öns hälsa stiger <b>+${tut.E().cfg.gronGain} ${ico('tillvaxt', 18)}</b>. Så flyttar ni den delade mätaren tillsammans.` });
   if (tutAbort) return;
+  // MAKT-ROTATION: förklara att bara ett lag i taget styr politiken (annars lovar övningen för mycket).
+  await tutSay({ ix: 2, focus: '#btn-prop', x: 1040, y: 120,
+    txt: `Men bara <b>ett lag i taget</b> styr politiken — turen <b>roterar varje runda</b>. Är det inte din tur? <b>Ring laget som styr</b> och påverka dem.` });
+  if (tutAbort) return;
   await tutBarrier(3);
   if (tutAbort) return;
 
