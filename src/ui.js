@@ -256,6 +256,29 @@ let tutInCeremony = false;    // tutorialen är i slut-ceremonin (redo→nedräk
 let vantarLag = false;        // väntläge efter tutorial: visar "X/Y lag klara" tills den gemensamma nedräkningen börjar
 let lastTutReady = null;      // senaste tutReadyUpdate {klara, humans} från servern
 const _tutAborters = [];      // väntare som väcks när tutorialen ska avbrytas
+// Obemannad skärm i tutorialen: mäts PÅ skärmen (ingen beröring alls på 90 s) eftersom servern knappt får
+// meddelanden under tutorialen. Når gränsen → berätta för servern, som gör laget till bot så gruppens
+// nedräkning inte blockeras. Bara i drift (ONLINE); solo/lokalt behöver det inte.
+const TUT_IDLE_MS = 90000;
+let tutIdleTimer = null, tutLastTouch = 0, tutIdleSent = false;
+function tutTouch() { tutLastTouch = Date.now(); }
+function startTutIdleWatch() {
+  if (!ONLINE) return;
+  stopTutIdleWatch();
+  tutLastTouch = Date.now(); tutIdleSent = false;
+  document.addEventListener('pointerdown', tutTouch, true);
+  tutIdleTimer = setInterval(() => {
+    if (!tutRunning || tutAbort) { stopTutIdleWatch(); return; }
+    if (!tutIdleSent && Date.now() - tutLastTouch > TUT_IDLE_MS) {
+      tutIdleSent = true;
+      realGame.net.tutIdle?.();           // → servern: laget blir bot (kan återtas via TA TILLBAKA)
+    }
+  }, 5000);
+}
+function stopTutIdleWatch() {
+  if (tutIdleTimer) { clearInterval(tutIdleTimer); tutIdleTimer = null; }
+  document.removeEventListener('pointerdown', tutTouch, true);
+}
 function run(step) {
   queue.push(step);
   if (running) return;
@@ -1307,7 +1330,7 @@ function joinPhase(ph) {
 }
 
 // Omstart (spelledaren) → riv ner allt på den här skärmen och visa lobbyn.
-function fireTutAbort() { tutAbort = true; while (_tutAborters.length) _tutAborters.shift()('abort'); }
+function fireTutAbort() { tutAbort = true; stopTutIdleWatch(); while (_tutAborters.length) _tutAborters.shift()('abort'); }
 // Väntläget efter tutorialen: små diamanter (en per lag, grön = redo) + liten "X/Y lag redo"-text
 // — inte den stora nedräkningssiffran.
 function renderWaitDots(m) {
@@ -1554,6 +1577,7 @@ async function startCeremony() {
     // 10→0 synkat på alla skärmar) och startar runda 1 åt alla samtidigt (realGame 'start' →
     // convergeToGame). INGEN lokal nedräkning, INGEN lokal startGame → aldrig mer osynk.
     realGame.net.tutReady();
+    stopTutIdleWatch();                        // redo-anmäld → blockerar inte längre, sluta bevaka inaktivitet
     vantarLag = true;                         // väntläge → tutReadyUpdate uppdaterar diamanterna
     $('cd-lbl').textContent = 'VÄNTAR PÅ DE ANDRA LAGEN';
     renderWaitDots(lastTutReady);             // små diamanter + "X/Y lag redo" (ej den stora siffran)
@@ -1587,6 +1611,7 @@ async function startCeremony() {
 async function runTutorial() {
   if (tutRunning) return;                      // redan igång (late-join/claim kan trigga dubbelt)
   tutRunning = true; tutAbort = false; tutInCeremony = false; _tutAborters.length = 0;
+  startTutIdleWatch();                          // obemannad skärm (90 s utan beröring) → bot, så gruppen inte fastnar
   game.enterTutorial?.();                       // RUMS-FLÖDE: markera tutorial-fasen för sent anslutna
   const myLag = ONLINE ? realGame.me : (manifest.config?.humanTeam || 'aker');
   const tut = makeTutorial(myLag);

@@ -703,6 +703,17 @@ wss.on('connection', ws => {
         }
         break;
       }
+      case 'tutIdle': {
+        // Obemannad skärm i tutorialen (ingen beröring på 90 s, rapporterat av skärmen) → gör laget till
+        // bot så gruppens nedräkning inte blockeras. Kan återtas (claim) precis som ett bot-övertagande.
+        if (started || !lag || claims[lag] !== ws) break;   // bara i förspelet, bara eget levande lag
+        claims[lag] = 'bot';
+        try { send(ws, { type: 'botTakeover', lag }); } catch {}
+        broadcast({ type: 'notis', text: `🤖 ${NAMN[lag]} var obemannad — en bot tar över` });
+        broadcast(lobbyMsg());
+        maybeStartCountdown();   // kvarvarande redo-lag kan nu starta
+        break;
+      }
       case 'selectCard': {
         if (!lag || resolvingNow) break;
         const res = engine.selectCard(lag, m.tier);
