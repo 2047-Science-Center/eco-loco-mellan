@@ -253,6 +253,7 @@ let startWindowLeft = null;   // 15 s start-fönster: sekunder kvar (null = inge
 let tutRunning = false;       // solo-tutorialen kör (gard mot dubbelstart vid late-join/claim)
 let tutAbort = false;         // omstart mitt i tutorialen → avbryt den rent
 let tutInCeremony = false;    // tutorialen är i slut-ceremonin (redo→nedräkning) — konvergerar själv mot spelet
+let tutOnlyProp = null;       // tutorial: begränsa LÄGG FÖRSLAG-väljaren till EN förslagstyp (ingen förvirrande valmeny)
 let vantarLag = false;        // väntläge efter tutorial: visar "X/Y lag klara" tills den gemensamma nedräkningen börjar
 let lastTutReady = null;      // senaste tutReadyUpdate {klara, humans} från servern
 const _tutAborters = [];      // väntare som väcks när tutorialen ska avbrytas
@@ -960,7 +961,8 @@ $('btn-prop').addEventListener('click', () => {
   if ((S.proposal && !S.proposal.resolved) || S.proposedBy?.includes(game.me) || resolving) return;
   audio.play('ui_tap');
   const used = S.usedProposals || [];   // förslagstyper som redan lagts denna runda → gråas ut
-  $('proplist').innerHTML = visibleProps().map(p => {
+  const lista = tutOnlyProp ? visibleProps().filter(p => p.type === tutOnlyProp) : visibleProps();
+  $('proplist').innerHTML = lista.map(p => {
     const taget = used.includes(p.type);
     return `<div class="propcard propchoice${taget ? ' used' : ''}" data-type="${p.type}"${taget ? ' aria-disabled="true"' : ''}>
       <div class="pic">${p.pic}</div>
@@ -1480,13 +1482,12 @@ function makeTutorial(myLag) {
       const r = engine.transfer(myLag, to, give, gc, get, gc2);
       return r.ok ? { ok: true } : { ok: false, why: r.reason };
     },
-    openProposal: () => {},
+    openProposal: type => engine.openProposal(type, myLag),   // tutorial: spelaren lägger sitt EGET förslag
     vote: yes => engine.vote(myLag, yes),
     klar: () => { em.emit('resolveStart', {}); engine.endRound(); },
     awardsKlara: () => {}, playAgain: () => {},
     script: {
       bots,
-      oppnaForslag: () => engine.openProposal('gron', bots[0]),
       botRosta: id => { engine.vote(id, true); em.emit('voteUpdate', {}); },
     },
   };
@@ -1732,22 +1733,28 @@ async function runTutorial() {
   await tutBarrier(2);
   if (tutAbort) return;
 
-  // ——— 4) RÖSTA → se den delade mätaren svara ———
-  const resolvedP = tutOnce('proposalResolved');
-  tut.script.oppnaForslag();
-  await delay(700);
-  if (tutAbort) return;
-  await tutBeat({ ix: 2, txt: 'Ön behöver hjälp. Rösta <b>JA</b>.', x: 1180, y: 120, focus: null,
-    until: tutWaitP(() => tut.E().getState().proposal?.votes[myLag] !== undefined),
-    autoDo: () => $('btn-ja').click() });
-  if (tutAbort) return;
-  for (const b of tut.script.bots) { await delay(600); if (tutAbort) return; tut.script.botRosta(b); }
-  await Promise.race([resolvedP, delay(3000), tutAbortP()]);
+  // ——— 4) LÄGG ETT EGET FÖRSLAG → de andra röstar ja → den delade mätaren svarar ———
+  // Övningen visar BARA ett förslag (Grön satsning) så det inte blir en förvirrande valmeny:
+  // spelaren trycker LÄGG FÖRSLAG, klickar på det enda kortet och blir själv förslagsläggare.
+  tutOnlyProp = 'gron';
+  const openedP = tutOnce('proposalOpened', p => p.by === myLag);
+  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>LÄGG FÖRSLAG</b> och välj det.', x: 1040, y: 120, focus: '#btn-prop',
+    until: openedP,
+    autoDo: () => { if (!$('ov-choose').classList.contains('open')) $('btn-prop').click(); setTimeout(() => document.querySelector('.propchoice:not(.used)')?.click(), 400); } });
+  tutOnlyProp = null;
   if (tutAbort) return;
   await delay(500);
   if (tutAbort) return;
-  await tutSay({ ix: 2, focus: '.topbar', x: 520, y: 150,
-    txt: `3 av 4 sa ja — <b>ön andas ut ${ico('tillvaxt', 18)}</b>. Din röst flyttade den delade mätaren.`, ms: 3200 });
+  // Du är förslagsläggare (inga röstknappar för dig) → vänta medan de andra lagen röstar ja, ett i taget.
+  const resolvedP = tutOnce('proposalResolved');
+  tut.script.botRosta(myLag);                                     // du backar ditt eget förslag
+  for (const b of tut.script.bots) { await delay(650); if (tutAbort) return; tut.script.botRosta(b); }
+  await Promise.race([resolvedP, delay(3000), tutAbortP()]);
+  if (tutAbort) return;
+  await delay(2100);                                              // låt "Förslaget gick igenom"-raden synas + röstrutan stängas
+  if (tutAbort) return;
+  await tutSay({ ix: 2, focus: '.ohbar', x: 520, y: 190,
+    txt: `Ditt förslag gick igenom ✅ — öns hälsa stiger <b>+${tut.E().cfg.gronGain} ${ico('tillvaxt', 18)}</b>. Så flyttar ni den delade mätaren tillsammans.` });
   if (tutAbort) return;
   await tutBarrier(3);
   if (tutAbort) return;
