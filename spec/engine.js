@@ -32,6 +32,7 @@ export const DEFAULT_CONFIG = {
   // "Blandaren = kris-linjen": en deterministisk, hänvisningsbar kris-gräns som biter MITT i spelet
   // (dagens enda mitt-i-död = öh ≤ 0 nås i praktiken aldrig av en reagerande grupp). Vinstvillkoret
   // (öh ≥ threshold på sista rundan → rikaste vinner) och 0-golvet (backstop) är ORÖRDA.
+  krisGrind: false,   // AV (Klaras test 2026): ingen mitt-i-spelet-kollaps när öh är låg. Spelet avgörs på sista rundan (threshold) + 0-golvet. Sätt true för att återaktivera kris/omspel/game-over nedan.
   krisZon: 20,        // öh ≤ 20 vid bokslut (utan aktiv kris) → KRIS startar. = ohMode 'superdaligt' + hjärnans kris.wav-gräns.
   krisReset: 35,      // öh ≥ 35 vid bokslut (med aktiv kris) → krisen LÖST. 15 p hysteres (= redZone) hindrar flimmer.
   krisReplay: true,   // olöst kris vid deadline → rollback + spela OM rundan (false = krisen fortsätter utan omspel).
@@ -534,6 +535,7 @@ export class EcoLoco {
   // Deadline = 1 runda: krisen deklareras vid bokslut N, måste lösas till bokslut N+1.
   _krisGrind() {
     const c = this.cfg;
+    if (!c.krisGrind) return 'advance';   // AV: ingen kris-deklaration, inget omspel, ingen mitt-i-spelet-kollaps (bara öh 0-golvet + sista rundan avgör)
     if (!this.S.inCrisis) {
       // Ingen aktiv kris → starta om öh föll till/under krisZon vid detta bokslut.
       if (this.S.oh <= c.krisZon) {
