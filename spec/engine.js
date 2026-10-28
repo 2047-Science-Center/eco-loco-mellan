@@ -48,6 +48,7 @@ export const DEFAULT_CONFIG = {
   extraProposalsFromRound: 4,  // först fr.o.m. denna runda dyker extra-förslag upp (runda 1–3 = bara grund-3)
   extraProposalsPerRound: 3,   // exakt så många extra-förslag/runda (utöver grund-3) → 3+3 = 6 att välja på
   krisProposalOh: 20,          // öhälsa under detta → SOS Krispaket ligger ALLTID bland förslagen (även före gate-rundan)
+  powerFromRound: 2,           // MAKT-ROTATION: fr.o.m. denna runda får BARA ett lag (roterar) lägga förslag. Runda 1 = fritt (inlärning).
 
   // Belopp för de NYA extra-förslagen. Konservativt satta — Klara/Josef får tuna.
   // (Grund-3-siffrorna ovan rörs INTE; nya förslag återanvänder dem där det går.)
@@ -180,6 +181,7 @@ export class EcoLoco {
       usedProposals: [],                                           // förslagstyper som redan lagts denna runda
       inCrisis: false, krisReplaysLeft: c.krisMaxReplay,   // kris-mekanik: följer med i getState() → klient + spelledarpult
       proposal: null, proposedBy: [], gronQueued: 0, extraProposals: [],
+      powerTeam: null,                                             // MAKT-ROTATION: vilket lag som får lägga förslag denna runda (null = fritt, t.ex. runda 1)
       eventPool: EVENTS.map(e => e.id), drawnEvents: [], pendingEvent: null,
       teams: AREAS.map(a => ({
         id: a.id, namn: a.namn, farg: a.farg, sektor: a.sektor,
@@ -190,10 +192,11 @@ export class EcoLoco {
       })),
     };
     this._snapshot();
+    this.S.powerTeam = this._powerTeamForRound(1);   // MAKT-ROTATION: vem styr politiken runda 1 (null med default powerFromRound=2)
     this._rollExtraProposals();                      // runda 1 → [] (extra-förslag öppnar först runda ≥4)
     if (this.gm) this._drawEvent();                  // GM: ge spelledaren ett VALBART event redan runda 1 (auto/selfplay rör vi ej → runda 1 fri)
     this._emit('start', { config: c, areas: AREAS });
-    this._emit('roundStart', { round: 1 });
+    this._emit('roundStart', { round: 1, powerTeam: this.S.powerTeam });
     this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: 0 });
     this._captureRound();                            // full state-snapshot = det läge spelarna agerar från (för replayRound)
     return this.S;
@@ -259,6 +262,14 @@ export class EcoLoco {
   }
   // Vilka förslagstyper får öppnas just nu: grund-3 alltid, extra-förslag bara om de ligger i
   // rundans S.extraProposals (hindrar desync — en stale klient kan inte öppna ett icke-aktuellt extra).
+  // MAKT-ROTATION: vilket lag som styr politiken runda R. null = fritt (runda < powerFromRound).
+  // Roterar i områdesordning (Oxen → Björnen → Räven → Örnen → …) från powerFromRound och framåt.
+  _powerTeamForRound(round) {
+    const from = this.cfg.powerFromRound ?? 2;
+    if (!from || round < from) return null;
+    const order = AREAS.map(a => a.id);
+    return order[(round - from) % order.length];
+  }
   _proposalAllowed(type) {
     if (type === 'gron' || type === 'skatt' || type === 'forbud') return true;
     return (this.S?.extraProposals || []).includes(type);
@@ -267,6 +278,7 @@ export class EcoLoco {
   // ACTION: politik. ETT förslag per LAG per runda (byTeamId får lägga ett, inte två). Förslagen
   // avgörs ett i taget. type: grund-3 ('gron'|'skatt'|'forbud') + rundans extra (S.extraProposals).
   openProposal(type, byTeamId) {
+    if (this.S.powerTeam && byTeamId !== this.S.powerTeam) return;   // MAKT-ROTATION: bara rundans maktlag får lägga förslag
     if (!this._proposalAllowed(type)) return;        // icke-aktuellt extra-förslag → ignoreras (server-auktoritativt)
     if ((this.S.proposedBy || []).includes(byTeamId)) return;   // laget har redan lagt sitt förslag denna runda
     if ((this.S.usedProposals || []).includes(type)) return;    // förslagstypen är redan lagd denna runda (ett annat lag tog den)
@@ -507,9 +519,10 @@ export class EcoLoco {
 
     this.S.round++;
     this._snapshot();
+    this.S.powerTeam = this._powerTeamForRound(this.S.round);   // MAKT-ROTATION: nästa lag i turordningen styr politiken
     this._rollExtraProposals();                      // rulla rundans extra-förslag (server-auktoritativt) före roundStart
     this._drawEvent();                               // dra rundans händelse (före roundStart → servern ser pendingEvent)
-    this._emit('roundStart', { round: this.S.round });
+    this._emit('roundStart', { round: this.S.round, powerTeam: this.S.powerTeam });
     if (!this.gm && this.S.pendingEvent) this._runEvent(this.S.pendingEvent);   // auto-läge: applicera direkt
     this._captureRound();                            // snapshot EFTER rundsetup + ev. auto-händelse = replay-punkt
   }

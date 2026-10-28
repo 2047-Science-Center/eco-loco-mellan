@@ -508,10 +508,11 @@ function renderLag(ph, s) {
     const role = kind === 'human' ? 'spelare' : kind === 'bot' ? 'bot' : 'tom';
     const rollTxt = role === 'spelare' ? 'SPELARE' : role === 'bot' ? 'BOT' : 'TOM';
     const te = tempoFor(l.id, role, ph, s);
+    const makt = s.powerTeam === l.id ? ' 🏛️' : '';          // MAKT-ROTATION: markera vilket lag som styr politiken denna runda
     return `<div class="lagrow">
       <span class="ldot ${role === 'spelare' ? '' : role}"></span>
       <span class="lchip" style="background:${l.farg}"></span>
-      <span class="lnamnbox"><b>${l.namn}</b><small>${l.mark.toUpperCase()}</small></span>
+      <span class="lnamnbox"><b>${l.namn}${makt}</b><small>${l.mark.toUpperCase()}</small></span>
       <span class="lroll ${role}">${rollTxt}</span>
       <span class="ltempo ${te.c}">${te.t}</span>
     </div>`;

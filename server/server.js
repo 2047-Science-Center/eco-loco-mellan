@@ -560,14 +560,23 @@ function maybeResolve() {
 }
 
 function maybeBotProposal(round) {
-  if (round < 2 || Math.random() > 0.35) return;
+  if (round < 2) return;
   setTimeout(() => {
     const S = engine.getState();
     if (S.over || (S.proposal && !S.proposal.resolved) || resolvingNow || Date.now() < proposalCooldownUntil) return;   // bara ett oavgjort i taget + kö-paus
-    // ett förslag per lag/runda → välj en bot som inte redan lagt sitt förslag
-    const bots = TEAMS.filter(id => claims[id] === 'bot' && !(S.proposedBy || []).includes(id));
-    if (!bots.length) return;
-    const by = bots[Math.floor(Math.random() * bots.length)];
+    // MAKT-ROTATION: har rundan ett maktlag är det BARA det laget som får lägga förslag.
+    const power = S.powerTeam;
+    let by;
+    if (power) {
+      if (claims[power] !== 'bot') return;                        // maktlaget är en människa → de bestämmer själva
+      if ((S.proposedBy || []).includes(power)) return;           // maktlaget (bot) har redan lagt sitt
+      by = power;                                                 // en bot med makten lägger ALLTID ett förslag (så rundan har en politisk fråga)
+    } else {
+      if (Math.random() > 0.35) return;                           // ingen makt-runda (runda 1) → gammal slump
+      const bots = TEAMS.filter(id => claims[id] === 'bot' && !(S.proposedBy || []).includes(id));
+      if (!bots.length) return;
+      by = bots[Math.floor(Math.random() * bots.length)];
+    }
     // Grund-3 öhälso-viktat (som förr). Fr.o.m. runda 4: boten kan även välja ur rundans
     // extra-pool (S.extraProposals); i kris prioriteras Krispaket. Samma logik som src/ui.js pickBotProposal.
     const base = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')

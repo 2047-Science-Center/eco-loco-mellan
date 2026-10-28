@@ -441,6 +441,30 @@ function renderAwardCard(typ, w, footer = '') {
 // 'award' själv via den seriella kön före gameEnd → då visas slut direkt.
 let pendingSlut = null, slutFailsafe = null;
 let cerNastaRunda = null;   // online: "RUNDA N"-bannern hålls tills prisceremonin är klar (awardDone) så den syns NÄR nya rundan börjar
+let roundPowerTeam = null;  // MAKT-ROTATION: vilket lag som styr politiken denna runda (ur roundStart-payloaden)
+
+// MAKT-ROTATION: visa vilket lag som styr politiken denna runda. Klick-genom, auto-fortsätt efter 8 s
+// (självspel fastnar aldrig). Egen text på maktlagets skärm vs de andra. Ingen banner om powerTeam saknas (t.ex. runda 1).
+function showPowerBanner(powerTeam) {
+  if (!powerTeam) return Promise.resolve();
+  const namn = teamName(powerTeam);
+  $('power-logo').innerHTML = logoSVG(powerTeam, 140);
+  if (game.me === powerTeam) {
+    $('power-rubrik').innerHTML = 'NI HAR DEN POLITISKA MAKTEN!';
+    $('power-tx').innerHTML = 'Välj vilket förslag ön ska rösta om den här rundan.<br>Lyssna på de andra företagen — eller driv er egen agenda!';
+  } else {
+    $('power-rubrik').innerHTML = `${namn.toUpperCase()} STYR POLITIKEN!`;
+    $('power-tx').innerHTML = `Den här rundan lägger <b>${namn}</b> fram ett politiskt förslag.<br>Vill ni påverka? <b>Ring ${namn}</b> och övertyga dem!`;
+  }
+  $('ov-power').classList.add('open');
+  audio.play('ui_open');
+  return new Promise(res => {
+    let done = false;
+    const finish = () => { if (done) return; done = true; $('ov-power').onclick = null; clearTimeout(tmo); $('ov-power').classList.remove('open'); res(); };
+    $('ov-power').onclick = finish;
+    const tmo = setTimeout(finish, 8000);
+  });
+}
 function showPendingSlut() {
   clearTimeout(slutFailsafe); slutFailsafe = null;
   if (!pendingSlut) return;
@@ -479,7 +503,7 @@ game.on('awardDone', p => run(async () => {
   renderRegs();
   if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
   // Prisceremonin klar → nu (när nya rundan faktiskt börjar) byts rundnumret och "RUNDA N"-popupen visas.
-  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`RUNDA ${r}`, false, 1800); }
+  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`RUNDA ${r}`, false, 1800); await showPowerBanner(roundPowerTeam); }
 }));
 
 game.on('roundEnd', () => run(async () => renderRegs()));
@@ -500,13 +524,17 @@ game.on('roundStart', p => run(async () => {
   $('ov-trade').classList.remove('open'); $('ov-tradein').classList.remove('open');   // stäng ev. kvarglömda handels-/förslagsfönster från förra rundan
   $('ov-choose').classList.remove('open');
   $('ov-vote').classList.remove('open'); voteOpenFor = null;
+  roundPowerTeam = p.powerTeam || null;                          // MAKT-ROTATION: vem styr politiken denna runda
   if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
   // round_start-ljud spelas centralt (rigg). Online: håll "RUNDA N" tills prisceremonin är klar
   // (roundStart kommer medan ceremonin fortfarande spelas) → bannras i awardDone. Lokalt: visa direkt.
-  if (p.round > 1) { if (ONLINE) cerNastaRunda = p.round; else await banner(`RUNDA ${p.round}`, false, 1300); }
+  if (p.round > 1) {
+    if (ONLINE) cerNastaRunda = p.round;
+    else { await banner(`RUNDA ${p.round}`, false, 1300); await showPowerBanner(roundPowerTeam); }
+  }
   picked = null; expanded = null; resolving = false; klarLag = new Set();
   renderHand(); renderMe(); renderTeams(); renderRegs();
-  $('btn-prop').disabled = false;
+  renderPropBtn();                                                // gata LÄGG FÖRSLAG på maktlaget (inte bara disabled=false)
   $('endwrap').classList.remove('pulse');
   setEndBtn('AVSLUTA<br>OMGÅNG', false);
 }));
@@ -645,7 +673,16 @@ function renderPropBtn() {
   const S = E().getState();
   const lagt = !!S?.proposedBy?.includes(game.me);
   const propOpen = !!(S?.proposal && !S.proposal.resolved);
+  const power = S?.powerTeam || null;                   // MAKT-ROTATION: vilket lag som styr politiken denna runda
+  const sub = document.querySelector('.politik-sub');
   btn.classList.toggle('lagt', lagt);
+  if (power && power !== game.me) {                     // inte ditt lag → knappen låst, hänvisa till maktlaget
+    btn.disabled = true; btn.classList.remove('lagt');
+    btn.innerHTML = `${ico('rosta', 22)} ${teamName(power).toUpperCase()} STYR`;
+    if (sub) sub.innerHTML = `🏛️ ${teamName(power)} styr politiken · ring och påverka`;
+    return;
+  }
+  if (sub) sub.textContent = power === game.me ? '🏛️ Du styr politiken denna runda' : 'Ett förslag per lag · 3 av 4 JA avgör';
   if (lagt) { btn.disabled = true; btn.innerHTML = `${ico('rosta', 22)} FÖRSLAG LAGT ✓`; }
   else { btn.disabled = propOpen || resolving; btn.innerHTML = `${ico('rosta', 22)} LÄGG FÖRSLAG`; }
 }
