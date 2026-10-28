@@ -206,9 +206,9 @@ function fireTrailerCue(cmds) {
     riggSend(c.topic, payload);   // lågnivå, ungated — trailern är en systemceremoni (som paus)
   }
 }
+function clearTrailerTimers() { for (const t of trailerTimers) clearTimeout(t); trailerTimers = []; }
 function stopTrailer() {
-  for (const t of trailerTimers) clearTimeout(t);
-  trailerTimers = [];
+  clearTrailerTimers();
   trailerPlaying = false;
   riggSend('ecoloco/rigg/trailer', '0');   // stoppa ev. centralt trailer-ljud (hjärnan)
 }
@@ -223,8 +223,9 @@ function playTrailer() {
   console.log(`[trailer] start — ${TRAILER_CUES.length} ljus-cues från servern (EN källa)`);
   broadcast({ type: 'event', event: 'trailer', payload: { src, dur: TRAILER_DUR } });
   // Skärmarna spelar videon TYST — trailer-ljudet går CENTRALT via hjärnan (navet → centralhögtalaren).
-  stopTrailer(); trailerPlaying = true;    // stopTrailer nollar flaggan (+ ev. gammalt trailer-ljud) — sätt tillbaka
-  riggSend('ecoloco/rigg/trailer', '1');   // starta centralt trailer-ljud
+  clearTrailerTimers();                    // rensa ev. gamla timers UTAN att röra ljud-topicen (undvik 0→1-race)
+  trailerPlaying = true;
+  riggSend('ecoloco/rigg/trailer', '1');   // starta centralt trailer-ljud (ren 0→1 — topicen nollas vid trailerns slut)
   trailerTimers = TRAILER_CUES.map(cue => setTimeout(() => {
     fireTrailerCue(cue.cmds);
     console.log(`[trailer] cue ${cue.t.toFixed(1)}s · ${cue.label}`);
@@ -232,6 +233,7 @@ function playTrailer() {
   const endMs = Math.round((TRAILER_CUES[TRAILER_CUES.length - 1].t + 1) * 1000);
   trailerTimers.push(setTimeout(() => {
     trailerPlaying = false;
+    riggSend('ecoloco/rigg/trailer', '0');   // trailern slut → nollställ ljud-topicen, annars står den kvar som "körd" och nästa trailer triggar inte om
     broadcast({ type: 'event', event: 'trailerDone' });
     console.log('[trailer] klar');
   }, endMs));
