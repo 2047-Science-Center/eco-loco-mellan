@@ -477,8 +477,8 @@ game.on('awardDone', p => run(async () => {
   $('ov-award').classList.remove('open');
   renderRegs();
   if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
-  // Prisceremonin klar → nu (när nya rundan faktiskt börjar) visas "RUNDA N"-popupen.
-  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; await banner(`RUNDA ${r}`, false, 1800); }
+  // Prisceremonin klar → nu (när nya rundan faktiskt börjar) byts rundnumret och "RUNDA N"-popupen visas.
+  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`RUNDA ${r}`, false, 1800); }
 }));
 
 game.on('roundEnd', () => run(async () => renderRegs()));
@@ -493,7 +493,12 @@ game.on('start', () => run(async () => {
 }));
 
 game.on('roundStart', p => run(async () => {
-  $('roundnum').textContent = p.round;
+  // Online runda>1: roundStart kommer MEDAN förra rundans ceremoni spelas → vänta med att byta
+  // rundnummer tills ceremonin är klar (awardDone), annars hoppar siffran fram för tidigt.
+  if (!(ONLINE && p.round > 1)) $('roundnum').textContent = p.round;
+  $('ov-trade').classList.remove('open'); $('ov-tradein').classList.remove('open');   // stäng ev. kvarglömda handels-/förslagsfönster från förra rundan
+  $('ov-choose').classList.remove('open');
+  $('ov-vote').classList.remove('open'); voteOpenFor = null;
   if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
   // round_start-ljud spelas centralt (rigg). Online: håll "RUNDA N" tills prisceremonin är klar
   // (roundStart kommer medan ceremonin fortfarande spelas) → bannras i awardDone. Lokalt: visa direkt.
@@ -923,7 +928,7 @@ function propDefs() {
     { type: 'gronstod', pic: '💊', rubrik: 'Riktat grönt stöd', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)} → hela potten<br>går till grönaste laget (<b>${gron.namn}</b>).`, ja: `JA — jag skänker ${c.gronCost} ${ico('pengar', 14)}` },
     // ── NYA testförslag ──
     { type: 'grannskatt', pic: '💰', rubrik: 'Grannskatt', tx: `De <b>två rikaste</b> betalar ${c.grannskattAmount} ${ico('pengar', 14)} var →<br>delas på de två fattigaste.`, ja: 'JA — ta från de rika' },
-    { type: 'sektorblockad', pic: '🚫', rubrik: 'Sektorblockad', tx: `Nästa runda får <b>motståndarsektorn</b><br>inte bygga smutsigt.`, ja: 'JA — blockera dem' },
+    { type: 'sektorblockad', pic: '🚧', rubrik: 'Sektorblockad', tx: `Nästa runda får <b>motståndarsektorn</b><br>inte bygga smutsigt.`, ja: 'JA — blockera dem' },
     { type: 'allians', pic: '🫂', rubrik: 'Allians', tx: `Varje <b>JA-lag</b> får +${c.alliansBonus} ${ico('pengar', 14)},<br>varje <b>NEJ-lag</b> betalar ${c.alliansBoter} ${ico('pengar', 14)}.`, ja: `JA — gå med` },
     { type: 'kustvakt', pic: '🌊', rubrik: 'Kustvakt', tx: `<b>Räven + Örnen</b> betalar ${c.kustvaktAmount} ${ico('pengar', 14)} var<br>för stormskydd → ön +${c.kustvaktOh}.`, ja: 'JA — skydda kusten' },
     { type: 'tvillingsatsning', pic: '👯', rubrik: 'Tvillingsatsning', tx: `<b>Oxen + Björnen</b>: om BÅDA röstar JA betalar de<br>${c.tvillingAmount} ${ico('pengar', 14)} var och ön +${c.tvillingOh}. Annars inget.`, ja: 'JA — vi satsar ihop' },
@@ -1538,7 +1543,7 @@ async function tutBarrier(beat) {
 }
 
 // Konsekvens-beat ("SE"): spelaren läser i egen takt och trycker NÄSTA för att gå vidare.
-function tutSay({ ix, txt, x, y, focus }) {
+function tutSay({ ix, txt, x, y, focus, hold }) {   // hold = ingen auto-timeout (info-rutor före tutorialen väntar på tryck)
   if (tutAbort) return Promise.resolve();      // omstart under tutorialen → visa ingenting mer
   return new Promise(res => {
     tutFocus(focus);
@@ -1555,7 +1560,7 @@ function tutSay({ ix, txt, x, y, focus }) {
       next.style.display = 'none'; b.style.display = 'none'; tutFocus(null); res();
     };
     next.onclick = finish;
-    const tmo = setTimeout(finish, 45000);   // kiosk-säkring: aldrig fast för alltid
+    const tmo = hold ? null : setTimeout(finish, 45000);   // kiosk-säkring: aldrig fast för alltid (hold → vänta på tryck; obemannad skärm fångas av 90 s idle→bot)
     tutAbortP().then(finish);                // omstart → släpp direkt (finish är idempotent via done)
   });
 }
@@ -1632,20 +1637,20 @@ async function runTutorial() {
       $('roll-tx').innerHTML = `Du ansvarar för <b>${TERRAIN[myLag] || a.namn}</b> och producerar `
         + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`;
       $('ov-roll').classList.add('open');
-      await Promise.race([delay(5000), new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);
+      await Promise.race([new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);   // ingen auto-timeout: vänta på tryck (obemannad skärm fångas av 90 s idle→bot)
       $('ov-roll').onclick = null; $('ov-roll').classList.remove('open');
       if (tutAbort) return;
     }
   }
 
   // ——— INTRO: vad går spelet ut på? (3 rutor, klicka igenom, highlightar relevant yta) ———
-  await tutSay({ ix: 0, focus: '.res', x: 300, y: 380,
+  await tutSay({ ix: 0, focus: '.res', x: 300, y: 380, hold: true,
     txt: '🎯 Målet: bli <b>rikast</b>. Den som har mest <b>pengar + material</b> tillsammans när spelet är slut vinner.' });
   if (tutAbort) return;
-  await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190,
+  await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190, hold: true,
     txt: '⏱ Ni spelar <b>8 rundor</b> totalt. Varje runda bygger ni, byter och röstar.' });
   if (tutAbort) return;
-  await tutSay({ ix: 0, focus: '.ohbar', x: 520, y: 190,
+  await tutSay({ ix: 0, focus: '.ohbar', x: 520, y: 190, hold: true,
     txt: '🏝 Men håll <b>öns hälsa över 60</b> till slutet — annars <b>kollapsar hela ön och ingen vinner</b>. Ni sitter i samma båt.' });
   if (tutAbort) return;
 
