@@ -128,7 +128,7 @@ const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjort
 let proposalCooldownUntil = 0;
 // Inaktiva skärmar → bot: ett lag som inte gör NÅGOT på IDLE_TAKEOVER_MS under en pågående runda
 // tas över av en bot (bygger + driver rundan), syns som BOT på pulten, och kan återtas med ett tryck.
-const IDLE_TAKEOVER_MS = 30000;
+const IDLE_TAKEOVER_MS = 60000;
 const lastSeen = {};            // teamId → senaste tidpunkt laget gjorde något (nollställs vid rundstart)
 function touchLag(id) { if (id) lastSeen[id] = Date.now(); }
 // KOPPLING 2 — intro-trailer: trailerPlaying = kör just nu (gardar både command- och auto-vägen
@@ -391,7 +391,6 @@ function newEngine() {
   });
   engine.on('roundStart', p => {
     resolvingNow = false; klar = new Set();
-    const now = Date.now(); for (const id of TEAMS) lastSeen[id] = now;   // ny runda → alla räknas som aktiva (idle-klockan börjar om)
     broadcast({ type: 'event', event: 'roundStart', payload: p });
     // GM-läge: motorn har dragit rundans förslag men inte applicerat det — visa det för spelledarpanelen.
     if (gmMode) {
@@ -425,6 +424,7 @@ function startTimer() {
   const full = roundFull();
   timerLeft = full;
   let countdownFired = false;                 // 10 s-nedräkningen fyras en gång per runda
+  const now = Date.now(); for (const id of TEAMS) lastSeen[id] = now;   // idle-klockan börjar FÖRST när rundan är spelbar → prisutdelningens tid räknas inte
   broadcast({ type: 'timer', left: timerLeft, full });
   timerInt = setInterval(() => {
     if (paused) return;   // pausad → frys nedräkningen. Inget rigg-cue skickas, så ambiencen loopar vidare.
@@ -449,6 +449,7 @@ function setPaused(on) {
   on = !!on;
   if (on === paused || !started) return;
   paused = on;
+  if (!paused) { const now = Date.now(); for (const id of TEAMS) lastSeen[id] = now; }   // fortsätt → pausens tid räknas inte mot idle
   broadcast({ type: 'paused', paused, left: timerLeft });
   riggSend('ecoloco/rigg/paus', paused ? 1 : 0);
   console.log(`[spel] paus = ${paused}`);
