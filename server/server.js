@@ -673,7 +673,10 @@ setInterval(() => {
     broadcast(lobbyMsg());                                         // pulten + skärmarna speglar bot-läget
     togNagon = true;
   }
-  if (togNagon) maybeResolve();   // togs sista blockerande människan över? → rundan kan avgöras nu
+  // Togs sista människan över, ELLER är hela bordet redan botar? → rundan ska inte vänta ut timern.
+  // (Utan detta stod rena bot-rundor och tickade hela vägen, eftersom bara en människas "klar" annars
+  // triggar maybeResolve.) Noll levande människor → lös rundan nu; botarna bygger i forceResolve.
+  if (togNagon || liveHumanIds().length === 0) maybeResolve();
 }, IDLE_TICK_MS);
 
 wss.on('connection', ws => {
