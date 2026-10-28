@@ -126,11 +126,14 @@ let resolvingNow = false;
 let eventFiring = false;        // en spelledar-händelse körs (rigg-cue + 3 s fördröjning innan den visas)
 const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjorts innan nästa får läggas (hinner visa resultatet)
 let proposalCooldownUntil = 0;
-// Inaktiva skärmar → bot: ett lag som inte gör NÅGOT på IDLE_TAKEOVER_MS under en pågående runda
-// tas över av en bot (bygger + driver rundan), syns som BOT på pulten, och kan återtas med ett tryck.
-const IDLE_TAKEOVER_MS = 60000;
-const lastSeen = {};            // teamId → senaste tidpunkt laget gjorde något (nollställs vid rundstart)
-function touchLag(id) { if (id) lastSeen[id] = Date.now(); }
+// Inaktiva skärmar → bot: idleMs räknar AKTIV speltid (medan rundtimern tickar) sedan laget senast
+// gjorde något. Prisutdelning/paus räknas INTE (vakten står still då), och klockan persistar över
+// rundor → en övergiven skärm blir bot "till nästa runda", men en som bara funderar en stund gör det
+// inte (tröskeln är längre än en hel runda). Varje handling nollställer den. Kan återtas med ett tryck.
+const IDLE_TAKEOVER_MS = 180000;   // ~1,5 runda (120 s) aktiv inaktivitet → bot
+const IDLE_TICK_MS = 5000;
+const idleMs = {};              // teamId → ackumulerad aktiv speltid utan handling
+function touchLag(id) { if (id) idleMs[id] = 0; }
 // KOPPLING 2 — intro-trailer: trailerPlaying = kör just nu (gardar både command- och auto-vägen
 // mot dubbelstart). trailerPlayedAuto = auto-vägen har fyrat denna lobby-cykel (nollas vid startGame).
 let trailerPlaying = false, trailerPlayedAuto = false, trailerTimers = [];
@@ -424,7 +427,6 @@ function startTimer() {
   const full = roundFull();
   timerLeft = full;
   let countdownFired = false;                 // 10 s-nedräkningen fyras en gång per runda
-  const now = Date.now(); for (const id of TEAMS) lastSeen[id] = now;   // idle-klockan börjar FÖRST när rundan är spelbar → prisutdelningens tid räknas inte
   broadcast({ type: 'timer', left: timerLeft, full });
   timerInt = setInterval(() => {
     if (paused) return;   // pausad → frys nedräkningen. Inget rigg-cue skickas, så ambiencen loopar vidare.
@@ -449,7 +451,6 @@ function setPaused(on) {
   on = !!on;
   if (on === paused || !started) return;
   paused = on;
-  if (!paused) { const now = Date.now(); for (const id of TEAMS) lastSeen[id] = now; }   // fortsätt → pausens tid räknas inte mot idle
   broadcast({ type: 'paused', paused, left: timerLeft });
   riggSend('ecoloco/rigg/paus', paused ? 1 : 0);
   console.log(`[spel] paus = ${paused}`);
@@ -623,22 +624,26 @@ setInterval(() => {
   }
 }, 10000);
 
-// Idle-vakt: en öppen men inaktiv skärm tas över av en bot under pågående runda, så spelet aldrig
-// fastnar på en som "somnat". Bara när rundtimern faktiskt tickar (inte i lobby/tutorial/prisutdelning).
+// Idle-vakt: en öppen men inaktiv skärm tas över av en bot, så spelet aldrig fastnar på en som
+// "somnat". idleMs räknar BARA upp medan rundtimern tickar (inte lobby/tutorial/prisutdelning/paus) →
+// den ackumulerade tiden är ren aktiv speltid, persistar över rundor, och nollställs av varje handling.
 setInterval(() => {
   if (!started || !engine || !timerInt || paused || resolvingNow || engine.getState().over) return;
-  const now = Date.now();
+  let togNagon = false;
   for (const id of TEAMS) {
     const ws = claims[id];
     if (!ws || ws === 'bot' || ws.readyState !== 1) continue;      // bara levande människor
-    if (now - (lastSeen[id] || now) < IDLE_TAKEOVER_MS) continue;  // har gjort något nyligen
+    idleMs[id] = (idleMs[id] || 0) + IDLE_TICK_MS;
+    if (idleMs[id] < IDLE_TAKEOVER_MS) continue;                   // ännu inte nog aktiv inaktivitet
+    idleMs[id] = 0;
     claims[id] = 'bot';                                            // → bot sköter laget (bygger vid bokslut, driver rundan)
     try { send(ws, { type: 'botTakeover', lag: id }); } catch {}   // tala om för just den skärmen → erbjud "ta tillbaka"
     broadcast({ type: 'notis', text: `🤖 ${NAMN[id]} var inaktiv — en bot tog över` });
     broadcast(lobbyMsg());                                         // pulten + skärmarna speglar bot-läget
+    togNagon = true;
   }
-  maybeResolve();   // togs sista blockerande människan över? → rundan kan avgöras nu
-}, 5000);
+  if (togNagon) maybeResolve();   // togs sista blockerande människan över? → rundan kan avgöras nu
+}, IDLE_TICK_MS);
 
 wss.on('connection', ws => {
   ws._alive = true;

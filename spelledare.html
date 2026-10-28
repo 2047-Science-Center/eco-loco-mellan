@@ -400,7 +400,7 @@ function onEvent(ev, p) {
   else if (ev === 'tutReadyUpdate') { tutKlara = new Set(p.klara || []); }
   else if (ev === 'roundStart') { roundKlar = new Set(); }
   else if (ev === 'tilllobby' || ev === 'tillattract' || ev === 'startGo') { roundKlar = new Set(); tutKlara = new Set(); }
-  if (ev === 'timer') { timerLeft = p.left; timerFull = p.full; if (p.paused !== undefined) setPaused(p.paused); }
+  if (ev === 'timer') { timerLeft = p.left; timerFull = p.full; }   // OBS: timer.paused=true kommer även under prisutdelningen (award-håll) → driv INTE "fryst"-bannern härifrån, bara från äkta paused-eventet
   else if (ev === 'paused') { setPaused(p.paused); if (p.left !== undefined) timerLeft = p.left; }
   else if (ev === 'awardCeremony') { award = { i: -1, total: p.total }; toast('Prisutdelning startad'); }
   else if (ev === 'awardStep') { award = p; }

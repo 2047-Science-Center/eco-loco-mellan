@@ -11,9 +11,9 @@
 
 export const DEFAULT_CONFIG = {
   rounds: 8,
-  timerSec: 90,
+  timerSec: 120,      // ALLA rundor 120 s (fler valmöjligheter nu → lagen behöver prata med varandra)
   timerSecEarly: 120, // rundtid för de första rundorna (inlärning)
-  earlyRounds: 3,     // så många rundor körs med timerSecEarly
+  earlyRounds: 3,     // så många rundor körs med timerSecEarly (nu samma 120 s som resten)
   startPengar: 35,   // OMBALANSERING: symmetrisk start (var 40) — se design/REBALANSERING-FORSLAG.md §7 för nuläge
   startMaterial: 35, // OMBALANSERING: symmetrisk start (var 30); summan 70 oförändrad
   ohStart: 50,
