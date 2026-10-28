@@ -48,6 +48,28 @@ const riggSend = (t, m) => {
 // tänds award-scenen men pilen + award-ljudet kommer aldrig (buggen i spelledarläge).
 const AMBIENT_TOPICS = new Set(['ecoloco/rigg/ohalsa', 'ecoloco/rigg/scen', 'ecoloco/rigg/award']);
 const riggPublish = (t, m) => { if (riggSilent && !AMBIENT_TOPICS.has(t)) return; riggSend(t, m); };
+
+// ─── Rigg-cues vid spelledarens händelser (§7: spelet sänder BETYDELSE, riggen tolkar) ───
+// Samma semantiska cues som spelledarpultens RIGG-knappar, men avfyrade från servern så en
+// händelse kan trigga ljus+ljud innan den visas på skärmarna. Ungated (riggSend) = som pultens
+// egna knappar, spelar även "med spelledare". Lägg till fler namn här vid behov.
+const RIGG_EVENT_DELAY_MS = 3000;   // rigg-cue körs → 3 s senare dyker händelsen upp på skärmarna
+const R_ = 'ecoloco/rigg/';
+function fireRiggCue(cue) {
+  switch (cue) {
+    case 'kris':          riggSend(R_ + 'gm/ljud', 'larm'); riggSend(R_ + 'kris', '1'); break;
+    case 'fanfar':        riggSend(R_ + 'gm/ljud', 'win'); riggSend(R_ + 'gm/alla_grona', '1'); break;
+    case 'nedrakning':    riggSend(R_ + 'countdown', '1'); setTimeout(() => riggSend(R_ + 'countdown', '0'), 10000); break;
+    case 'startceremoni': riggSend(R_ + 'ceremoni', 'countdown'); setTimeout(() => riggSend(R_ + 'ceremoni', 'climax'), 3000); break;
+    case 'happening':
+    default:              riggSend(R_ + 'ljud', 'happening'); riggSend(R_ + 'wave', '1'); setTimeout(() => riggSend(R_ + 'wave', '0'), 3000); break;
+  }
+}
+// Vilken rigg-cue varje händelse (event-id) får när spelledaren kör den. Default = 'happening'.
+// Tilldela specialcues här efter hand (t.ex. uppror = "folket har fått nog" → kris/larm).
+const EVENT_RIGG_CUE = {
+  uppror: 'kris',
+};
 // Bänkarnas kontrollbord: src/mqtt.js (attachMqtt) bygger topics/innehåll per bänk
 // (ecoloco/<benchId>/money|resources|winner|looser). Här kopplar vi den mot SAMMA broker,
 // RETAINED (-r) så en bänk som startar om / ansluter sent direkt får senaste värdet.
@@ -101,8 +123,14 @@ let cer = null;                // prisutdelning som SERVERN dirigerar (båda lä
 let cerTimer = null;           // selfplay: auto-stegarens timer (server-dirigerad lockstep skärm+rigg)
 const CEREMONY_STEP_MS = 8000; // selfplay: tid per pris (skärm + rigg kliver i exakt denna takt)
 let resolvingNow = false;
+let eventFiring = false;        // en spelledar-händelse körs (rigg-cue + 3 s fördröjning innan den visas)
 const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjorts innan nästa får läggas (hinner visa resultatet)
 let proposalCooldownUntil = 0;
+// Inaktiva skärmar → bot: ett lag som inte gör NÅGOT på IDLE_TAKEOVER_MS under en pågående runda
+// tas över av en bot (bygger + driver rundan), syns som BOT på pulten, och kan återtas med ett tryck.
+const IDLE_TAKEOVER_MS = 30000;
+const lastSeen = {};            // teamId → senaste tidpunkt laget gjorde något (nollställs vid rundstart)
+function touchLag(id) { if (id) lastSeen[id] = Date.now(); }
 // KOPPLING 2 — intro-trailer: trailerPlaying = kör just nu (gardar både command- och auto-vägen
 // mot dubbelstart). trailerPlayedAuto = auto-vägen har fyrat denna lobby-cykel (nollas vid startGame).
 let trailerPlaying = false, trailerPlayedAuto = false, trailerTimers = [];
@@ -308,7 +336,7 @@ function resetToLobby() {
   broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
   stopTimer();
   clearTimeout(cerTimer);
-  slutdel = null; cer = null; lastAwards = null; resolvingNow = false;
+  slutdel = null; cer = null; lastAwards = null; resolvingNow = false; eventFiring = false;
   started = false; paused = false;
   klar = new Set(); tutBeats = {}; awardsVantar = new Set(); trailerPlayedAuto = false;
   for (const id of TEAMS) if (claims[id] === 'bot') claims[id] = null;   // släpp botarna, behåll människornas platser
@@ -361,6 +389,7 @@ function newEngine() {
   });
   engine.on('roundStart', p => {
     resolvingNow = false; klar = new Set();
+    const now = Date.now(); for (const id of TEAMS) lastSeen[id] = now;   // ny runda → alla räknas som aktiva (idle-klockan börjar om)
     broadcast({ type: 'event', event: 'roundStart', payload: p });
     // GM-läge: motorn har dragit rundans förslag men inte applicerat det — visa det för spelledarpanelen.
     if (gmMode) {
@@ -591,18 +620,37 @@ setInterval(() => {
   }
 }, 10000);
 
+// Idle-vakt: en öppen men inaktiv skärm tas över av en bot under pågående runda, så spelet aldrig
+// fastnar på en som "somnat". Bara när rundtimern faktiskt tickar (inte i lobby/tutorial/prisutdelning).
+setInterval(() => {
+  if (!started || !engine || !timerInt || paused || resolvingNow || engine.getState().over) return;
+  const now = Date.now();
+  for (const id of TEAMS) {
+    const ws = claims[id];
+    if (!ws || ws === 'bot' || ws.readyState !== 1) continue;      // bara levande människor
+    if (now - (lastSeen[id] || now) < IDLE_TAKEOVER_MS) continue;  // har gjort något nyligen
+    claims[id] = 'bot';                                            // → bot sköter laget (bygger vid bokslut, driver rundan)
+    try { send(ws, { type: 'botTakeover', lag: id }); } catch {}   // tala om för just den skärmen → erbjud "ta tillbaka"
+    broadcast({ type: 'notis', text: `🤖 ${NAMN[id]} var inaktiv — en bot tog över` });
+    broadcast(lobbyMsg());                                         // pulten + skärmarna speglar bot-läget
+  }
+  maybeResolve();   // togs sista blockerande människan över? → rundan kan avgöras nu
+}, 5000);
+
 wss.on('connection', ws => {
   ws._alive = true;
   ws.on('pong', () => { ws._alive = true; });
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     const lag = ws._lag;
+    if (lag && claims[lag] === ws) touchLag(lag);   // laget gjorde något → nollställ dess idle-klocka
     switch (m.type) {
 
       case 'hello': {
         if (m.lag && TEAMS.includes(m.lag) && (!claims[m.lag] || claims[m.lag] === 'bot' || claims[m.lag].readyState !== 1)) {
           const varBot = claims[m.lag] === 'bot';
           claims[m.lag] = ws; ws._lag = m.lag;
+          touchLag(m.lag);   // färsk aktivitet → idle-vakten tar inte tillbaka laget direkt
           if (varBot && started && !engine.getState().over) broadcast({ type: 'notis', text: `🧑 En spelare tog över ${NAMN[m.lag]}` });
         }
         send(ws, { type: 'hello-ack', lag: ws._lag ?? null, started, config: engine?.cfg ?? new EcoLoco(manifest.config || {}).cfg });
@@ -618,6 +666,7 @@ wss.on('connection', ws => {
         if (free) {
           if (lag && claims[lag] === ws) claims[lag] = started ? 'bot' : null;
           claims[m.lag] = ws; ws._lag = m.lag;
+          touchLag(m.lag);   // färsk aktivitet → idle-vakten tar inte tillbaka laget direkt
           if (started && !engine.getState().over) broadcast({ type: 'notis', text: `🧑 En spelare tog över ${NAMN[m.lag]}` });
         }
         send(ws, { type: 'claimAck', lag: ws._lag ?? null });
@@ -826,11 +875,21 @@ function handleGmCmd(m) {
       break;
     case 'event': {   // {beslut:'ja'|'nej'} → kör/hoppa rundans händelseförslag (en gång/runda, idempotent via pendingEvent)
       if (!gmMode || !started || !engine || engine.getState().over) break;
+      if (eventFiring) break;                                      // en händelse körs redan (rigg-cue + 3 s) → ignorera dubbeltryck
       const pe = engine.getState().pendingEvent;
       if (!pe) break;
       const beslut = m.beslut === 'ja' ? 'ja' : 'nej';
       session?.noteGmDecision(engine.getState().round, pe.id, beslut);   // logga GM-beslutet till summaryn
-      engine.resolveEventDecision(beslut);
+      if (beslut === 'nej') { engine.resolveEventDecision('nej'); break; }   // hoppa: ingen cue, ingen fördröjning
+      // KÖR: rigg-cue (per händelse, default happening) nu → 3 s senare visas händelsen på skärmarna.
+      fireRiggCue(EVENT_RIGG_CUE[pe.id] || 'happening');
+      eventFiring = true;
+      setTimeout(() => {
+        eventFiring = false;
+        if (!started || !engine || engine.getState().over) return;
+        if (engine.getState().pendingEvent?.id !== pe.id) return;   // omstart/omspel hann ändra läget
+        engine.resolveEventDecision('ja');                          // visar händelsen (+ event-ljud via rigg.js)
+      }, RIGG_EVENT_DELAY_MS);
       break;
     }
     case 'award_next': {   // GM: stega prisutdelningen ett pris — skärm + rigg i exakt takt (delad med selfplay)

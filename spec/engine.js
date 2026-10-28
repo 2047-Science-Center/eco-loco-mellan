@@ -51,7 +51,8 @@ export const DEFAULT_CONFIG = {
 
   // Belopp för de NYA extra-förslagen. Konservativt satta — Klara/Josef får tuna.
   // (Grund-3-siffrorna ovan rörs INTE; nya förslag återanvänder dem där det går.)
-  krispaketGain: 28,        // 🆘 Krispaket: öhälso-lyft (≈2×gronGain) vid lyckad kris-satsning; ja-röstare betalar gronCost var
+  krispaketGain: 28,        // 🆘 Krispaket: öhälso-lyft (≈2×gronGain) vid lyckad kris-satsning
+  krispaketCost: 15,        // 🆘 Krispaket: ja-röstarnas insats var (dyrare än vanlig grön satsning → ett verkligt val; har man mindre betalar man allt man har)
   sektorskattAmount: 12,    // 🏝 Sektorskatt: 🪙 som VARJE pengar-lag betalar; potten delas lika till materiallagen
   solidaritetPengar: 15,    // 👑 Solidaritetsskatt: 🪙 som rikaste laget betalar (delas på de tre andra)
   solidaritetMaterial: 10,  // 👑 Solidaritetsskatt: 🧱 som rikaste laget betalar (delas på de tre andra)
@@ -318,9 +319,10 @@ export class EcoLoco {
 
       // ─── Extra-förslag ur poolen (alla [BYGG] = befintliga primitiver P1–P6) ───
       } else if (p.type === 'krispaket') {
-        // 🆘 Krispaket (P1+P3+P6): ja-röstare betalar gronCost var; öhälsan lyfts STORT (krispaketGain).
-        // Gratisåkare: nej-röstaren (max 1 vid 3/4) slipper betala men får ändå öhälso-nyttan.
-        this.S.teams.forEach(t => { if (p.votes[t.id]) t.pengar = Math.max(0, t.pengar - this.cfg.gronCost); });
+        // 🆘 Krispaket (P1+P3+P6): ja-röstare betalar krispaketCost var; öhälsan lyfts STORT (krispaketGain).
+        // Har laget mindre än så betalas allt det har (ingen skuld). Gratisåkare: nej-röstaren (max 1 vid
+        // 3/4) slipper betala men får ändå öhälso-nyttan.
+        this.S.teams.forEach(t => { if (p.votes[t.id]) t.pengar -= Math.min(this.cfg.krispaketCost, t.pengar); });
         this.S.gronQueued += this.cfg.krispaketGain;
       } else if (p.type === 'sektorskatt') {
         // 🏝 Sektorskatt (P1+P5): varje pengar-lag betalar sektorskattAmount🪙; potten delas lika till materiallagen.

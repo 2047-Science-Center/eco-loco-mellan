@@ -162,7 +162,7 @@ function makeProxy() {
                'income', 'ohalsa', 'award', 'awardCeremony', 'awardStep', 'awardDone',
                'event', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
-               'disconnected', 'reconnected', 'paused',
+               'botTakeover', 'disconnected', 'reconnected', 'paused',
                'trailer', 'trailerDone',
                'startWindow', 'startGo', 'startWindowCancel', 'tilllobby',
                'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone'];
@@ -537,11 +537,18 @@ if (ONLINE) {
   game.on('claimAck', () => {
     if (game.me) initSector();
     if (lastLobby) renderLobby(lastLobby);
+    $('ov-bot').classList.remove('open');   // återtog laget efter bot-övertagande → stäng rutan
     // Tog över ett lag mitt i pågående spel → bygg upp vyn och stäng lobbyn.
     const S = E()?.getState();
     if (game.me && S && S.round >= 1 && !S.over) rebuildFromState(S);
     // RUMS-FLÖDE: sent ansluten claimade ett lag medan gruppen är i tutorial-fasen → kör egen solo-tutorial.
     else if (game.me && game.phase === 'tutorial' && !tutRunning) runTutorial();
+  });
+  // Boten tog över den här (inaktiva) skärmen → visa "ta tillbaka"-rutan. Tryck → återta laget via claim.
+  game.on('botTakeover', m => {
+    if (!game.me || (m.lag && m.lag !== game.me)) return;
+    audio.play('ui_notis');
+    $('ov-bot').classList.add('open');
   });
   game.on('tradeIncoming', m => openTradeIncoming(m));
   game.on('notis', m => { audio.play('ui_notis'); toast(m.text); });
@@ -841,6 +848,8 @@ function renderTradeModal() {
 }
 $('btn-trade').addEventListener('click', () => { audio.play('ui_tap'); openTrade(); });
 $('btn-trade-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-trade').classList.remove('open'); });
+// Ta tillbaka laget efter bot-övertagande → claim (servern låter en människa återta en bot mitt i spel).
+$('btn-bot-tillbaka').addEventListener('click', () => { audio.play('ui_tap'); if (game.me) game.claim(game.me); });
 $('give-minus').addEventListener('click', () => { giveAmt = Math.max(1, giveAmt - 1); renderTradeModal(); });
 $('give-plus').addEventListener('click', () => { giveAmt = Math.min(E().team(game.me)[giveCur], giveAmt + 1); renderTradeModal(); });
 $('get-minus').addEventListener('click', () => { getAmt = Math.max(1, getAmt - 1); renderTradeModal(); });
@@ -883,7 +892,7 @@ function propDefs() {
     { type: 'skatt', pic: '💸', rubrik: 'Miljöskatt', tx: `Värsta boven (<b>${bov.namn}</b>) betalar ${c.taxAmount} ${ico('pengar', 14)}<br>som delas mellan de andra lagen.`, ja: 'JA — beskatta boven' },
     { type: 'forbud', pic: '🚫', rubrik: 'Förbjud smutsig', tx: `Nästa runda kan <b>ingen</b> bygga det smutsiga kortet.`, ja: 'JA — förbjud smutsig' },
     // ── Extra-förslag (roterar; visas bara när de ligger i S.extraProposals) ──
-    { type: 'krispaket', pic: '🆘', rubrik: 'Krispaket', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)}.<br>Går det igenom lyfts öns hälsa <b>+${c.krispaketGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} ${ico('pengar', 14)}` },
+    { type: 'krispaket', pic: '🆘', rubrik: 'Krispaket', tx: `Alla som röstar JA betalar ${c.krispaketCost} ${ico('pengar', 14)} (eller allt man har).<br>Går det igenom lyfts öns hälsa <b>+${c.krispaketGain}</b>.`, ja: `JA — jag betalar ${c.krispaketCost} ${ico('pengar', 14)}` },
     { type: 'sektorskatt', pic: '🏝', rubrik: 'Sektorskatt', tx: `Pengar-lagen betalar ${c.sektorskattAmount} ${ico('pengar', 14)} var<br>som delas mellan material-lagen.`, ja: 'JA — beskatta pengar-sektorn' },
     { type: 'solidaritet', pic: '👑', rubrik: 'Solidaritetsskatt', tx: `Rikaste laget (<b>${rik.namn}</b>) betalar ${c.solidaritetPengar} ${ico('pengar', 14)} + ${c.solidaritetMaterial} ${ico('material', 14)}<br>som delas mellan de tre andra.`, ja: 'JA — beskatta rikaste' },
     { type: 'lojalitet', pic: '🤝', rubrik: 'Grön utdelning', tx: `Går det igenom: varje JA-lag får <b>+${c.lojalitetBonus} ${ico('pengar', 14)}</b>,<br>varje NEJ-lag betalar <b>${c.lojalitetBoter} ${ico('pengar', 14)}</b>. Öns hälsa +${c.lojalitetOh}.`, ja: `JA — jag tar +${c.lojalitetBonus} ${ico('pengar', 14)}` },

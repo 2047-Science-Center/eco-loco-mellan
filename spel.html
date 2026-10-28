@@ -497,6 +497,14 @@
     <div id="roll-tx" style="font-size:26px;color:var(--text);max-width:720px;line-height:1.5"></div>
   </div>
 
+  <!-- Boten tog över en inaktiv plats → tryck för att ta tillbaka laget -->
+  <div class="overlay" id="ov-bot" style="background:rgba(8,7,5,.95);z-index:18;flex-direction:column;gap:24px;text-align:center">
+    <div style="font-size:72px">🤖</div>
+    <div style="font-size:34px;font-weight:800;letter-spacing:1px;color:#EFE8D6">En bot sköter din plats</div>
+    <div style="font-size:22px;color:var(--dim);max-width:640px;line-height:1.5">Skärmen stod stilla en stund, så en bot tog över så att spelet inte fastnar.</div>
+    <button class="btn" id="btn-bot-tillbaka" style="font-size:24px;padding:18px 40px;background:var(--gold);color:#241E0F;border:0;border-radius:14px;font-weight:800;letter-spacing:1px;cursor:pointer">TA TILLBAKA LAGET</button>
+  </div>
+
   <!-- Startskärm / lobby -->
   <div class="overlay open" id="ov-start"><div class="modal">
     <h1>🏝 MAKTSPELET</h1>

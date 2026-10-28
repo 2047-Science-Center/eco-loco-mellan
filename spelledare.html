@@ -441,7 +441,9 @@ function render() {
   aBtn.disabled = !(gmOn && award);
   $('#award-prog').textContent = award ? `${Math.max(0, (award.i ?? -1) + 1)} / ${award.total ?? '?'}` : '–';
   $('#award-info').textContent = award
-    ? (award.w ? `Visar: ${PRIS[award.typ] || award.typ} — ${award.w.namn}` : 'Prisutdelning pågår')
+    ? (award.w ? `Visar: ${PRIS[award.typ] || award.typ} — ${award.w.namn}`
+               : award.typ === 'sab' ? `Visar: ${PRIS.sab} — Ingen bov (alla skötte klimatet)`
+               : 'Prisutdelning pågår')
     : (gmOn ? 'Väntar på prisutdelning (vid rundslut).' : 'Aktiv i spelledarläge under prisutdelningen.');
 
   // händelse
