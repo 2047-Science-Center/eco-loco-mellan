@@ -838,8 +838,8 @@ function initSector() {
   mySector = AREAS.find(a => a.id === game.me).sektor;
   giveCur = mySector; getCur = mySector === 'material' ? 'pengar' : 'material';
   $('me-sektor').innerHTML = mySector === 'material'
-    ? `Du producerar <b>material ${ico('material', 16)}</b>.<br>Pengar ${ico('pengar', 16)} måste du <b>byta till dig</b> från Räven eller Örnen.`
-    : `Du producerar <b>pengar ${ico('pengar', 16)}</b>.<br>Material ${ico('material', 16)} måste du <b>byta till dig</b> från Oxen eller Björnen.`;
+    ? `Du gör <b>material ${ico('material', 16)}</b>.<br>Saknar <b>pengar ${ico('pengar', 16)}</b>? Byt med de andra.`
+    : `Du gör <b>pengar ${ico('pengar', 16)}</b>.<br>Saknar <b>material ${ico('material', 16)}</b>? Byt med de andra.`;
   $('melogo').innerHTML = logoSVG(game.me, 64);
   $('mename').textContent = teamName(game.me);
 }
@@ -1690,6 +1690,9 @@ async function runTutorial() {
       ? `Men det billiga <b>sänker ön ${built.oh}${ico('industri', 18)}</b> — notan delar ni fyra.`
       : `Och det <b>lyfter ön +${built.oh}${ico('tillvaxt', 18)}</b>.`, ms: 3400 });
   if (tutAbort) return;
+  await tutSay({ ix: 0, focus: '.col-island', x: 520, y: 420,
+    txt: `Klicka på <b>byggnaderna på ön</b> för att se vad som byggts.` });
+  if (tutAbort) return;
   await tutBarrier(1);
   if (tutAbort) return;
 
@@ -1705,14 +1708,18 @@ async function runTutorial() {
     if (el) el.querySelector('.saknas').innerHTML = `saknar ${brist.join(' + ')} → BYT`;
   }
   await tutSay({ ix: 1, focus: '#me-sektor', x: 300, y: 330,
-    txt: `Du gör bara <b>${prodCur === 'pengar' ? 'pengar' : 'material'}</b>. Den andra valutan <b>saknas</b> — därför måste du byta med de andra.`, ms: 3600 });
+    txt: `Du saknar den andra valutan. <b>Byt med ett annat lag.</b>` });
   const partner = E().getState().teams.find(x => x.id !== myLag && x.sektor !== mySector)?.id;
-  openTrade(partner);
+  // Lys upp BYT-knappen så det är tydligt att man klickar på den för att gå vidare.
+  await tutBeat({ ix: 1, txt: 'Tryck på den upplysta <b>BYT VALUTOR</b>-knappen.', x: 1180, y: 150, focus: '#btn-trade',
+    until: tutWaitP(() => $('ov-trade').classList.contains('open')),
+    autoDo: () => { if (!$('ov-trade').classList.contains('open')) openTrade(partner); } });
+  if (tutAbort) return;
   // Tutorialen: "Avbryt" i bytesrutan får INTE lämna en återvändsgränd (gör-steget har ingen NÄSTA-knapp).
   // Öppna rutan igen så lektionen står kvar — 60 s-failsafen nedan föreslår bytet åt en övergiven skärm.
   const tutReopenTrade = () => { if (!tutAbort) openTrade(partner); };   // körs efter original-cancel (som stänger) → nettoeffekt: rutan stannar öppen
   $('btn-trade-cancel').addEventListener('click', tutReopenTrade);
-  await tutBeat({ ix: 1, txt: `Byt till dig ${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}. Tryck <b>FÖRESLÅ BYTET</b>.`,
+  await tutBeat({ ix: 1, txt: `Välj lag och tryck <b>FÖRESLÅ BYTET</b>.`,
     x: 1180, y: 150, focus: null,
     until: tutOnce('trade', p => p.from === myLag || p.to === myLag),
     autoDo: () => { if (!$('ov-trade').classList.contains('open')) openTrade(partner); $('btn-trade-go').click(); } });
@@ -1728,7 +1735,7 @@ async function runTutorial() {
   await tutSay({ ix: 1, focus: getBox, x: 300, y: 300,
     txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b> — nu räcker det.` });
   await tutSay({ ix: 1, focus: null, x: 1140, y: 150,
-    txt: `På riktigt förhandlar ni med de andra lagen genom <b>telefonen på arbetsbordet</b>.` });
+    txt: `Förhandla med de andra lagen genom att <b>ringa dem</b> på telefonen vid bordet.` });
   if (tutAbort) return;
   await tutBarrier(2);
   if (tutAbort) return;
