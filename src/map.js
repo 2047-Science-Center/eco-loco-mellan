@@ -158,10 +158,10 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   }
 
   // — Öhälso-overlay (klippt till ön) + rök + gnistor —
-  const overlay = el('polygon', { points: pts(OUTLINE), fill: '#000', opacity: 0, style: 'transition: opacity 1.2s, fill 1.2s' });
+  const overlay = el('polygon', { points: pts(OUTLINE), fill: '#000', opacity: 0, style: 'transition: opacity 1.2s, fill 1.2s; pointer-events:none' });
   svg.appendChild(overlay);
 
-  const smokeG = el('g', { 'clip-path': 'url(#islandClip)', style: 'transition: opacity 1.2s' });
+  const smokeG = el('g', { 'clip-path': 'url(#islandClip)', style: 'transition: opacity 1.2s; pointer-events:none' });
   for (let i = 0; i < 7; i++) {
     const e = el('ellipse', {
       cx: 260 + i * 170, cy: 260 + (i % 3) * 200, rx: 100 + (i % 3) * 35, ry: 32 + (i % 2) * 12,
@@ -173,7 +173,7 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   }
   svg.appendChild(smokeG);
 
-  const sparkG = el('g', { 'clip-path': 'url(#islandClip)', style: 'transition: opacity 1.2s' });
+  const sparkG = el('g', { 'clip-path': 'url(#islandClip)', style: 'transition: opacity 1.2s; pointer-events:none' });
   for (let i = 0; i < 14; i++) {
     const e = el('circle', {
       cx: 220 + ((i * 271) % 1100), cy: 180 + ((i * 149) % 640), r: 4 + (i % 3) * 1.5,

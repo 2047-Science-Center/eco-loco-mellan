@@ -137,11 +137,14 @@ const humanIds = () => TEAMS.filter(id => claims[id] && claims[id] !== 'bot');
 const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 
 // State bär även serverns driftflaggor (gmMode/riggSilent) så spelledarpanelen kan spegla dem auktoritativt.
-function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, state: engine ? { ...engine.getState(), gmMode, riggSilent, started } : null })); }
+// claims (lag → 'human'|'bot'|null) rider med i VARJE meddelande så spelledarpanelens stations-lista
+// alltid är färsk (ett lag som tappar sin skärm blir 'bot' → syns direkt på pulten).
+function claimKinds() { return Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])); }
+function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), state: engine ? { ...engine.getState(), gmMode, riggSilent, started } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, spelledare: riggSilent,   // spelledare på → klienterna gömmer STARTA (spelledaren styr starten)
-    claims: Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])) };
+    claims: claimKinds() };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -390,13 +393,16 @@ function startTimer() {
   stopTimer();
   const full = roundFull();
   timerLeft = full;
+  let countdownFired = false;                 // 10 s-nedräkningen fyras en gång per runda
   broadcast({ type: 'timer', left: timerLeft, full });
   timerInt = setInterval(() => {
     if (paused) return;   // pausad → frys nedräkningen. Inget rigg-cue skickas, så ambiencen loopar vidare.
     timerLeft--;
     broadcast({ type: 'timer', left: timerLeft, full });
-    rigg?.tick(timerLeft);                    // countdown-cue vid 10 s kvar
-    if (timerLeft <= 0) { stopTimer(); forceResolve(); }
+    // 10 s kvar → NEDRÄKNING i riggen (ljus + ljud), samma cue som spelledarens NEDRÄKNING-knapp.
+    // SYSTEMCEREMONI (ungated via riggSend) så den spelar i BÅDA lägena — även "med spelledare".
+    if (timerLeft <= 10 && timerLeft > 0 && !countdownFired) { countdownFired = true; riggSend('ecoloco/rigg/countdown', 1); }
+    if (timerLeft <= 0) { riggSend('ecoloco/rigg/countdown', 0); stopTimer(); forceResolve(); }
   }, 1000);
 }
 function stopTimer() {
@@ -425,7 +431,10 @@ function buildCeremonySteps(aw) {
   const steps = [];
   if (aw.led) steps.push({ typ: 'led', w: aw.led });
   if (aw.eld) steps.push({ typ: 'eld', w: aw.eld });
-  if (aw.sab) steps.push({ typ: 'sab', w: aw.sab });   // bara verkliga pris — ingen tyst "Ön andas ut"-ruta där riggen ligger kvar
+  // Sabotör-platsen visas ALLTID när ceremonin ändå körs: en riktig bov, annars "ingen bov — ön andas ut"
+  // (skärmens renderAwardCard visar meddelandet när w saknas; riggen tänder inget för ett tomt pris).
+  if (aw.sab) steps.push({ typ: 'sab', w: aw.sab });
+  else if (steps.length) steps.push({ typ: 'sab', w: null });
   return steps;
 }
 

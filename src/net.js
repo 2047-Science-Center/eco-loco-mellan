@@ -15,6 +15,7 @@ export class ServerNet {
     this._pending = new Map();   // reqId → resolve
     this.connected = false;
     this.phase = 'lobby';        // RUMS-FLÖDE: serverns senaste fas (bärs i varje meddelande)
+    this.claims = {};            // lag → 'human'|'bot'|null (bärs i varje meddelande; spelledarpultens stations-lista)
   }
   on(ev, cb) { (this._h[ev] ||= []).push(cb); return this; }
   _emit(ev, p) { (this._h[ev] || []).forEach(cb => cb(p)); }
@@ -28,6 +29,7 @@ export class ServerNet {
       this.ws.addEventListener('message', e => {
         const m = JSON.parse(e.data);
         if (typeof m.phase === 'string') this.phase = m.phase;   // RUMS-FLÖDE: fasen bärs i varje send()
+        if (m.claims) this.claims = m.claims;                    // lag-status (human/bot/tom) bärs i varje send()
         // state följer med varje meddelande (null när ingen motor finns = lobby/omstart) → spegla rakt av.
         if (this.reader && 'state' in m) this.reader.S = m.state;
         else if (m.state && this.reader) this.reader.S = m.state;

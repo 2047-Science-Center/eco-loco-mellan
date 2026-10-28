@@ -111,6 +111,26 @@
   .spot[data-team=stad] .chipdot{background:var(--stad)}
   .btn.active{border-color:var(--gold);background:#2a2410}
 
+  /* STATIONER — lag · spelare/bot · hänger de med i tempot */
+  .laglist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:860px){.laglist{grid-template-columns:1fr}}
+  .lagrow{display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--panel3);border:2px solid var(--edge);border-radius:11px}
+  .lagrow .ldot{width:13px;height:13px;border-radius:50%;flex:0 0 auto;background:var(--led-green);box-shadow:0 0 9px var(--led-green)}
+  .lagrow .ldot.bot{background:var(--led);box-shadow:0 0 9px var(--led)}
+  .lagrow .ldot.tom{background:var(--led-red);box-shadow:0 0 9px var(--led-red)}
+  .lagrow .lchip{width:24px;height:24px;border-radius:7px;border:2px solid rgba(0,0,0,.4);flex:0 0 auto}
+  .lagrow .lnamnbox{display:flex;flex-direction:column;line-height:1.12;min-width:0}
+  .lagrow .lnamnbox b{font-size:18px;font-weight:800}
+  .lagrow .lnamnbox small{font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700}
+  .lagrow .lroll{margin-left:auto;font-size:12px;font-weight:800;letter-spacing:1px;padding:4px 10px;border-radius:999px;border:2px solid var(--edge2);color:var(--dim);white-space:nowrap}
+  .lagrow .lroll.spelare{color:var(--gold);border-color:var(--gold)}
+  .lagrow .lroll.bot{color:var(--led);border-color:var(--led)}
+  .lagrow .lroll.tom{color:var(--led-red);border-color:#5e332c}
+  .lagrow .ltempo{font-size:12px;font-weight:800;letter-spacing:.5px;flex:0 0 auto;min-width:86px;text-align:right}
+  .lagrow .ltempo.klar{color:var(--led-green)}
+  .lagrow .ltempo.valt{color:var(--gold)}
+  .lagrow .ltempo.vanta{color:var(--dim)}
+
   details.look summary{cursor:pointer;color:var(--dim);font-weight:800;letter-spacing:2px;font-size:13px;padding:8px 0}
   .note{font-size:13px;color:var(--dim);line-height:1.5;margin:0}
   .badge{display:inline-block;font-size:11px;letter-spacing:1px;font-weight:800;color:#1a1710;background:var(--gold);
@@ -142,6 +162,10 @@
 <main>
   <!-- ── VY: SPEL (grupp A) ── -->
   <section class="view sel" data-view="spel">
+    <div class="card span" style="margin-bottom:14px">
+      <h2>STATIONER <span class="hint">— lag · spelare eller bot · hänger de med?</span></h2>
+      <div id="lag-list" class="laglist"></div>
+    </div>
     <div class="grid3">
       <div class="card">
         <h2>PRISUTDELNING</h2>
@@ -340,6 +364,17 @@ let gmOn = false, slOn = false, paused = false, withSpelledare = true;
 let timerLeft = null, timerFull = null;
 let award = null;           // {typ,w,i,total} under ceremoni
 let slutdelState = null;    // {i,total,label}
+let roundKlar = new Set();  // lag som tryckt AVSLUTA denna runda (hänger med i tempot)
+let tutKlara = new Set();   // lag som rapporterat tutorial klar (förspelet)
+
+// Lagens identitet (statisk — samma som motorns AREAS/logos). Används för stations-listan
+// även i lobbyn innan motorn finns; live-status (valt/klar) hämtas ur state när partiet rullar.
+const LAG = [
+  { id: 'aker',   namn: 'Oxen',    mark: 'Åker',   farg: '#E7C24C' },
+  { id: 'skog',   namn: 'Björnen', mark: 'Skog',   farg: '#3F8F4A' },
+  { id: 'tundra', namn: 'Räven',   mark: 'Tundra', farg: '#D98A3C' },
+  { id: 'stad',   namn: 'Örnen',   mark: 'Stad',   farg: '#8A8F96' },
+];
 
 // ——— nät ———
 const net = new ServerNet();
@@ -347,6 +382,7 @@ net.on('disconnected', () => { setConn(false); });
 net.on('reconnected', () => { setConn(true); render(); });
 ['timer','roundStart','ohalsa','roundEnd','gameEnd','lobby','notis','voteUpdate','paused',
  'event','award','awardCeremony','awardStep','awardDone','tilllobby','tillattract','trailer','trailerDone','start','startGo','startWindow',
+ 'klarUpdate','tutReadyUpdate',
  'slutdelStart','slutdelQuestion','slutdelReveal','slutdelDist','slutdelDone'].forEach(ev => net.on(ev, p => onEvent(ev, p)));
 
 const first = await net.connect(null);   // åskådare (inget lag)
@@ -360,6 +396,10 @@ function setConn(ok) {
 }
 
 function onEvent(ev, p) {
+  if (ev === 'klarUpdate') { roundKlar = new Set(p.klar || []); }
+  else if (ev === 'tutReadyUpdate') { tutKlara = new Set(p.klara || []); }
+  else if (ev === 'roundStart') { roundKlar = new Set(); }
+  else if (ev === 'tilllobby' || ev === 'tillattract' || ev === 'startGo') { roundKlar = new Set(); tutKlara = new Set(); }
   if (ev === 'timer') { timerLeft = p.left; timerFull = p.full; if (p.paused !== undefined) setPaused(p.paused); }
   else if (ev === 'paused') { setPaused(p.paused); if (p.left !== undefined) timerLeft = p.left; }
   else if (ev === 'awardCeremony') { award = { i: -1, total: p.total }; toast('Prisutdelning startad'); }
@@ -433,6 +473,44 @@ function render() {
   $('#trailer-btn').disabled    = !(ph === 'lobby' || ph === 'intro');  // trailern hör till förspelet
   $('#skipintro-btn').disabled  = ph !== 'intro';         // bara under trailern
   $('#forcestart-btn').disabled = ph !== 'tutorial';      // nedräkningen gäller när tutorialen körs
+
+  renderLag(ph, s);
+}
+
+// STATIONER: visar de fyra lagen, om de körs av spelare eller bot (= station igång/ansluten),
+// och om de hänger med i tempot (valt/klar denna runda, redo i tutorialen).
+function renderLag(ph, s) {
+  const box = $('#lag-list'); if (!box) return;
+  const claims = net.claims || {};
+  box.innerHTML = LAG.map(l => {
+    const kind = claims[l.id];                               // 'human' | 'bot' | null
+    const role = kind === 'human' ? 'spelare' : kind === 'bot' ? 'bot' : 'tom';
+    const rollTxt = role === 'spelare' ? 'SPELARE' : role === 'bot' ? 'BOT' : 'TOM';
+    const te = tempoFor(l.id, role, ph, s);
+    return `<div class="lagrow">
+      <span class="ldot ${role === 'spelare' ? '' : role}"></span>
+      <span class="lchip" style="background:${l.farg}"></span>
+      <span class="lnamnbox"><b>${l.namn}</b><small>${l.mark.toUpperCase()}</small></span>
+      <span class="lroll ${role}">${rollTxt}</span>
+      <span class="ltempo ${te.c}">${te.t}</span>
+    </div>`;
+  }).join('');
+}
+// Tempo-etikett per fas: förspel = anslutning/redo, spel = valt/klar denna runda.
+function tempoFor(id, role, ph, s) {
+  if (role === 'tom') return { t: '○ TOM', c: 'vanta' };
+  if (ph === 'lobby' || ph === 'intro') return { t: 'ANSLUTEN', c: 'valt' };
+  if (ph === 'tutorial') {
+    if (role === 'bot') return { t: 'AUTO', c: 'valt' };
+    return tutKlara.has(id) ? { t: '✓ REDO', c: 'klar' } : { t: 'I TUTORIAL', c: 'vanta' };
+  }
+  // spel / slutdel
+  if (s && s.over) return { t: '— SLUT', c: 'vanta' };
+  const team = (s?.teams || []).find(t => t.id === id);
+  const valt = !!(team && team.choice != null);
+  if (role === 'bot') return valt ? { t: '✓ KLAR', c: 'klar' } : { t: 'SPELAR…', c: 'vanta' };
+  if (roundKlar.has(id)) return { t: '✓ KLAR', c: 'klar' };
+  return valt ? { t: 'VALT', c: 'valt' } : { t: 'VÄNTAR…', c: 'vanta' };
 }
 function renderDist(p) {
   if (!p || !p.counts) return;
