@@ -1078,7 +1078,13 @@ const EFTERSNACK = [
   '💬 <b>Prata om det:</b> Vilket politiskt förslag hade behövts tidigare?',
 ];
 function showSlut(p) {
-  $('slut-title').textContent = p.won ? '🌱 ÖN KLARADE SIG!' : '💀 ALLA FÖRLORADE';
+  // KRÖNING: vinst → vinnarlagets bild upphöjd (borgmästaren); förlust → ingen bild (ön föll, alla lika).
+  const simg = $('slut-img');
+  if (p.won && p.winner) {
+    simg.src = `assets/makt/${p.winner.teamId}.png`;
+    simg.style.cssText = 'display:block;width:min(560px,70vw);height:auto;border-radius:14px;border:3px solid var(--gold);box-shadow:0 10px 40px #000;margin:0 auto 14px';
+  } else { simg.style.display = 'none'; simg.removeAttribute('src'); }
+  $('slut-title').textContent = p.won ? `👑 ${p.winner.namn.toUpperCase()} BLIR BORGMÄSTARE!` : '💀 ÖN FÖLL';
   $('slut-title').className = 'big ' + (p.won ? 'win' : 'lose');
   $('slut-why').innerHTML = p.won
     ? `Öns hälsa slutade på <b style="color:var(--led-green)">${p.oh}</b> — över målet ${p.threshold}. Då vinner det rikaste laget.`

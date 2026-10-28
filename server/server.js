@@ -107,6 +107,7 @@ let session = null;            // persist-session (newEngine → ny session, ny 
 let version = 'A';             // slutdel-version (default 'A' = PODIUM + Newfoundland)
 let slutdel = null;            // { steps, i, answers:{questionId:{lag:option}} } — null utanför slutdelen
 let lastGameEnd = null;        // motorns senaste gameEnd-payload (för summary efter slutdelen)
+let finaleSent = false;        // KRÖNING: final-cuen (win/lose) skickas EN gång, efter prisutdelningen
 // GM-flaggan bor i SERVERN (drift), inte i motorn (regler): den styr DRIFT-flödet — om händelser
 // triggas via spelledarens ja/nej (GM PÅ) eller slumpas automatiskt med chansPerRunda (GM AV),
 // och om award-ceremonin stegas för hand eller av 10 s-klockan. Motorn får bara veta av/på via setGm().
@@ -358,7 +359,7 @@ function resetToLobby() {
 function newEngine() {
   engine = new EcoLoco(manifest.config || {});
   engine.setGm(gmMode);   // spegla serverns GM-läge in i den nya motorn
-  lastAwards = null; cer = null; slutdel = null; lastGameEnd = null;
+  lastAwards = null; cer = null; slutdel = null; lastGameEnd = null; finaleSent = false;
   // Persistens: ny session (sessionId = tidsstämpel) med metadata-startrad. Fire-and-forget, data/ gitignorerad.
   session = newSession(ROOT, { config: engine.cfg, gmMode, version, claims });
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
@@ -415,9 +416,8 @@ function newEngine() {
     maybeBotProposal(p.round);
   });
   engine.on('gameEnd', () => stopTimer());
-  // VINST/FÖRLUST-FINALE i riggen — SYSTEMCEREMONI (ungated, som trailer/countdown) så den spelar i
-  // BÅDA lägena. Hjärnan ger distinkt look + ljud: win = firande grönt + win-ljud, lose = dystert rött + lose-ljud.
-  engine.on('gameEnd', p => riggSend('ecoloco/rigg/final', p.won ? 'win' : 'lose'));
+  // VINST/FÖRLUST-FINALEN (ecoloco/rigg/final) skickas inte längre direkt här, utan som KRÖNING EFTER
+  // prisutdelningen (fireFinale i advanceCeremony) — vinnarsidan tänds en sista gång, 2 s, sedan final.
   engine.on('proposalOpened', () => { checkBotVotes(); });
   engine.on('proposalResolved', () => { proposalCooldownUntil = Date.now() + PROPOSAL_COOLDOWN_MS; });   // kö-paus innan nästa förslag
 }
@@ -502,7 +502,24 @@ function advanceCeremony() {
   broadcast({ type: 'event', event: 'awardDone', payload: { over } });
   cer = null;
   if (!over) startTimer();                                             // rundan återupptas
+  else fireFinale();                                                   // KRÖNING: efter prisutdelningen → tänd vinnaren + final
   return true;
+}
+
+// KRÖNING (efter sista prisutdelningen). Återanvänder award-cuen (RIGG-KONTRAKT §Award-mapping):
+// VINST → tänd vinnarsidan en sista gång i lagets färg (övriga släckta), vänta 2 s så skärmens
+// kröningsbild hinner synas, SEDAN final 'win' (riggen exploderar i grönt). FÖRLUST → final 'lose'
+// direkt (ingen enskild sida highlightas — alla lika i nederlaget). Final är SYSTEMCEREMONI (ungated).
+function fireFinale() {
+  if (finaleSent || !lastGameEnd) return;
+  finaleSent = true;
+  const ge = lastGameEnd;
+  if (ge.won && ge.winner) {
+    rigg?.showAward('led', { teamId: ge.winner.teamId });              // vinnarsidan grön, övriga släckta
+    setTimeout(() => riggSend('ecoloco/rigg/final', 'win'), 2000);
+  } else {
+    riggSend('ecoloco/rigg/final', 'lose');
+  }
 }
 
 // SELFPLAY: servern stegar ceremonin på en fast klocka så skärm + rigg kliver i takt. Första ticket
