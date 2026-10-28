@@ -1694,8 +1694,11 @@ async function runTutorial() {
   }
 
   // ——— INTRO: vad går spelet ut på? (3 rutor, klicka igenom, highlightar relevant yta) ———
-  await tutSay({ ix: 0, focus: '.res', x: 300, y: 380, hold: true,
-    txt: '🏛️ <b>Ön behöver en ny borgmästare!</b><br>Fyra företag tävlar om makten. Det <b>rikaste</b> företaget när spelet är slut får styra ön!' });
+  // Mål-skärm: bli borgmästare (helskärm med bild). Väntar på tryck, ingen auto-timeout (som övriga intro-rutor).
+  $('ov-mission').classList.add('open');
+  audio.play('ui_open');
+  await Promise.race([new Promise(res => { $('ov-mission').onclick = res; }), tutAbortP()]);
+  $('ov-mission').onclick = null; $('ov-mission').classList.remove('open');
   if (tutAbort) return;
   await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190, hold: true,
     txt: '⏱️ <b>Ni har 8 rundor på er!</b><br>Bygg, handla och påverka ön genom <b>politiska beslut</b>.' });
