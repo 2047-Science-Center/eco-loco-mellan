@@ -443,18 +443,19 @@ let pendingSlut = null, slutFailsafe = null;
 let cerNastaRunda = null;   // online: "RUNDA N"-bannern hålls tills prisceremonin är klar (awardDone) så den syns NÄR nya rundan börjar
 let roundPowerTeam = null;  // MAKT-ROTATION: vilket lag som styr politiken denna runda (ur roundStart-payloaden)
 
-// MAKT-ROTATION: visa vilket lag som styr politiken denna runda. Klick-genom, auto-fortsätt efter 8 s
+// MAKT-ROTATION: visa vilket lag som styr politiken denna runda. Klick-genom, auto-fortsätt efter 15 s
 // (självspel fastnar aldrig). Egen text på maktlagets skärm vs de andra. Ingen banner om powerTeam saknas (t.ex. runda 1).
 function showPowerBanner(powerTeam) {
   if (!powerTeam) return Promise.resolve();
   const namn = teamName(powerTeam);
+  const farg = AREAS.find(x => x.id === powerTeam)?.farg || 'var(--gold)';   // lagets egen färg → tydligt VILKET lag som styr
   $('power-img').src = `assets/makt/${powerTeam}.png`;          // en scen-bild per lag (assets/makt/)
   if (game.me === powerTeam) {
     $('power-rubrik').innerHTML = 'NI HAR DEN POLITISKA MAKTEN!';
     $('power-tx').innerHTML = 'Välj vilket förslag ön ska rösta om den här rundan.<br>Lyssna på de andra företagen — eller driv er egen agenda!';
   } else {
-    $('power-rubrik').innerHTML = `${namn.toUpperCase()} STYR POLITIKEN!`;
-    $('power-tx').innerHTML = `Den här rundan lägger <b>${namn}</b> fram ett politiskt förslag.<br>Vill ni påverka? <b>Ring ${namn}</b> och övertyga dem!`;
+    $('power-rubrik').innerHTML = `<span style="color:${farg}">${namn.toUpperCase()}</span> STYR POLITIKEN!`;
+    $('power-tx').innerHTML = `Den här rundan lägger <b style="color:${farg}">${namn}</b> fram ett politiskt förslag.<br>Vill ni påverka? <b style="color:${farg}">Ring ${namn}</b> och övertyga dem!`;
   }
   $('ov-power').classList.add('open');
   audio.play('ui_open');
@@ -490,8 +491,8 @@ game.on('award', p => run(async () => {
 
 // GM-LÄGE: servern dirigerar — skärmen visar det pris spelledaren klickar fram (ingen auto-stegning).
 game.on('awardCeremony', () => run(async () => {
-  $('awardcard').innerHTML = `<img src="assets/slut/prisutdelning-start.png" alt="" style="width:min(420px,60vw);height:auto;border-radius:12px;margin:0 auto 10px;display:block"><div class="em">🏅</div><h4>Prisutdelning</h4>` +
-    `<div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div>`;
+  $('awardcard').innerHTML = `<img src="assets/slut/prisutdelning-start.png" alt="" style="height:auto;object-fit:contain">`   // full bredd, full höjd (ingen beskärning/ikon) → rutan växer med bilden
+    + `<div class="aw-tx"><h4>Prisutdelning</h4><div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div></div>`;
   $('ov-award').classList.add('open');
 }));
 game.on('awardStep', p => run(async () => {
@@ -1142,6 +1143,12 @@ function renderLobby(m) {
   lastLobby = m;
   if (!ONLINE) return;
   const phase = gamePhase();
+  // Styrs mitt lag av en bot (övertaget nu ELLER redan från start)? Visa "ta över"-rutan direkt,
+  // göm den när jag tagit tillbaka laget. Drivs av claims i varje meddelande (robust även vid reconnect).
+  if (game.me && phase === 'pagar') {
+    if (m.claims[game.me] === 'bot') $('ov-bot').classList.add('open');
+    else if (m.claims[game.me] === 'human') $('ov-bot').classList.remove('open');
+  }
   const LAGEN = ['aker', 'skog', 'tundra', 'stad'];
 
   // Fyra prickar — en per lag, fylld = spelare ansluten (aldrig "x av 4" i text)
@@ -1690,10 +1697,9 @@ async function runTutorial() {
   {
     const a = AREAS.find(x => x.id === myLag);
     const TERRAIN = { aker: 'Åkermarken', skog: 'Skogen', tundra: 'Tundran', stad: 'Staden' };
-    const ANIMAL = { aker: '🐂', skog: '🐻', tundra: '🦊', stad: '🦅' };
     if (a) {
       $('roll-logo').innerHTML = `<img src="assets/makt/${myLag}.png" alt="" style="width:min(640px,70vw);height:auto;border-radius:16px;border:3px solid var(--edge2);box-shadow:0 10px 40px #000">`;   // lagets egen maktbild i stället för badge
-      $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span> ${ANIMAL[myLag] || ''}`;
+      $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span>`;
       $('roll-tx').innerHTML = `Du ansvarar för <b>${TERRAIN[myLag] || a.namn}</b> och producerar `
         + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`
         + `<br><br>Kan ditt företag bli öns nästa <b>borgmästare</b>?`;
