@@ -1692,10 +1692,15 @@ async function runTutorial() {
     txt: `Du gör bara <b>${prodCur === 'pengar' ? 'pengar' : 'material'}</b>. Den andra valutan <b>saknas</b> — därför måste du byta med de andra.`, ms: 3600 });
   const partner = E().getState().teams.find(x => x.id !== myLag && x.sektor !== mySector)?.id;
   openTrade(partner);
+  // Tutorialen: "Avbryt" i bytesrutan får INTE lämna en återvändsgränd (gör-steget har ingen NÄSTA-knapp).
+  // Öppna rutan igen så lektionen står kvar — 60 s-failsafen nedan föreslår bytet åt en övergiven skärm.
+  const tutReopenTrade = () => { if (!tutAbort) openTrade(partner); };   // körs efter original-cancel (som stänger) → nettoeffekt: rutan stannar öppen
+  $('btn-trade-cancel').addEventListener('click', tutReopenTrade);
   await tutBeat({ ix: 1, txt: `Byt till dig ${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}. Tryck <b>FÖRESLÅ BYTET</b>.`,
     x: 1180, y: 150, focus: null,
     until: tutOnce('trade', p => p.from === myLag || p.to === myLag),
-    autoDo: () => $('btn-trade-go').click() });
+    autoDo: () => { if (!$('ov-trade').classList.contains('open')) openTrade(partner); $('btn-trade-go').click(); } });
+  $('btn-trade-cancel').removeEventListener('click', tutReopenTrade);
   if (tutAbort) return;
   document.querySelectorAll('#cards .card.tut-vagg').forEach(el => {
     el.classList.remove('tut-vagg', 'poor');
