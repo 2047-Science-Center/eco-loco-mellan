@@ -1549,7 +1549,7 @@ function tutAbortP() { return new Promise(res => { if (tutAbort) res('abort'); e
 // Ingen "hoppa över"-knapp och ingen kort auto-timer: spelaren måste GÖRA steget (bygga/byta/rösta)
 // för att komma vidare. En lång inaktivitets-limit (autoMs) gör ändå steget åt en övergiven skärm
 // så en bänk utan spelare kan drivas vidare (bot) och inget fastnar.
-async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 60000 }) {
+async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 120000 }) {   // lång cool-down: gruppen hinner läsa + klicka utan att steget görs åt dem
   if (tutAbort) return;                       // omstart under tutorialen → visa ingenting mer
   tutFocus(focus);
   const b = $('tutbox');
@@ -1608,7 +1608,7 @@ function tutSay({ ix, txt, x, y, focus, hold }) {   // hold = ingen auto-timeout
       next.style.display = 'none'; b.style.display = 'none'; tutFocus(null); res();
     };
     next.onclick = finish;
-    const tmo = hold ? null : setTimeout(finish, 45000);   // kiosk-säkring: aldrig fast för alltid (hold → vänta på tryck; obemannad skärm fångas av 90 s idle→bot)
+    const tmo = hold ? null : setTimeout(finish, 120000);   // lång cool-down (2 min) så man hinner läsa; hold → vänta på tryck; obemannad skärm fångas av 90 s idle→bot
     tutAbortP().then(finish);                // omstart → släpp direkt (finish är idempotent via done)
   });
 }
@@ -1770,9 +1770,9 @@ async function runTutorial() {
   if (tutAbort) return;
   const getBox = getCur === 'pengar' ? '#box-pengar' : '#box-material';
   await tutSay({ ix: 1, focus: getBox, x: 300, y: 300,
-    txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b> — nu räcker det.` });
+    txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b>.` });
   await tutSay({ ix: 1, focus: null, x: 1140, y: 150,
-    txt: `Förhandla med de andra lagen genom att <b>ringa dem</b> på telefonen vid bordet.` });
+    txt: `Förhandla med de andra lagen genom att <b>ringa dem</b> på telefonen.` });
   if (tutAbort) return;
   await tutBarrier(2);
   if (tutAbort) return;
@@ -1798,7 +1798,7 @@ async function runTutorial() {
   await delay(2100);                                              // låt "Förslaget gick igenom"-raden synas + röstrutan stängas
   if (tutAbort) return;
   await tutSay({ ix: 2, focus: '.ohbar', x: 520, y: 190,
-    txt: `Ditt förslag gick igenom ✅ — öns hälsa stiger <b>+${tut.E().cfg.gronGain} ${ico('tillvaxt', 18)}</b>. Så flyttar ni den delade mätaren tillsammans.` });
+    txt: `Ditt förslag gick igenom ✅ — öns hälsa stiger <b>+${tut.E().cfg.gronGain} ${ico('tillvaxt', 18)}</b>.` });
   if (tutAbort) return;
   // MAKT-ROTATION: förklara att bara ett lag i taget styr politiken (annars lovar övningen för mycket).
   await tutSay({ ix: 2, focus: '#btn-prop', x: 1040, y: 120,
