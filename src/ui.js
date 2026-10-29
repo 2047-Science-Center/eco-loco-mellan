@@ -1567,13 +1567,30 @@ function tutAbortP() { return new Promise(res => { if (tutAbort) res('abort'); e
 // Ingen "hoppa över"-knapp och ingen kort auto-timer: spelaren måste GÖRA steget (bygga/byta/rösta)
 // för att komma vidare. En lång inaktivitets-limit (autoMs) gör ändå steget åt en övergiven skärm
 // så en bänk utan spelare kan drivas vidare (bot) och inget fastnar.
-async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 120000 }) {   // lång cool-down: gruppen hinner läsa + klicka utan att steget görs åt dem
+// Placera tutbox intill ett element (knapp) i SCEN-koordinater (1920×1080), oberoende av skärmskalning.
+// side: 'left' = rutan till vänster om knappen, 'right' = till höger. Vertikalt centrerad, klampad till scenen.
+function besidePos(sel, side) {
+  const stage = document.getElementById('stage'), el = document.querySelector(sel), box = $('tutbox');
+  if (!stage || !el) return null;
+  const sr = stage.getBoundingClientRect(), er = el.getBoundingClientRect();
+  const scale = sr.width / 1920 || 1;
+  const bx = (er.left - sr.left) / scale, by = (er.top - sr.top) / scale, bw = er.width / scale, bh = er.height / scale;
+  const boxW = box.offsetWidth, boxH = box.offsetHeight, gap = 24;
+  let x = side === 'left' ? bx - boxW - gap : bx + bw + gap;
+  let y = by + bh / 2 - boxH / 2;
+  x = Math.max(16, Math.min(1920 - boxW - 16, x));
+  y = Math.max(16, Math.min(1080 - boxH - 16, y));
+  return { x, y };
+}
+async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 120000, beside, side }) {   // lång cool-down: gruppen hinner läsa + klicka utan att steget görs åt dem
   if (tutAbort) return;                       // omstart under tutorialen → visa ingenting mer
   tutFocus(focus);
   const b = $('tutbox');
-  b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.display = 'block';
   $('tut-txt').innerHTML = txt;
   [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
+  b.style.display = 'block';                   // visa först så vi kan mäta rutan innan vi placerar den
+  const pos = (beside && besidePos(beside, side)) || { x, y };   // intill knappen om 'beside' anges, annars fasta x/y
+  b.style.left = pos.x + 'px'; b.style.top = pos.y + 'px';
   audio.play('ui_tap');
   let tmo = null;
   const timeP = new Promise(res => { tmo = setTimeout(() => res('timeout'), autoMs); });   // inaktivitets-limit (ej snabb auto)
@@ -1771,7 +1788,7 @@ async function runTutorial() {
     txt: `Du saknar den andra valutan. <b>Byt med ett annat lag.</b>` });
   const partner = E().getState().teams.find(x => x.id !== myLag && x.sektor !== mySector)?.id;
   // Lys upp BYT-knappen så det är tydligt att man klickar på den för att gå vidare.
-  await tutBeat({ ix: 1, txt: 'Tryck på den upplysta <b>BYT VALUTOR</b>-knappen.', x: 1180, y: 150, focus: '#btn-trade',
+  await tutBeat({ ix: 1, txt: 'Tryck på den upplysta <b>BYT VALUTOR</b>-knappen.', beside: '#btn-trade', side: 'right', focus: '#btn-trade',
     until: tutWaitP(() => $('ov-trade').classList.contains('open')),
     autoDo: () => { if (!$('ov-trade').classList.contains('open')) openTrade(partner); } });
   if (tutAbort) return;
@@ -1805,7 +1822,7 @@ async function runTutorial() {
   // spelaren trycker LÄGG FÖRSLAG, klickar på det enda kortet och blir själv förslagsläggare.
   tutOnlyProp = 'gron';
   const openedP = tutOnce('proposalOpened', p => p.by === myLag);
-  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>LÄGG FÖRSLAG</b> och välj det.', x: 1040, y: 120, focus: '#btn-prop',
+  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>LÄGG FÖRSLAG</b> och välj det.', beside: '#btn-prop', side: 'left', focus: '#btn-prop',
     until: openedP,
     autoDo: () => { if (!$('ov-choose').classList.contains('open')) $('btn-prop').click(); setTimeout(() => document.querySelector('.propchoice:not(.used)')?.click(), 400); } });
   tutOnlyProp = null;
