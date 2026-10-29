@@ -537,9 +537,10 @@ game.on('roundStart', p => run(async () => {
   // Online runda>1: roundStart kommer MEDAN förra rundans ceremoni spelas → vänta med att byta
   // rundnummer tills ceremonin är klar (awardDone), annars hoppar siffran fram för tidigt.
   if (!(ONLINE && p.round > 1)) $('roundnum').textContent = p.round;
-  $('ov-trade').classList.remove('open'); $('ov-tradein').classList.remove('open');   // stäng ev. kvarglömda handels-/förslagsfönster från förra rundan
-  $('ov-choose').classList.remove('open');
-  $('ov-vote').classList.remove('open'); voteOpenFor = null;
+  // Stäng ALLA kvarglömda spel-popups från förra rundan. roundStart emitteras FÖRE rundans 'event',
+  // så nya rundans händelse-ruta öppnas EFTER detta (stängs alltså inte av misstag).
+  ['ov-trade', 'ov-tradein', 'ov-choose', 'ov-vote', 'ov-event', 'ov-register'].forEach(id => $(id)?.classList.remove('open'));
+  voteOpenFor = null;
   roundPowerTeam = p.powerTeam || null;                          // MAKT-ROTATION: vem styr politiken denna runda
   if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
   // round_start-ljud spelas centralt (rigg). Online: håll "RUNDA N" tills prisceremonin är klar
