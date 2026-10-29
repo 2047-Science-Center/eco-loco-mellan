@@ -27,6 +27,7 @@ Migration A→B och Python→Blocks är osynlig nedåt: båda lagren nedan är f
 | `ecoloco/rigg/blandare` | spelet vill köra blandaren (valfri cue, ej inkopplad i rigg.js än) | `1` = på, `0` = av | nej |
 | `ecoloco/rigg/ljud` | central "show"-ljud (ej på skärmen) | ljud-id/filnamn, t.ex. `round_start`, `win`, `lose`, `relief`, `proposal_open`, `event_storm.mp3` | nej |
 | `ecoloco/rigg/eventforslag` | GM-läge, vid rundstart: rundans dragna händelse (för spelledarpanelen) | `{"id":...,"namn":...,"text":...}` | nej |
+| `ecoloco/rigg/final` | KRÖNING efter sista prisutdelningen (sista steget klickat) | `{"result":"win"\|"lose","lag":"aker\|skog\|tundra\|stad"\|null}` (ren sträng `win`/`lose` accepteras också) → hjärnan: mörker → kort paus → ljus + fanfar (vinnarsidan tänds vid vinst) | nej |
 
 Retur-kanal (spelledarpanel → server, icke-retained): `ecoloco/spel/gm`
 | Payload | Effekt (server.js) |

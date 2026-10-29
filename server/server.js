@@ -509,20 +509,15 @@ function advanceCeremony() {
   return true;
 }
 
-// KRÖNING (efter sista prisutdelningen). Återanvänder award-cuen (RIGG-KONTRAKT §Award-mapping):
-// VINST → tänd vinnarsidan en sista gång i lagets färg (övriga släckta), vänta 2 s så skärmens
-// kröningsbild hinner synas, SEDAN final 'win' (riggen exploderar i grönt). FÖRLUST → final 'lose'
-// direkt (ingen enskild sida highlightas — alla lika i nederlaget). Final är SYSTEMCEREMONI (ungated).
+// KRÖNING (efter SISTA prisutdelningen, när sista steget klickats). Riggen är redan mörk (scen 'slut'
+// från endAwards). Finale-cuen bär utfall + vinnarlag → HJÄRNAN kör sekvensen: mörker → kort paus →
+// ljus + fanfar (vinnarsidan tänds för VINST, dystert rött för FÖRLUST). Final är SYSTEMCEREMONI (ungated).
 function fireFinale() {
   if (finaleSent || !lastGameEnd) return;
   finaleSent = true;
   const ge = lastGameEnd;
-  if (ge.won && ge.winner) {
-    rigg?.showAward('led', { teamId: ge.winner.teamId });              // vinnarsidan grön, övriga släckta
-    setTimeout(() => riggSend('ecoloco/rigg/final', 'win'), 2000);
-  } else {
-    riggSend('ecoloco/rigg/final', 'lose');
-  }
+  const win = ge.won && !!ge.winner;
+  riggSend('ecoloco/rigg/final', JSON.stringify({ result: win ? 'win' : 'lose', lag: win ? ge.winner.teamId : null }));
 }
 
 // SELFPLAY: servern stegar ceremonin på en fast klocka så skärm + rigg kliver i takt. Första ticket

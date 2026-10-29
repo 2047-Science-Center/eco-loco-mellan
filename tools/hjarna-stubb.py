@@ -308,17 +308,34 @@ def apply_paus(payload):
             set_all(ATTRACT_LOOK)
         prev_sides = prev_spots = None
 
-# VINST/FÖRLUST-FINALE (systemceremoni, ecoloco/rigg/final = "win"/"lose"): distinkt look + ljud så
-# gruppen får en tydlig positiv (vinst) resp. allvarlig (förlust) förstärkning. Håller tills nästa
-# scen-cue (t.ex. slutdelen → scen 'slut', eller attract). Spelar i BÅDA lägena (ej gatad).
+# VINST/FÖRLUST-FINALE (systemceremoni, ecoloco/rigg/final). Payload: {"result":"win"|"lose","lag":...}
+# (eller ren sträng "win"/"lose" för bakåtkomp.). TYDLIG REVEAL med dramaturgi: mörker → kort paus →
+# ljus + fanfar. VINST tänder VINNARENS sida starkt (övriga dämpat grönt) + spot, FÖRLUST dystert rött.
+# Håller tills nästa scen-cue (slutdel/attract). Spelar i BÅDA lägena (ej gatad).
 def apply_final(payload):
-    global crisis_active
+    global crisis_active, round_flourish_active
     crisis_active = False                     # ev. kvarvarande kris släpper → finalen äger LED-listen
+    round_flourish_active = False             # avbryt ev. pågående rund-sekvens
+    try:
+        d = json.loads(payload); result = d.get("result"); lag = d.get("lag")
+    except Exception:
+        result = str(payload).strip(); lag = None
     stop_ambience()
-    if str(payload).strip() == "win":
-        set_all(FINAL_WIN_LOOK); set_fx("wave", 35); play("win")   # firande grönt svall + vinst-ljud
-    else:
-        set_fx("none"); set_all(FINAL_LOSE_LOOK); play("lose")     # dystert rött + förlust-ljud
+    # FAS 1: mörker (riggen är redan släckt via scen 'slut', men säkerställ det) + kort paus
+    set_fx("none"); spots_off(); set_all(OFF)
+    # FAS 2 (+1,3 s): ljus + ljud = reveal av hur det gick / vem som vann
+    def _reveal():
+        if result == "win":
+            side = LAG_SIDE.get(lag)
+            if side:
+                for n in (1, 2, 3, 4): set_side(n, FINAL_WIN_LOOK if n == side else {"h": 120, "s": 70, "v": 35})
+                set_spot(side, True)          # pekar ut vinnarlaget
+            else:
+                set_all(FINAL_WIN_LOOK)
+            set_fx("wave", 35); play("win")   # firande grönt svall + vinst-fanfar
+        else:
+            set_fx("none"); spots_off(); set_all(FINAL_LOSE_LOOK); play("lose")   # dystert rött + förlust-ljud
+    tmr = threading.Timer(1.3, _reveal); tmr.daemon = True; tmr.start()
 
 def apply_award(payload):
     d = json.loads(payload)
