@@ -539,7 +539,7 @@ game.on('roundStart', p => run(async () => {
   if (!(ONLINE && p.round > 1)) $('roundnum').textContent = p.round;
   // Stäng ALLA kvarglömda spel-popups från förra rundan. roundStart emitteras FÖRE rundans 'event',
   // så nya rundans händelse-ruta öppnas EFTER detta (stängs alltså inte av misstag).
-  ['ov-trade', 'ov-tradein', 'ov-choose', 'ov-vote', 'ov-event', 'ov-register'].forEach(id => $(id)?.classList.remove('open'));
+  ['ov-trade', 'ov-tradein', 'ov-choose', 'ov-vote', 'ov-event', 'ov-register', 'ov-bot'].forEach(id => $(id)?.classList.remove('open'));
   voteOpenFor = null;
   roundPowerTeam = p.powerTeam || null;                          // MAKT-ROTATION: vem styr politiken denna runda
   if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
@@ -554,6 +554,7 @@ game.on('roundStart', p => run(async () => {
   renderPropBtn();                                                // gata LÄGG FÖRSLAG på maktlaget (inte bara disabled=false)
   $('endwrap').classList.remove('pulse');
   setEndBtn('AVSLUTA<br>OMGÅNG', false);
+  syncBotOverlay();   // bot-rutan öppnas igen BARA om bänken fortfarande körs av en bot (annars stängd)
 }));
 
 game.on('gameEnd', p => run(async () => {
