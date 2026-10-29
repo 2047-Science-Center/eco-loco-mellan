@@ -34,6 +34,9 @@ export function attachMqtt(engine) {
   engine.on('event', pushAll);
 
   // Grön LED = ekonomisk ledare (👑) · varnings-LED = värsta boven (⚠, Klimatregistret).
+  // Tänds vid roundEnd och lyser under prisutdelningen (= "Årets sabotör"-pilen). Släcks av
+  // servern via clearBenchResults() NÄR prisceremonin är klar (roundStart kan ej användas —
+  // motorn emittar den synkront direkt efter roundEnd, dvs före ceremonin ens visats).
   engine.on('roundEnd', () => {
     const lb = engine.leaderboards();
     engine.getState().teams.forEach(t => {
@@ -48,4 +51,14 @@ export function attachMqtt(engine) {
     });
   });
   // TODO fas 4: humör-/miljöfärg från öhälso-läget om riggen får den kanalen (nytt topic — stäm av).
+}
+
+// Släck vinnare/sabotör-pilen på alla bänkar. Kallas av servern när prisceremonin är KLAR (rundan
+// återupptas) så pilen lyser under prisutdelningen men inte ligger kvar och pekar hela nästa runda.
+// (Retained topics → publicera 0 för att nolla brokerns sparade värde.)
+export function clearBenchResults() {
+  Object.values(BENCH).forEach(b => {
+    publish(`ecoloco/${b}/winner`, 0);
+    publish(`ecoloco/${b}/looser`, 0);
+  });
 }

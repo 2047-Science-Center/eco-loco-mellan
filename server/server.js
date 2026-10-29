@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { EcoLoco, AREAS, timerSecFor, EVENTS } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
-import { attachMqtt, setPublisher as setBenchPublisher } from '../src/mqtt.js';
+import { attachMqtt, setPublisher as setBenchPublisher, clearBenchResults } from '../src/mqtt.js';
 import { attachRigg } from '../src/rigg.js';
 import { newSession } from './persist.js';
 import { buildSlutdel } from '../spec/slutdel.js';
@@ -504,7 +504,7 @@ function advanceCeremony() {
   rigg?.endAwards(over);
   broadcast({ type: 'event', event: 'awardDone', payload: { over } });
   cer = null;
-  if (!over) startTimer();                                             // rundan återupptas
+  if (!over) { clearBenchResults(); startTimer(); }                    // prisceremonin klar → släck sabotör-pilen på bänkarna, rundan återupptas
   else fireFinale();                                                   // KRÖNING: efter prisutdelningen → tänd vinnaren + final
   return true;
 }

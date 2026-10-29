@@ -933,7 +933,7 @@ $('trade-swap').addEventListener('click', () => {
 $('btn-trade').addEventListener('click', () => { audio.play('ui_tap'); openTrade(); });
 $('btn-trade-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-trade').classList.remove('open'); });
 // Ta tillbaka laget efter bot-övertagande → claim (servern låter en människa återta en bot mitt i spel).
-$('btn-bot-tillbaka').addEventListener('click', () => { audio.play('ui_tap'); if (game.me) game.claim(game.me); });
+$('btn-bot-tillbaka').addEventListener('click', () => { audio.play('ui_tap'); const lag = game.me || params.get('lag'); if (lag) game.claim(lag); });
 $('give-minus').addEventListener('click', () => { giveAmt = Math.max(1, giveAmt - 1); renderTradeModal(); });
 $('give-plus').addEventListener('click', () => { giveAmt = Math.min(E().team(game.me)[giveCur], giveAmt + 1); renderTradeModal(); });
 $('get-minus').addEventListener('click', () => { getAmt = Math.max(1, getAmt - 1); renderTradeModal(); });
@@ -1165,9 +1165,12 @@ function renderLobby(m) {
   const phase = gamePhase();
   // Styrs mitt lag av en bot (övertaget nu ELLER redan från start)? Visa "ta över"-rutan direkt,
   // göm den när jag tagit tillbaka laget. Drivs av claims i varje meddelande (robust även vid reconnect).
-  if (game.me && phase === 'pagar') {
-    if (m.claims[game.me] === 'bot') $('ov-bot').classList.add('open');
-    else if (m.claims[game.me] === 'human') $('ov-bot').classList.remove('open');
+  // Låst bänk (?lag=) vet sitt lag via URL:en även innan det claimats → visa "ta över"-rutan
+  // också när boten kört laget FRÅN START (inte bara vid övertag mitt i spelet).
+  const myBench = game.me || params.get('lag');
+  if (myBench && phase === 'pagar') {
+    if (m.claims[myBench] === 'bot') $('ov-bot').classList.add('open');
+    else if (m.claims[myBench] === 'human') $('ov-bot').classList.remove('open');
   }
   const LAGEN = ['aker', 'skog', 'tundra', 'stad'];
 
