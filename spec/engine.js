@@ -45,12 +45,10 @@ export const DEFAULT_CONFIG = {
 
   // ─── DYNAMISK FÖRSLAGSPOOL (design/FORSLAGSPOOL-FORSLAG.md) ───────────────────
   // Grund-3 (gron/skatt/forbud) ligger ALLTID kvar. Från extraProposalsFromRound
-  // läggs extra-förslag till. MAKT-ROTATION: när fixedExtraProposals är satt visas SAMMA
-  // uppsättning varje runda (ingen slump) → varje maktlag får exakt samma val = rättvist.
-  // Motorn sätter dem server-auktoritativt → S.extraProposals (se _rollExtraProposals).
-  extraProposalsFromRound: 2,  // extra-förslag redan fr.o.m. runda 2 (när makten börjar rotera); runda 1 = bara grund-3
-  fixedExtraProposals: ['skogsvard', 'kustvakt'],  // FAST par varje runda → grund-3 + dessa = 5 förslag, samma för alla lag. Töm listan ([]) → slumpas som förr.
-  extraProposalsPerRound: 3,   // används BARA om fixedExtraProposals är tom: så många slumpade extra-förslag/runda
+  // läggs extraProposalsPerRound SLUMPADE extra-förslag till per runda (roterar → variation
+  // mellan rundorna). Motorn sätter dem server-auktoritativt → S.extraProposals (se _rollExtraProposals).
+  extraProposalsFromRound: 2,  // extra-förslag redan fr.o.m. runda 2; runda 1 = bara grund-3
+  extraProposalsPerRound: 2,   // exakt så många slumpade extra-förslag/runda → 3 grund + 2 = 5 förslag att välja på
   krisProposalOh: 20,          // öhälsa under detta → SOS Krispaket ligger ALLTID bland förslagen (även före gate-rundan)
   powerFromRound: 2,           // MAKT-ROTATION: fr.o.m. denna runda får BARA ett lag (roterar) lägga förslag. Runda 1 = fritt (inlärning).
 
@@ -257,14 +255,6 @@ export class EcoLoco {
     const count = this.cfg.extraProposalsPerRound ?? 2;
     const kris = this.S.oh < (this.cfg.krisProposalOh ?? 20);
     if (this.S.round < fromRound && !kris) { this.S.extraProposals = []; return; }
-    // FAST uppsättning (MAKT-ROTATION): samma extra-förslag varje runda → rättvist mellan lagen.
-    const fixed = this.cfg.fixedExtraProposals;
-    if (fixed && fixed.length) {
-      const fx = [...fixed];
-      if (kris && !fx.includes('krispaket')) fx.unshift('krispaket');   // kris → garanterad räddningsutväg ligger alltid med
-      this.S.extraProposals = fx;
-      return;
-    }
     const pool = [...EXTRA_PROPOSAL_POOL];
     const pick = [];
     if (kris && pool.includes('krispaket')) { pick.push('krispaket'); pool.splice(pool.indexOf('krispaket'), 1); }
