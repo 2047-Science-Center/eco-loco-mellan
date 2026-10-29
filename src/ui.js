@@ -224,7 +224,7 @@ function initIcons() {
   set('#box-pengar .ic', ico('pengar', 26));
   set('#box-material .ic', ico('material', 26));
   set('#btn-trade', `${ico('byt', 22)} BYT VALUTOR`);
-  set('#btn-prop', `${ico('rosta', 22)} LÄGG FÖRSLAG`);
+  set('#btn-prop', `${ico('rosta', 22)} POLITIK`);
   set('#toplist-h', `${ico('borsen', 18)} TOPPLISTA`);
   set('#ov-start h1', `${ico('on', 46)} MAKTSPELET`);
   set('#ov-trade h2', `${ico('byt', 24)} BYT VALUTOR`);
@@ -668,24 +668,23 @@ function renderMe() {
   renderPropBtn();
 }
 
-// LÄGG FÖRSLAG-knappen: ett förslag per lag/runda. Har laget redan lagt → grå/gul "FÖRSLAG LAGT".
+// Gemensam POLITIK-knapp på ALLA skärmar → alla kan öppna och LÄSA förslagen; bara maktlaget kan LÄGGA.
+// Statusraden visar vem som är förslagsläggare (i lagets färg) så alla vet vem de ska påverka.
 function renderPropBtn() {
-  const btn = $('btn-prop'); if (!btn || !game.me) return;
+  const btn = $('btn-prop'); if (!btn) return;
   const S = E().getState();
-  const lagt = !!S?.proposedBy?.includes(game.me);
-  const propOpen = !!(S?.proposal && !S.proposal.resolved);
   const power = S?.powerTeam || null;                   // MAKT-ROTATION: vilket lag som styr politiken denna runda
   const sub = document.querySelector('.politik-sub');
-  btn.classList.toggle('lagt', lagt);
-  if (power && power !== game.me) {                     // inte ditt lag → knappen låst, hänvisa till maktlaget
-    btn.disabled = true; btn.classList.remove('lagt');
-    btn.innerHTML = `${ico('rosta', 22)} ${teamName(power).toUpperCase()} STYR`;
-    if (sub) sub.innerHTML = `🏛️ ${teamName(power)} styr politiken · ring och påverka`;
-    return;
+  btn.disabled = false; btn.classList.remove('lagt');
+  btn.innerHTML = `${ico('rosta', 22)} POLITIK`;
+  if (sub) {
+    if (power) {
+      const farg = AREAS.find(x => x.id === power)?.farg || 'var(--gold)';
+      sub.innerHTML = `Förslagsläggaren: <b style="color:${farg}">${teamName(power)}</b>${power === game.me ? ' (du)' : ''}`;
+    } else {
+      sub.textContent = 'Ett förslag per lag · 3 av 4 JA avgör';
+    }
   }
-  if (sub) sub.textContent = power === game.me ? '🏛️ Du styr politiken denna runda' : 'Ett förslag per lag · 3 av 4 JA avgör';
-  if (lagt) { btn.disabled = true; btn.innerHTML = `${ico('rosta', 22)} FÖRSLAG LAGT ✓`; }
-  else { btn.disabled = propOpen || resolving; btn.innerHTML = `${ico('rosta', 22)} LÄGG FÖRSLAG`; }
 }
 
 function flashRes(cur, amount) {
@@ -996,18 +995,29 @@ function visibleProps() {
 }
 $('btn-prop').addEventListener('click', () => {
   const S = E().getState();
-  if ((S.proposal && !S.proposal.resolved) || S.proposedBy?.includes(game.me) || resolving) return;
   audio.play('ui_tap');
+  if (S.proposal && !S.proposal.resolved) { openVoteModal(S.proposal); return; }   // öppet förslag → visa omröstningen (alla kan läsa/rösta)
+  if (resolving) return;
+  const power = S.powerTeam || null;
+  // Bara maktlaget (eller alla i runda 1 utan makt) som INTE redan lagt får LÄGGA. Övriga läser & diskuterar.
+  const kanLagga = !!game.me && (!power || power === game.me) && !(S.proposedBy || []).includes(game.me);
   const used = S.usedProposals || [];   // förslagstyper som redan lagts denna runda → gråas ut
+  const q = document.querySelector('#ov-choose h2'), qsub = document.querySelector('#ov-choose .sub');
+  if (q) q.innerHTML = kanLagga ? `${ico('rosta', 24)} LÄGG ETT FÖRSLAG` : `${ico('rosta', 24)} RUNDANS POLITIK`;
+  if (qsub) {
+    if (kanLagga) qsub.textContent = 'Ett förslag per runda — alla lag röstar, 3 av 4 JA krävs';
+    else if (power) { const farg = AREAS.find(x => x.id === power)?.farg || 'var(--gold)'; qsub.innerHTML = `<b style="color:${farg}">${teamName(power)}</b> lägger förslaget — läs och diskutera, ring och påverka!`; }
+    else qsub.textContent = 'Läs förslagen — omröstning sker när ett läggs.';
+  }
   const lista = tutOnlyProp ? visibleProps().filter(p => p.type === tutOnlyProp) : visibleProps();
   $('proplist').innerHTML = lista.map(p => {
     const taget = used.includes(p.type);
-    return `<div class="propcard propchoice${taget ? ' used' : ''}" data-type="${p.type}"${taget ? ' aria-disabled="true"' : ''}>
+    return `<div class="propcard propchoice${taget ? ' used' : ''}${kanLagga ? '' : ' readonly'}" data-type="${p.type}"${(taget || !kanLagga) ? ' aria-disabled="true"' : ''}>
       <div class="pic">${p.pic}</div>
       <div class="tx"><b style="color:var(--text)">${p.rubrik}</b>${taget ? ' <span style="color:var(--gold)">· LAGT</span>' : ''}<br>${p.tx}</div>
     </div>`;
   }).join('');
-  document.querySelectorAll('.propchoice:not(.used)').forEach(el => el.addEventListener('click', () => {
+  if (kanLagga) document.querySelectorAll('.propchoice:not(.used)').forEach(el => el.addEventListener('click', () => {
     $('ov-choose').classList.remove('open');
     game.openProposal(el.dataset.type);
   }));
@@ -1822,7 +1832,7 @@ async function runTutorial() {
   // spelaren trycker LÄGG FÖRSLAG, klickar på det enda kortet och blir själv förslagsläggare.
   tutOnlyProp = 'gron';
   const openedP = tutOnce('proposalOpened', p => p.by === myLag);
-  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>LÄGG FÖRSLAG</b> och välj det.', beside: '#btn-prop', side: 'left', focus: '#btn-prop',
+  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>POLITIK</b> och välj ditt förslag.', beside: '#btn-prop', side: 'left', focus: '#btn-prop',
     until: openedP,
     autoDo: () => { if (!$('ov-choose').classList.contains('open')) $('btn-prop').click(); setTimeout(() => document.querySelector('.propchoice:not(.used)')?.click(), 400); } });
   tutOnlyProp = null;

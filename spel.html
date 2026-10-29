@@ -172,6 +172,8 @@
   .propchoice { cursor: pointer; transition: border-color .15s; }
   .propchoice:hover { border-color: var(--gold); }
   .propchoice.used { opacity: .42; filter: grayscale(.7); cursor: not-allowed; pointer-events: none; }   /* förslaget redan lagt denna runda */
+  .propchoice.readonly { cursor: default; }                        /* inte maktlaget → läs & diskutera, inte klickbart */
+  .propchoice.readonly:hover { border-color: var(--edge2); }
   .votebtns { display: flex; gap: 18px; }
   /* Förslaget lagt denna runda → grå/gul, tydligt inte tryckbar (ett förslag per lag/runda). */
   #btn-prop.lagt { background: #2a2824; border-color: var(--gold); color: var(--gold); opacity: 1; }
@@ -458,7 +460,7 @@
     <aside class="col-others">
       <div class="panel toplist"><h3 id="toplist-h">TOPPLISTA</h3><div id="toplist"></div></div>
       <div class="panel klimat-mirror"><div id="reg-klimat-mirror"></div></div>
-      <div class="panel politik"><button class="bigbtn" id="btn-prop">LÄGG FÖRSLAG</button><div class="politik-sub">Ett förslag per lag · 3 av 4 JA avgör</div></div>
+      <div class="panel politik"><button class="bigbtn" id="btn-prop">POLITIK</button><div class="politik-sub">Ett förslag per lag · 3 av 4 JA avgör</div></div>
     </aside>
   </div>
 
