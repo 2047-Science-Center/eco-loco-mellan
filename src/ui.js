@@ -518,6 +518,7 @@ game.on('awardDone', p => run(async () => {
   if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
   // Prisceremonin klar → nu (när nya rundan faktiskt börjar) byts rundnumret och "RUNDA N"-popupen visas.
   if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`RUNDA ${r}`, false, 1800); await showPowerBanner(roundPowerTeam); }
+  syncBotOverlay();   // ny runda igång → bot-bänk visar "ta över"-rutan (efter ceremonin, inte mitt i den)
 }));
 
 game.on('roundEnd', () => run(async () => renderRegs()));
@@ -529,6 +530,7 @@ game.on('start', () => run(async () => {
   $('ov-slut').classList.remove('open');
   pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null; cerNastaRunda = null;   // nytt parti → nollställ ev. väntande slutskärm/banner
   map.clearBuildings();
+  syncBotOverlay();   // bot-bänk → visa "ta över"-rutan redan när runda 1 börjar
 }));
 
 game.on('roundStart', p => run(async () => {
@@ -1175,19 +1177,23 @@ function gamePhase() {
   if (S && S.over) return 'slut';
   return 'lobby';
 }
+// Visa "ta över"-rutan så snart en bot kör DENNA bänk, göm den när en människa styr.
+// Körs vid rundstart / ceremoni-slut OCH vid lobby-uppdateringar (claims bärs i varje meddelande),
+// så rutan dyker upp DIREKT när runda 1 börjar för en bot-bänk — inte först när en lobby-händelse
+// råkar komma (då kunde den poppa upp mitt i t.ex. runda 5). Låst bänk (?lag=) vet sitt lag via URL:en.
+function syncBotOverlay() {
+  if (!ONLINE) return;
+  if (gamePhase() !== 'pagar') return;
+  const claims = realGame.net?.claims || lastLobby?.claims; if (!claims) return;
+  const myBench = game.me || params.get('lag'); if (!myBench) return;
+  if (claims[myBench] === 'bot') $('ov-bot').classList.add('open');
+  else if (claims[myBench] === 'human') $('ov-bot').classList.remove('open');
+}
 function renderLobby(m) {
   lastLobby = m;
   if (!ONLINE) return;
   const phase = gamePhase();
-  // Styrs mitt lag av en bot (övertaget nu ELLER redan från start)? Visa "ta över"-rutan direkt,
-  // göm den när jag tagit tillbaka laget. Drivs av claims i varje meddelande (robust även vid reconnect).
-  // Låst bänk (?lag=) vet sitt lag via URL:en även innan det claimats → visa "ta över"-rutan
-  // också när boten kört laget FRÅN START (inte bara vid övertag mitt i spelet).
-  const myBench = game.me || params.get('lag');
-  if (myBench && phase === 'pagar') {
-    if (m.claims[myBench] === 'bot') $('ov-bot').classList.add('open');
-    else if (m.claims[myBench] === 'human') $('ov-bot').classList.remove('open');
-  }
+  syncBotOverlay();
   const LAGEN = ['aker', 'skog', 'tundra', 'stad'];
 
   // Fyra prickar — en per lag, fylld = spelare ansluten (aldrig "x av 4" i text)
