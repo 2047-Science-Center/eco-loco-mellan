@@ -1030,6 +1030,8 @@ $('btn-prop').addEventListener('click', () => {
       <div class="tx"><b style="color:var(--text)">${p.rubrik}</b>${taget ? ' <span style="color:var(--gold)">· LAGT</span>' : ''}<br>${p.tx}</div>
     </div>`;
   }).join('');
+  // Tutorialen: dölj AVBRYT så man inte kan stänga väljaren utan att lägga förslaget (då fastnar steget).
+  $('btn-choose-cancel').style.display = tutOnlyProp ? 'none' : '';
   if (kanLagga) document.querySelectorAll('.propchoice:not(.used)').forEach(el => el.addEventListener('click', () => {
     $('ov-choose').classList.remove('open');
     game.openProposal(el.dataset.type);
