@@ -102,7 +102,7 @@ export function attachRigg(engine, opts = {}) {
     endAwards(isOver) {
       P('ecoloco/rigg/award', { typ: 'ingen', lag: null });          // ceremonin slut → säkerställ att pilen är släckt (semantisk clear, oberoende av scen-hanteringen)
       if (isOver) P('ecoloco/rigg/scen', 'slut');
-      else { P('ecoloco/rigg/scen', 'runda'); P('ecoloco/rigg/ohalsa', lastOh); }
+      else P('ecoloco/rigg/scen', 'runda');   // ny runda: hjärnan kör sekvensen (släck allt → ljud+ljus → öhälsa). INGEN ohalsa här — den racade sekvensen.
     },
     // Anropa varje sekund från den som äger timern (ui.js / server.js). Ingen timer -> hoppa över.
     tick(left) {

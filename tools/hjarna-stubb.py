@@ -62,9 +62,9 @@ last_sides = {1: None, 2: None, 3: None, 4: None}    # senaste look per sida (f�
 last_spots = {1: False, 2: False, 3: False, 4: False}
 prev_sides = None   # snapshot vid paus (vad som visades innan) → återställs vid fortsätt
 prev_spots = None
-round_flourish_active = False   # NY RUNDA: guldpulsen äger LED-listen ~1,2 s (apply_ohalsa målar ej över den)
-round_flourish_timer  = None
-_last_flourish = 0.0            # debounce: dubbla scen='runda' (spelstart + climax) ska inte ge dubbel puls/ljud
+round_flourish_active = False   # NY RUNDA: sekvensen äger LED-listen tills den är klar (apply_ohalsa målar ej över)
+round_flourish_timer  = []      # pågående fas-timers (avbryts om en ny runda hinner börja)
+_last_flourish = 0.0            # debounce: dubbla scen='runda' (spelstart + climax) ska inte ge dubbel sekvens
 
 # ---- granulär ut (till firmware) ----
 def pub(topic, msg):
@@ -221,22 +221,32 @@ def start_round_flourish():
     global round_flourish_active, round_flourish_timer, _last_flourish
     if crisis_active: return
     now = time.time()
-    if now - _last_flourish < 2.5: return      # redan pulsat nyss (dubbel scen='runda') → hoppa över
+    if now - _last_flourish < 2.5: return      # debounce: dubbel scen='runda' (spelstart + ceremoni-climax) → bara en sekvens
     _last_flourish = now
-    round_flourish_active = True
-    play("round_start")                         # ett enda round_start-ljud, vid RÄTT tillfälle (ej längre från rigg.js roundStart)
-    set_fx("sweep", speed=70); set_all(ROUND_GOLD)   # guldsweep/puls (Blocks sveper; stubben pulsar guld)
-    if round_flourish_timer: round_flourish_timer.cancel()
-    round_flourish_timer = threading.Timer(1.2, _end_round_flourish)
-    round_flourish_timer.daemon = True
-    round_flourish_timer.start()
-def _end_round_flourish():
-    global round_flourish_active
-    round_flourish_active = False
-    if crisis_active: return
-    set_fx("none")
-    if last_oh is not None: apply_ohalsa(last_oh)    # fall in i rundans vanliga öhälso-look
-    else: set_all(MODE_LOOK["neutralt"])
+    round_flourish_active = True               # sekvensen äger LED-listen tills den är klar (apply_ohalsa målar ej över)
+    # TYDLIG ORDNING MED PAUSER så riggen hinner med varje steg:
+    # FAS 1 (nu):    nollställ / avsluta prisutdelning → släck ALLT (pil, spots, fx, lampor av)
+    set_fx("none"); spots_off(); set_all(OFF)
+    # FAS 2 (+0,6 s): NY RUNDA → ljud + guldljus (sweep/puls)
+    def _fas_ny_runda():
+        if crisis_active: return
+        play("round_start")                     # ett enda round_start-ljud, vid RÄTT tillfälle (ej längre från rigg.js roundStart)
+        set_fx("sweep", speed=70); set_all(ROUND_GOLD)   # Blocks sveper guld; stubben pulsar guld
+    # FAS 3 (+1,8 s): TILLBAKA TILL ÖHÄLSA → rundans vanliga look
+    def _fas_ohalsa():
+        global round_flourish_active
+        round_flourish_active = False
+        if crisis_active: return
+        set_fx("none")
+        if last_oh is not None: apply_ohalsa(last_oh)
+        else: set_all(MODE_LOOK["neutralt"])
+    for t in round_flourish_timer:
+        try: t.cancel()
+        except Exception: pass
+    round_flourish_timer = []
+    for sek, fn in ((0.6, _fas_ny_runda), (1.8, _fas_ohalsa)):
+        tmr = threading.Timer(sek, fn); tmr.daemon = True; tmr.start()
+        round_flourish_timer.append(tmr)
 
 def apply_scen(payload):
     global cur_mode, amb_manual

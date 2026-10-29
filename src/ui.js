@@ -474,7 +474,7 @@ function showPendingSlut() {
 
 // SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
-  $('btn-prop').disabled = true; $('btn-prop').classList.remove('lagt');   // prisutdelning → POLITIK otryckbar tills rundan återupptas
+  $('btn-prop').disabled = true; $('btn-prop').classList.remove('lagt', 'gold');   // prisutdelning → POLITIK otryckbar tills rundan återupptas
   const show = async (typ, w) => {
     renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
     $('ov-award').classList.add('open');
@@ -678,11 +678,14 @@ function renderPropBtn() {
   const power = S?.powerTeam || null;                   // MAKT-ROTATION: vilket lag som styr politiken denna runda
   const sub = document.querySelector('.politik-sub');
   const lagt = !!(S && S.proposal);                     // ett förslag har lagts denna runda (en per runda med makt-rotation)
+  // Din tur att lägga? (maktlaget, eller alla i runda 1 utan makt, och du har inte redan lagt)
+  const kanLagga = !lagt && !!game.me && (!power || power === game.me) && !(S?.proposedBy || []).includes(game.me);
   if (lagt) {
-    btn.disabled = true; btn.classList.add('lagt');     // oklickbar resten av rundan → ingen ny händelse ovanpå
+    btn.disabled = true; btn.classList.remove('gold'); btn.classList.add('lagt');   // grå + oklickbar resten av rundan → ingen ny händelse ovanpå
     btn.innerHTML = `${ico('rosta', 22)} FÖRSLAG LAGT`;
   } else {
     btn.disabled = false; btn.classList.remove('lagt');
+    btn.classList.toggle('gold', kanLagga);             // gul/guldig = din tur att lägga förslag; neutral = du kan bara läsa de andras
     btn.innerHTML = `${ico('rosta', 22)} POLITIK`;
   }
   if (sub) {
