@@ -27,7 +27,7 @@ export function mockOpponentsAct(engine, humans) {
     } else {
       card = [...hand].sort((a, b) => (b.gp + b.gm) - (a.gp + a.gm))[0]; // oftast girig (mest avkastning)
     }
-    ensureAfford(engine, t, card);
+    ensureAfford(engine, t, card, skip);
     const res = engine.selectCard(t.id, card.tier);
     if (!res.ok) {
       // hade inte råd ens efter byte → avstå (inget val denna runda)
@@ -35,14 +35,16 @@ export function mockOpponentsAct(engine, humans) {
   });
 }
 
-// Botar byter till sig den valuta de saknar, ~1:1, från ett lag med överskott.
-function ensureAfford(engine, t, card) {
+// Botar byter till sig den valuta de saknar, ~1:1, BARA från en annan BOT med överskott.
+// Aldrig från ett människolag (skip) — en bot tvingar aldrig fram ett byte utan samtycke.
+// Hittas ingen bot-säljare får boten avstå sitt bygge denna runda (selectCard-grenen ovan).
+function ensureAfford(engine, t, card, skip) {
   const S = engine.getState();
   ['pengar', 'material'].forEach(cur => {
     const need = (cur === 'pengar' ? card.kp : card.km) - t[cur];
     if (need > 0) {
       const other = cur === 'pengar' ? 'material' : 'pengar';
-      const seller = S.teams.find(x => x.id !== t.id && x[cur] - need >= 6 && t[other] >= need);
+      const seller = S.teams.find(x => x.id !== t.id && !skip.has(x.id) && x[cur] - need >= 6 && t[other] >= need);
       if (seller) engine.transfer(t.id, seller.id, need, other, need, cur);
     }
   });
