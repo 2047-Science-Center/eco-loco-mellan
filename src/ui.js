@@ -1693,7 +1693,14 @@ async function runTutorial() {
   await delay(500);
   if (tutAbort) return;
 
-  // ——— LAG-IDENTITET: vem är du, vad ansvarar du för, vad producerar du? ———
+  // ——— MÅL (FÖRST): bli borgmästare (helskärm med bild). Väntar på tryck, ingen auto-timeout. ———
+  $('ov-mission').classList.add('open');
+  audio.play('ui_open');
+  await Promise.race([new Promise(res => { $('ov-mission').onclick = res; }), tutAbortP()]);
+  $('ov-mission').onclick = null; $('ov-mission').classList.remove('open');
+  if (tutAbort) return;
+
+  // ——— LAG-IDENTITET (sedan): vem är du, vad ansvarar du för, vad producerar du? ———
   {
     const a = AREAS.find(x => x.id === myLag);
     const TERRAIN = { aker: 'Åkermarken', skog: 'Skogen', tundra: 'Tundran', stad: 'Staden' };
@@ -1710,13 +1717,7 @@ async function runTutorial() {
     }
   }
 
-  // ——— INTRO: vad går spelet ut på? (3 rutor, klicka igenom, highlightar relevant yta) ———
-  // Mål-skärm: bli borgmästare (helskärm med bild). Väntar på tryck, ingen auto-timeout (som övriga intro-rutor).
-  $('ov-mission').classList.add('open');
-  audio.play('ui_open');
-  await Promise.race([new Promise(res => { $('ov-mission').onclick = res; }), tutAbortP()]);
-  $('ov-mission').onclick = null; $('ov-mission').classList.remove('open');
-  if (tutAbort) return;
+  // ——— INTRO forts: vad går spelet ut på? (klicka igenom, highlightar relevant yta) ———
   await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190, hold: true,
     txt: '⏱️ <b>Ni har 8 rundor på er!</b><br>Bygg, handla och påverka ön genom <b>politiska beslut</b>.' });
   if (tutAbort) return;
