@@ -262,7 +262,14 @@ const _tutAborters = [];      // väntare som väcks när tutorialen ska avbryta
 // nedräkning inte blockeras. Bara i drift (ONLINE); solo/lokalt behöver det inte.
 const TUT_IDLE_MS = 90000;
 let tutIdleTimer = null, tutLastTouch = 0, tutIdleSent = false;
-function tutTouch() { tutLastTouch = Date.now(); }
+function tutTouch() {
+  tutLastTouch = Date.now();
+  if (tutIdleSent) {                      // en bot hade tagit över (idle) → människan är tillbaka
+    tutIdleSent = false;
+    $('ov-bot').classList.remove('open');
+    if (game.me) realGame.net?.claim?.(game.me);   // återta laget på servern (av-botta) så det inte är bot när spelet startar
+  }
+}
 function startTutIdleWatch() {
   if (!ONLINE) return;
   stopTutIdleWatch();
@@ -273,6 +280,10 @@ function startTutIdleWatch() {
     if (!tutIdleSent && Date.now() - tutLastTouch > TUT_IDLE_MS) {
       tutIdleSent = true;
       realGame.net.tutIdle?.();           // → servern: laget blir bot (kan återtas via TA TILLBAKA)
+      // Visa "en bot tog över"-rutan ÄVEN under tutorialen. (Proxyn forwardar inte serverns
+      // botTakeover medan tutorial-backenden är aktiv, så skärmen öppnar den själv här.)
+      audio.play('ui_notis');
+      $('ov-bot').classList.add('open');
     }
   }, 5000);
 }
@@ -1452,7 +1463,8 @@ function resetToLobbyUI() {
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
   doljTrailer();
   ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-roll', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
-   'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus'].forEach(id => $(id)?.classList.remove('open'));
+   'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus', 'ov-bot', 'ov-mission', 'ov-power'].forEach(id => $(id)?.classList.remove('open'));
+  tutIdleSent = false;
   $('tutveil').style.display = 'none';
   $('tutbox').style.display = 'none';
   $('tutbarrier').style.display = 'none';
