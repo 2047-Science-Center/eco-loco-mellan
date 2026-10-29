@@ -41,6 +41,7 @@ PAUS_LOOK    = {"h": 210, "s": 70, "v": 14, "puls": 0}   # lugn, nersläckt blå
 KRIS_LOOK    = {"h": 0, "s": 100, "v": 15, "puls": 40}   # svag, pulserande röd — krisen äger LED-listen tills den släpps
 FINAL_WIN_LOOK  = {"h": 120, "s": 100, "v": 100}         # VINST: starkt firande grönt
 FINAL_LOSE_LOOK = {"h": 0,   "s": 100, "v": 22}          # FÖRLUST: dystert mörkt rött
+ROUND_GOLD      = {"h": 45,  "s": 65,  "v": 98, "puls": 70}   # NY RUNDA-flourish: guld (#C9A94F-accent) — MEDVETET ingen lagfärg och ingen öhälso-signalfärg (röd/gul/grön) så den ej kan misstolkas som ett resultat. Blocks gör en riktig sweep; stubben pulsar guld.
 KRIS_BLANDARE_SEK = 15.0                                  # blandaren fyrar så länge, sen släcks BARA den (röda pulsen kvar)
 
 # ---- MAPPNING: award -> vinnarsidans look + ljud ----
@@ -61,6 +62,9 @@ last_sides = {1: None, 2: None, 3: None, 4: None}    # senaste look per sida (f�
 last_spots = {1: False, 2: False, 3: False, 4: False}
 prev_sides = None   # snapshot vid paus (vad som visades innan) → återställs vid fortsätt
 prev_spots = None
+round_flourish_active = False   # NY RUNDA: guldpulsen äger LED-listen ~1,2 s (apply_ohalsa målar ej över den)
+round_flourish_timer  = None
+_last_flourish = 0.0            # debounce: dubbla scen='runda' (spelstart + climax) ska inte ge dubbel puls/ljud
 
 # ---- granulär ut (till firmware) ----
 def pub(topic, msg):
@@ -204,12 +208,35 @@ def apply_ohalsa(payload):
     global cur_mode, last_oh
     last_oh = payload
     m = oh_mode(payload)
-    if not crisis_active:                  # under KRIS äger krisen LED-listen → rör ej looken
+    if not crisis_active and not round_flourish_active:   # KRIS/NY-RUNDA-puls äger LED-listen → rör ej looken (ohalsa kommer direkt efter scen='runda')
         set_fx("none"); set_all(MODE_LOOK[m]); spots_off()
     set_ambience(amb_manual or AMB_FILE.get(m))  # manuell preset vinner; annars följ öhälso-läget (loopar vidare även i kris)
     if m != cur_mode:
         if not crisis_active: play(MODE_SOUND.get(m))
         cur_mode = m
+
+# NY RUNDA-flourish: en kort guldpuls (~1,2 s) över alla fyra sidor + round_start-ljud, sedan faller
+# looken in på öhälsan. Debounce skyddar mot dubbla scen='runda' (spelstart + ceremoni-climax).
+def start_round_flourish():
+    global round_flourish_active, round_flourish_timer, _last_flourish
+    if crisis_active: return
+    now = time.time()
+    if now - _last_flourish < 2.5: return      # redan pulsat nyss (dubbel scen='runda') → hoppa över
+    _last_flourish = now
+    round_flourish_active = True
+    play("round_start")                         # ett enda round_start-ljud, vid RÄTT tillfälle (ej längre från rigg.js roundStart)
+    set_fx("sweep", speed=70); set_all(ROUND_GOLD)   # guldsweep/puls (Blocks sveper; stubben pulsar guld)
+    if round_flourish_timer: round_flourish_timer.cancel()
+    round_flourish_timer = threading.Timer(1.2, _end_round_flourish)
+    round_flourish_timer.daemon = True
+    round_flourish_timer.start()
+def _end_round_flourish():
+    global round_flourish_active
+    round_flourish_active = False
+    if crisis_active: return
+    set_fx("none")
+    if last_oh is not None: apply_ohalsa(last_oh)    # fall in i rundans vanliga öhälso-look
+    else: set_all(MODE_LOOK["neutralt"])
 
 def apply_scen(payload):
     global cur_mode, amb_manual
@@ -218,7 +245,9 @@ def apply_scen(payload):
         if not crisis_active: set_fx("none"); set_all(ATTRACT_LOOK); spots_off()
     elif payload == "runda":
         cur_mode = None            # nästa ohalsa sätter look + ambience
-        if not crisis_active: set_fx("none"); spots_off()   # rensa ev. award-pil/spot efter prisutdelningen
+        if not crisis_active:
+            set_fx("none"); spots_off()      # rensa ev. award-pil/spot efter prisutdelningen
+            start_round_flourish()           # NY RUNDA: guldpuls + round_start-ljud, sedan faller looken in på öhälsan
     elif payload == "awards":
         set_ambience("musik_award.mp3")   # award-MUSIK under ceremonin (tydligt avbrott); award-stingers spelas ovanpå
         if not crisis_active: set_fx("none")
@@ -347,10 +376,10 @@ def apply_ceremoni(payload):
         stop_ambience(); play("countdown_start")   # mer dramatisk än gamla "spanning"; spanning.mp3 ligger kvar som reserv
         ceremoni_stop = threading.Event()
         threading.Thread(target=_chase_worker, daemon=True).start()
-    elif payload == "climax":         # vitt ljus i 3 s, sedan rundans look
+    elif payload == "climax":         # vitt ljus i 3 s, sedan rundans look (apply_scen('runda') gör guldpuls + round_start-ljud)
         ceremoni_stop.set()
         set_fx("none"); set_all({"h": 0, "s": 0, "v": 100})
-        threading.Timer(3.0, lambda: (apply_scen("runda"), play("round_start"))).start()
+        threading.Timer(3.0, lambda: apply_scen("runda")).start()
     elif payload == "runda1":         # skärmen bytte till runda 1 — säkra att chase är stoppad (vita ljuset hålls av climax-timern)
         ceremoni_stop.set()
 

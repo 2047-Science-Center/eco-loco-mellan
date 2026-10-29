@@ -474,6 +474,7 @@ function showPendingSlut() {
 
 // SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
+  $('btn-prop').disabled = true; $('btn-prop').classList.remove('lagt');   // prisutdelning → POLITIK otryckbar tills rundan återupptas
   const show = async (typ, w) => {
     renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
     $('ov-award').classList.add('open');
@@ -486,6 +487,7 @@ game.on('award', p => run(async () => {
   if (p.eld) await show('eld', p.eld);
   await show('sab', p.sab);
   game.awardsKlara?.();   // prisutdelningen genomklickad → rundtimern får börja ticka
+  renderPropBtn();        // rundan återupptas → POLITIK tryckbar igen
   renderRegs();
 }));
 
@@ -553,7 +555,7 @@ game.on('gameEnd', p => run(async () => {
 
 game.on('proposalOpened', p => run(async () => {
   // proposal_open-ljud spelas centralt (rigg); 'vote' stannar som torr feedback när DU trycker JA/NEJ.
-  $('btn-prop').disabled = true;
+  renderPropBtn();                 // förslaget lagt → knappen blir "FÖRSLAG LAGT" + oklickbar
   openVoteModal(p);
 }));
 
@@ -675,8 +677,14 @@ function renderPropBtn() {
   const S = E().getState();
   const power = S?.powerTeam || null;                   // MAKT-ROTATION: vilket lag som styr politiken denna runda
   const sub = document.querySelector('.politik-sub');
-  btn.disabled = false; btn.classList.remove('lagt');
-  btn.innerHTML = `${ico('rosta', 22)} POLITIK`;
+  const lagt = !!(S && S.proposal);                     // ett förslag har lagts denna runda (en per runda med makt-rotation)
+  if (lagt) {
+    btn.disabled = true; btn.classList.add('lagt');     // oklickbar resten av rundan → ingen ny händelse ovanpå
+    btn.innerHTML = `${ico('rosta', 22)} FÖRSLAG LAGT`;
+  } else {
+    btn.disabled = false; btn.classList.remove('lagt');
+    btn.innerHTML = `${ico('rosta', 22)} POLITIK`;
+  }
   if (sub) {
     if (power) {
       const farg = AREAS.find(x => x.id === power)?.farg || 'var(--gold)';
@@ -996,6 +1004,7 @@ function visibleProps() {
 $('btn-prop').addEventListener('click', () => {
   const S = E().getState();
   audio.play('ui_tap');
+  if ($('ov-award').classList.contains('open')) return;   // prisutdelning pågår → lägg inget förslag mitt i ceremonin
   if (S.proposal && !S.proposal.resolved) { openVoteModal(S.proposal); return; }   // öppet förslag → visa omröstningen (alla kan läsa/rösta)
   if (resolving) return;
   const power = S.powerTeam || null;
@@ -1005,8 +1014,9 @@ $('btn-prop').addEventListener('click', () => {
   const q = document.querySelector('#ov-choose h2'), qsub = document.querySelector('#ov-choose .sub');
   if (q) q.innerHTML = kanLagga ? `${ico('rosta', 24)} LÄGG ETT FÖRSLAG` : `${ico('rosta', 24)} RUNDANS POLITIK`;
   if (qsub) {
+    qsub.style.fontSize = '';   // nollställ (grundstorlek för maktlag/runda 1)
     if (kanLagga) qsub.textContent = 'Ett förslag per runda — alla lag röstar, 3 av 4 JA krävs';
-    else if (power) { const farg = AREAS.find(x => x.id === power)?.farg || 'var(--gold)'; qsub.innerHTML = `<b style="color:${farg}">${teamName(power)}</b> lägger förslaget — läs och diskutera, ring och påverka!`; }
+    else if (power) { const farg = AREAS.find(x => x.id === power)?.farg || 'var(--gold)'; qsub.innerHTML = `<b style="color:${farg}">${teamName(power)}</b> lägger förslaget — läs och diskutera, ring och påverka!`; qsub.style.fontSize = '21px'; }
     else qsub.textContent = 'Läs förslagen — omröstning sker när ett läggs.';
   }
   const lista = tutOnlyProp ? visibleProps().filter(p => p.type === tutOnlyProp) : visibleProps();
@@ -1832,9 +1842,19 @@ async function runTutorial() {
   // spelaren trycker LÄGG FÖRSLAG, klickar på det enda kortet och blir själv förslagsläggare.
   tutOnlyProp = 'gron';
   const openedP = tutOnce('proposalOpened', p => p.by === myLag);
-  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>POLITIK</b> och välj ditt förslag.', beside: '#btn-prop', side: 'left', focus: '#btn-prop',
+  // 1) Peka på POLITIK-knappen tills förslagsväljaren öppnas.
+  const choiceOpenP = new Promise(res => {
+    const iv = setInterval(() => { if ($('ov-choose').classList.contains('open')) { clearInterval(iv); res('open'); } }, 120);
+    tutAbortP().then(() => clearInterval(iv));
+  });
+  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>POLITIK</b>.', beside: '#btn-prop', side: 'left', focus: '#btn-prop',
+    until: choiceOpenP,
+    autoDo: () => { if (!$('ov-choose').classList.contains('open')) $('btn-prop').click(); } });
+  if (tutAbort) { tutOnlyProp = null; return; }
+  // 2) Väljaren är uppe → flytta rutan åt sidan (täcker inte förslaget) och be dem välja kortet.
+  await tutBeat({ ix: 2, txt: 'Välj ditt förslag.', x: 40, y: 360, focus: null,
     until: openedP,
-    autoDo: () => { if (!$('ov-choose').classList.contains('open')) $('btn-prop').click(); setTimeout(() => document.querySelector('.propchoice:not(.used)')?.click(), 400); } });
+    autoDo: () => document.querySelector('.propchoice:not(.used)')?.click() });
   tutOnlyProp = null;
   if (tutAbort) return;
   await delay(500);
@@ -1850,8 +1870,9 @@ async function runTutorial() {
   await tutSay({ ix: 2, focus: '.ohbar', x: 520, y: 190,
     txt: `Ditt förslag gick igenom ✅ — öns hälsa stiger <b>+${tut.E().cfg.gronGain} ${ico('tillvaxt', 18)}</b>.` });
   if (tutAbort) return;
-  // MAKT-ROTATION: förklara att bara ett lag i taget styr politiken (annars lovar övningen för mycket).
-  await tutSay({ ix: 2, focus: '#btn-prop', x: 1040, y: 120,
+  // MAKT-ROTATION: förklara att bara ett lag i taget styr politiken. Knappen hålls NEDSLÄCKT (focus: null)
+  // — den tänds inte här, för den här rundan är det inte din tur att lägga förslag (bara läsa).
+  await tutSay({ ix: 2, focus: null, x: 1040, y: 120,
     txt: `Men bara <b>ett lag i taget</b> styr politiken — turen <b>roterar varje runda</b>. Är det inte din tur? <b>Ring laget som styr</b> och påverka dem.` });
   if (tutAbort) return;
   await tutBarrier(3);
