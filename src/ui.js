@@ -1056,9 +1056,25 @@ $('btn-choose-inget').addEventListener('click', () => { audio.play('ui_close'); 
 
 // ═══════════ ÖRÅD-politik (klient): ordförande-ruta → förslagsväljare (5 förslag) → röstning ═══════════
 game.on('politicsStart', p => run(async () => {
-  await banner(`🏛 ${teamName(p.power).toUpperCase()} HAR ORDET`, false, 2200);
+  await showOrdforande(p.power);
   openPolitikval(p.power);
 }));
+// "X HAR ORDET"-rutan med lagets maktbild (assets/makt/). Klick-genom, auto efter ~3 s.
+function showOrdforande(power) {
+  return new Promise(res => {
+    const namn = teamName(power), farg = AREAS.find(a => a.id === power)?.farg || 'var(--gold)';
+    const img = $('power-img');
+    img.onerror = () => { img.onerror = null; img.style.display = 'none'; };
+    img.style.display = ''; img.src = `assets/makt/${power}.png`;
+    $('power-rubrik').innerHTML = `<span style="color:${farg}">${namn.toUpperCase()}</span> HAR ORDET`;
+    $('power-tx').innerHTML = power === game.me ? 'Du lägger årets beslut — välj ett förslag!' : `<b style="color:${farg}">${namn}</b> lägger årets beslut. Ring och påverka!`;
+    $('ov-power').classList.add('open');
+    let done = false;
+    const finish = () => { if (done) return; done = true; $('ov-power').onclick = null; clearTimeout(tmo); $('ov-power').classList.remove('open'); res(); };
+    $('ov-power').onclick = finish;
+    const tmo = setTimeout(finish, 3000);
+  });
+}
 game.on('politicsTimer', p => {
   const el = p.stage === 'vote' ? $('vote-timer') : $('choose-timer');
   if (el) { el.textContent = `⏱ ${p.left}s`; el.classList.toggle('hot', p.left <= 10); }

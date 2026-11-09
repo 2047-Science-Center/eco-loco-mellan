@@ -427,6 +427,15 @@ export class EcoLoco {
         this.S.gronQueued += this.cfg.byggboomOh;
       }
     }
+    // ÖRÅD: beslutet hör till örådet (före nästa år) → applicera öhälso-konsekvensen DIREKT så den
+    // syns på mätaren nu, i stället för att köas till årets bokslut. (Samma belopp, tidigare tajming.)
+    if (this.S.gronQueued) {
+      const before = this.S.oh;
+      this.S.oh = Math.max(0, Math.min(this.cfg.ohMax, this.S.oh + this.S.gronQueued));
+      this.S.lastDelta = this.S.oh - before;
+      this.S.gronQueued = 0;
+      this._emit('ohalsa', { value: this.S.oh, mode: ohMode(this.S.oh), delta: this.S.lastDelta });
+    }
     this._emit('proposalResolved', { type: p.type, votes: { ...p.votes }, passed: p.passed, yesCount });
   }
 
