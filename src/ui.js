@@ -508,6 +508,7 @@ function showPendingSlut() {
 
 // SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
+  await banner('🏛 ÖRÅD', false, 1800);   // rundan slut → stor ÖRÅD-popup, sedan prisutdelningen
   const show = async (typ, w) => {
     renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
     $('ov-award').classList.add('open');
@@ -526,8 +527,9 @@ game.on('award', p => run(async () => {
 
 // GM-LÄGE: servern dirigerar — skärmen visar det pris spelledaren klickar fram (ingen auto-stegning).
 game.on('awardCeremony', () => run(async () => {
+  await banner('🏛 ÖRÅD', false, 1800);   // rundan slut → stor ÖRÅD-popup, sedan prisutdelningen
   $('awardcard').innerHTML = `<img src="assets/slut/prisutdelning-start.png" alt="" style="height:auto;object-fit:contain">`   // full bredd, full höjd (ingen beskärning/ikon) → rutan växer med bilden
-    + `<div class="aw-tx"><h4>Prisutdelning</h4><div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div></div>`;
+    + `<div class="aw-tx"><h4>Öråd</h4><div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div></div>`;
   $('ov-award').classList.add('open');
 }));
 game.on('awardStep', p => run(async () => {
@@ -706,7 +708,7 @@ function renderMe() {
   const inc = [];
   if (t.incP) inc.push(`＋${t.incP} ${ico('pengar', 15)}`);
   if (t.incM) inc.push(`＋${t.incM} ${ico('material', 15)}`);
-  $('me-inc').innerHTML = inc.length ? inc.join('  ') + ' i inkomst varje runda' : '';
+  $('me-inc').innerHTML = inc.length ? inc.join('  ') + ' / runda' : '';
   renderHandAfford();
   renderPropBtn();
 }
@@ -1884,7 +1886,7 @@ async function runTutorial() {
 
   // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
   await tutSay({ ix: 3, focus: '#endwrap', x: 1020, y: 540,
-    txt: `Sista steget: avsluta rundan. Efter <b>varje runda</b> delas tre priser ut — årets ledande företag, årets eldsjäl och årets sabotör.` });
+    txt: `Efter <b>varje runda</b> blir det <b>öråd</b>.` });
   if (tutAbort) return;
   const roundEndP = tutOnce('roundEnd');
   await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA OMGÅNG</b>.', x: 1040, y: 760, focus: '#endwrap',

@@ -11,7 +11,7 @@
 // Offline/LAN-först: inga externa beroenden i drift utöver den vendrade ws-modulen.
 
 import http from 'node:http';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, createReadStream } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
@@ -92,8 +92,23 @@ const httpServer = http.createServer((req, res) => {
   if (!file.startsWith(ROOT) || !existsSync(file) || !statSync(file).isFile()) {
     res.writeHead(404); res.end('404'); return;
   }
-  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-  res.end(readFileSync(file));
+  const type = MIME[extname(file)] || 'application/octet-stream';
+  const size = statSync(file).size;
+  // Range-stöd (206 Partial Content) → introfilm/bakgrundsvideo spelar på Safari/iPad,
+  // som skickar byte-range-förfrågningar och annars vägrar spela <video>.
+  const range = req.headers.range;
+  if (range) {
+    const m = /bytes=(\d*)-(\d*)/.exec(range);
+    let start = m && m[1] ? parseInt(m[1], 10) : 0;
+    let end = m && m[2] ? parseInt(m[2], 10) : size - 1;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || end >= size) { start = 0; end = size - 1; }
+    res.writeHead(206, { 'Content-Type': type, 'Cache-Control': 'no-cache', 'Accept-Ranges': 'bytes',
+      'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': end - start + 1 });
+    createReadStream(file, { start, end }).pipe(res);
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', 'Accept-Ranges': 'bytes', 'Content-Length': size });
+  createReadStream(file).pipe(res);
 });
 
 // ——— Spelvärd ———
