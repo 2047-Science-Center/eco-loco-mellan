@@ -103,14 +103,18 @@
   .tl-id .nm { font-weight: 800; font-size: 20px; display: flex; align-items: center; gap: 6px; }
   .tl-id .nm.sm { font-size: 16px; }
   .tl-sub { font-size: 11px; letter-spacing: 2px; color: var(--gold); font-weight: 800; }
-  .tl-cap { display: flex; gap: 12px; font-family: var(--font-num); font-weight: 700; font-size: 16px; flex: none; }
-  .tl-cap.sm { font-size: 14px; }
-  .tl-row.lead .tl-cap { font-size: 26px; gap: 16px; }
-  .tl-cap .c-p { color: var(--pengar); } .tl-cap .c-m { color: var(--material); }
-  .tl-cap span { display: inline-flex; align-items: center; gap: 4px; }
+  .tl-cap { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; flex: none; }
+  .tl-cap .cap-total { font-family: var(--font-num); font-weight: 800; font-size: 22px; color: var(--gold); }
+  .tl-cap.sm .cap-total { font-size: 18px; }
+  .tl-row.lead .tl-cap .cap-total { font-size: 30px; }
+  .tl-cap .cap-parts { display: inline-flex; gap: 8px; font-family: var(--font-num); font-weight: 700; font-size: 12px; margin-top: 1px; }
+  .tl-cap .cap-parts .c-p { color: var(--pengar); } .tl-cap .cap-parts .c-m { color: var(--material); }
+  .tl-cap .cap-parts span { display: inline-flex; align-items: center; gap: 3px; }
   .du-tag { font-size: 12px; letter-spacing: 2px; color: var(--gold); font-weight: 800; padding: 6px 8px; flex: none; }
-  .tl-row .byt { background: var(--panel2); border: 2px solid var(--edge2); color: var(--text); border-radius: 8px; font: inherit; font-size: 12px; font-weight: 800; padding: 7px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex: none; }
-  .klimat-mirror { padding: 10px 14px; }
+  .tl-row .byt { background: transparent; border: 1px solid var(--edge); color: var(--dim); border-radius: 8px; font: inherit; font-size: 11px; font-weight: 700; padding: 5px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex: none; opacity: .8; }
+  .tl-row .byt:hover { border-color: var(--edge2); color: var(--text); opacity: 1; }
+  .klimat-mirror { padding: 10px 14px; cursor: pointer; }
+  .klimat-mirror:hover { border-color: var(--gold); }
   .klimat-mirror .km-head { font-size: 11px; letter-spacing: 2px; color: var(--dim); font-weight: 800; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
   .klimat-mirror .km-body { font-size: 15px; color: var(--text); display: flex; align-items: center; gap: 6px; }
   .klimat-mirror .km-body .n { font-family: var(--font-num); color: var(--led-red); font-weight: 700; margin-left: auto; }
@@ -623,14 +627,8 @@
   <!-- Register -->
   <div class="slideover" id="ov-register">
     <div class="closebar" id="btn-reg-close">✕</div>
-    <h2>📖 Register</h2>
-    <h3>💰 Börsen — rikast (pengar + material)</h3>
-    <table class="ranktable" id="tbl-bors"></table>
-    <h3>🏭 Klimatregistret — störst skada på ön</h3>
-    <table class="ranktable" id="tbl-klimat"></table>
-    <h3>📖 Din årsberättelse</h3>
-    <div id="me-contrib" style="font-size:17px;margin-bottom:10px"></div>
-    <table class="logtable" id="tbl-log"></table>
+    <h2 id="reg-title">Register</h2>
+    <div id="reg-body"></div>
   </div>
 
   <!-- Runda 0: tutorial-lagret -->

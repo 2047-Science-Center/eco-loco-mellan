@@ -478,6 +478,8 @@ let roundPowerTeam = null;  // MAKT-ROTATION: vilket lag som styr politiken denn
 // MAKT-ROTATION: visa vilket lag som styr politiken denna runda. Klick-genom, auto-fortsätt efter 15 s
 // (självspel fastnar aldrig). Egen text på maktlagets skärm vs de andra. Ingen banner om powerTeam saknas (t.ex. runda 1).
 function showPowerBanner(powerTeam) {
+  return Promise.resolve();   // POLITIK avstängd tills vidare → visa aldrig "vem styr politiken"-rutan
+  // eslint-disable-next-line no-unreachable
   if (!powerTeam) return Promise.resolve();
   const namn = teamName(powerTeam);
   const farg = AREAS.find(x => x.id === powerTeam)?.farg || 'var(--gold)';   // lagets egen färg → tydligt VILKET lag som styr
@@ -768,7 +770,7 @@ function renderTeams() {
         <span class="rank">1</span>
         <span class="tl-badge">${logoSVG(t.id, 46)}</span>
         <div class="tl-id"><div class="nm">${t.namn}${crown}</div><div class="tl-sub">LEDARE${me ? ' · DU' : ''}</div></div>
-        <div class="tl-cap"><span class="c-p">${ico('pengar', 20)}${t.pengar}</span><span class="c-m">${ico('material', 20)}${t.material}</span></div>
+        <div class="tl-cap"><span class="cap-total">${t.pengar + t.material}</span><span class="cap-parts"><span class="c-p">${ico('pengar', 14)}${t.pengar}</span><span class="c-m">${ico('material', 14)}${t.material}</span></span></div>
         ${me ? '' : `<button class="byt" data-partner="${t.id}">${ico('byt', 16)} BYT</button>`}
       </div>`;
     }
@@ -776,7 +778,7 @@ function renderTeams() {
       <span class="rank">${i + 1}</span>
       <span class="tl-badge sm">${logoSVG(t.id, 30)}</span>
       <div class="tl-id"><div class="nm sm">${t.namn}${isBov ? ' ' + ico('varning', 16, { badge: false }) : ''}</div></div>
-      <div class="tl-cap sm"><span class="c-p">${ico('pengar', 14)}${t.pengar}</span><span class="c-m">${ico('material', 14)}${t.material}</span></div>
+      <div class="tl-cap sm"><span class="cap-total">${t.pengar + t.material}</span><span class="cap-parts"><span class="c-p">${ico('pengar', 12)}${t.pengar}</span><span class="c-m">${ico('material', 12)}${t.material}</span></span></div>
       ${bytBtn}
     </div>`;
   }).join('');
@@ -791,7 +793,7 @@ function renderRegs() {
   const body = bov && bov.skada < 0
     ? `${ico('varning', 16, { badge: false })} <b>${bov.namn}</b> sänker ön mest <span class="n">${bov.skada}</span>`
     : 'Ingen bov — ön andas ut';
-  $('reg-klimat-mirror').innerHTML = `<div class="km-head">${ico('industri', 15)} KLIMATREGISTRET</div><div class="km-body">${body}</div>`;
+  $('reg-klimat-mirror').innerHTML = `<div class="km-head">${ico('industri', 15)} KLIMATREGISTRET <span style="margin-left:auto;color:var(--gold);font-weight:700">visa alla ›</span></div><div class="km-body">${body}</div>`;
 }
 
 function renderHand() {
@@ -810,7 +812,7 @@ function renderHand() {
         <img src="${manifest.buildings[c.asset].file}" alt="">
         <div class="info">
           <div class="nm">${c.namn}</div>
-          <div class="gain-badge ${gerCur}">${ico(gerCur, 32)}<span class="gain-num">+${gerNum}</span><span class="gain-lbl">${gerCur} / runda till dig</span></div>
+          <div class="gain-badge ${gerCur}">${ico(gerCur, 32)}<span class="gain-num">+${gerNum}</span><span class="gain-lbl">/ runda</span></div>
           <div class="stat"><span class="k">Kostar</span> <span class="v">${kostHtml}</span></div>
           <div class="stat"><span class="k">Öns hälsa</span> <span class="v ${pos ? 'ohplus' : 'ohminus'}">${pos ? '+' + c.oh : c.oh} 🏝</span></div>
         </div>
@@ -1088,19 +1090,28 @@ function humanVote(yes) {
   renderVoteState();
 }
 
-// ═══════════════ Register / årsberättelse ═══════════════
-$('btn-log').addEventListener('click', () => { audio.play('ui_open'); renderRegister(); $('ov-register').classList.add('open'); });
+// ═══════════════ Register (två vyer: hela Klimatregistret · Din årsberättelse) ═══════════════
+// 📖 Din årsberättelse-knappen → BARA den personliga årsberättelsen (så den får plats).
+$('btn-log').addEventListener('click', () => { audio.play('ui_open'); renderRegister('arsberattelse'); $('ov-register').classList.add('open'); });
 $('btn-reg-close').addEventListener('click', () => { audio.play('ui_close'); $('ov-register').classList.remove('open'); });
-function renderRegister() {
-  const lb = E().leaderboards();
-  $('tbl-bors').innerHTML = lb.bors.map((r, i) =>
-    `<tr class="${r.id === game.me ? 'me-row' : ''}"><td>${i + 1}.</td><td>${logoSVG(r.id, 28)} ${r.namn}${r.id === game.me ? ' (du)' : ''} ${i === 0 ? '👑' : ''}</td><td class="n">${r.varde}</td></tr>`).join('');
-  $('tbl-klimat').innerHTML = lb.klimat.map((r, i) =>
-    `<tr class="${r.id === game.me ? 'me-row' : ''}"><td>${i + 1}.</td><td>${logoSVG(r.id, 28)} ${r.namn}${r.id === game.me ? ' (du)' : ''} ${i === 0 && r.skada < 0 ? '⚠️' : ''}</td><td class="n" style="color:var(--led-red)">${r.skada}</td></tr>`).join('');
+// Klimat-spegeln i högerkolumnen är klickbar → hela Klimatregistret (alla fyra lags påverkan).
+document.querySelector('.klimat-mirror')?.addEventListener('click', () => { audio.play('ui_open'); renderRegister('klimat'); $('ov-register').classList.add('open'); });
+function renderRegister(mode = 'arsberattelse') {
+  if (mode === 'klimat') {
+    $('reg-title').innerHTML = '🏭 Klimatregistret — allas påverkan på ön';
+    const lb = E().leaderboards();
+    $('reg-body').innerHTML = `<table class="ranktable">` + lb.klimat.map((r, i) =>
+      `<tr class="${r.id === game.me ? 'me-row' : ''}"><td>${i + 1}.</td><td>${logoSVG(r.id, 28)} ${r.namn}${r.id === game.me ? ' (du)' : ''} ${i === 0 && r.skada < 0 ? '⚠️' : ''}</td><td class="n" style="color:${r.skada < 0 ? 'var(--led-red)' : 'var(--led-green)'}">${r.skada > 0 ? '+' + r.skada : r.skada}</td></tr>`).join('') + `</table>`;
+    return;
+  }
+  // 'arsberattelse' — bara den personliga delen
+  $('reg-title').innerHTML = '📖 Din årsberättelse';
+  if (!game.me) { $('reg-body').innerHTML = '<p style="color:var(--dim)">Välj ett lag för att se din årsberättelse.</p>'; return; }
   const c = E().contribution(game.me);
-  $('me-contrib').innerHTML = `Ditt avtryck: <span class="ohplus">+${c.impactPos}</span> / <span class="ohminus">${c.impactNeg}</span> · netto <b>${c.netto >= 0 ? '+' + c.netto : c.netto}</b> · kapital <b style="color:var(--led)">${c.kapital}</b>`;
-  $('tbl-log').innerHTML = `<tr><th>RUNDA</th><th>DU BYGGDE</th><th>ÖN</th></tr>` +
-    c.log.map(r => `<tr><td>${r.round}</td><td>${r.namn}</td><td class="${r.oh > 0 ? 'ohplus' : r.oh < 0 ? 'ohminus' : ''}">${r.oh === 0 ? '—' : fmtOh(r.oh)}</td></tr>`).join('');
+  $('reg-body').innerHTML =
+    `<div style="font-size:17px;margin-bottom:12px">Ditt avtryck: <span class="ohplus">+${c.impactPos}</span> / <span class="ohminus">${c.impactNeg}</span> · netto <b>${c.netto >= 0 ? '+' + c.netto : c.netto}</b> · kapital <b style="color:var(--led)">${c.kapital}</b></div>` +
+    `<table class="logtable"><tr><th>RUNDA</th><th>DU BYGGDE</th><th>ÖN</th></tr>` +
+    c.log.map(r => `<tr><td>${r.round}</td><td>${r.namn}</td><td class="${r.oh > 0 ? 'ohplus' : r.oh < 0 ? 'ohminus' : ''}">${r.oh === 0 ? '—' : fmtOh(r.oh)}</td></tr>`).join('') + `</table>`;
 }
 
 // ═══════════════ Slutskärm ═══════════════
@@ -1489,6 +1500,7 @@ function convergeToGame() {
   $('tutveil').style.display = 'none'; $('tutbox').style.display = 'none'; $('tutbarrier').style.display = 'none';
   $('banner').style.display = 'none'; tutFocus(null);
   game.attach(realGame);
+  loggClear();          // online-vägen in i spelet → töm tutorialens övnings-händelser (loggen tom vid runda 1)
   const S = realGame.E()?.getState();
   if (S && S.round >= 1 && !S.over) rebuildFromState(S);
 }

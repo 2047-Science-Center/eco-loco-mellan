@@ -578,6 +578,7 @@ function maybeResolve() {
 // rundan (se startTimer) — inte vid rundstart — så en bot med makten väntar ~1 min och människorna
 // hinner ringa och påverka innan boten bestämmer.
 function maybeBotProposal() {
+  return;                                                       // POLITIK avstängd tills vidare → botar lägger inga förslag (ingen politik förrän efter prisceremonin, byggs senare)
   const S = engine.getState();
   if (!S || S.round < 2) return;                                // runda 1 = inga bot-förslag
   if (S.over || (S.proposal && !S.proposal.resolved) || resolvingNow || Date.now() < proposalCooldownUntil) return;   // bara ett oavgjort i taget + kö-paus
