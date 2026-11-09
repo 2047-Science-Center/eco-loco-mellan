@@ -309,11 +309,31 @@ game.on('resolveStart', () => run(async () => {
   setEndBtn('BOKSLUT…', true);
 }));
 
+// ═══════════ Händelselogg — permanent skrollbar historik i högerkolumnen (ersätter POLITIK-knappen) ═══════════
+// Allt som förr bara poppade upp (byggen, byten, politik, händelser, kris) läggs här kvar så man kan skrolla.
+let _loggRunda = 0;
+function loggClear() { const l = $('logg'); if (l) l.innerHTML = ''; _loggRunda = 0; }
+function loggRunda(n) {
+  const l = $('logg'); if (!l || !n || n === _loggRunda) return;
+  _loggRunda = n;
+  const sep = document.createElement('div'); sep.className = 'loggsep'; sep.textContent = `RUNDA ${n}`;
+  l.appendChild(sep); l.scrollTop = l.scrollHeight;
+}
+function loggLag(id) { const f = AREAS.find(a => a.id === id)?.farg || 'var(--text)'; return `<span class="lg-lag" style="color:${f}">${teamName(id)}</span>`; }
+function logg(html, cls = '') {
+  const l = $('logg'); if (!l) return;
+  const naraBotten = l.scrollHeight - l.scrollTop - l.clientHeight < 48;   // följ med bara om man redan står längst ner
+  const row = document.createElement('div'); row.className = 'loggrad' + (cls ? ' ' + cls : ''); row.innerHTML = html;
+  l.appendChild(row);
+  if (naraBotten) l.scrollTop = l.scrollHeight;
+}
+
 game.on('build', p => run(async () => {
   const b = manifest.buildings[p.card.asset];
   map.placeBuilding(p.area, p.slotIndex, b.file, 135, { namn: p.card.namn, oh: p.card.oh, lagNamn: teamName(p.teamId) });
   audio.play(`build_${p.card.tier}`);
   if (p.teamId !== game.me) toast(`${teamName(p.teamId)} byggde ${p.card.namn} <span class="${p.card.oh > 0 ? 'ohplus' : 'ohminus'}">${fmtOh(p.card.oh)}</span>`);
+  logg(`🏗 ${loggLag(p.teamId)} byggde <b>${p.card.namn}</b> <span class="lg-oh">${fmtOh(p.card.oh)} 🏝</span>`, p.card.oh >= 0 ? 'lg-ohplus' : 'lg-ohminus');
   renderMe(); renderTeams();
   if (resolving) await delay(650);
 }));
@@ -323,6 +343,7 @@ game.on('trade', p => run(async () => {
   if (p.from !== game.me && p.to !== game.me) {
     toast(`${teamName(p.from)} bytte ${p.give} ${CUR_ICON[p.giveCur]} mot ${p.get} ${CUR_ICON[p.getCur]} med ${teamName(p.to)}`);
   }
+  logg(`🔁 ${loggLag(p.from)} bytte ${p.give} ${CUR_ICON[p.giveCur]} → ${p.get} ${CUR_ICON[p.getCur]} med ${loggLag(p.to)}`);
   renderMe(); renderTeams();
   if (resolving) await delay(350);
 }));
@@ -360,6 +381,7 @@ function eventKonsHTML(p) {
 game.on('event', p => run(async () => {
   const warn = p.id !== 'godskord' && p.id !== 'gronafonden' && p.id !== 'pengaslapp';
   renderMe(); renderTeams(); renderRegs();
+  logg(`${warn ? '⚠️' : '🎉'} Händelse: <b>${p.rubrik || p.text || 'Händelse'}</b>`, warn ? 'lg-kris' : '');
   if (p.bild) {
     $('event-img').src = p.bild;
     $('event-rubrik').textContent = p.rubrik || '';
@@ -387,6 +409,7 @@ game.on('crisis', p => run(async () => {
     $('krisglow').classList.add('on');
     renderMe(); renderTeams(); renderRegs();
     const reset = E().cfg.krisReset ?? 35;
+    logg(`⚠️ <b>KRIS</b> — öns hälsa är kritisk, höj den över ${reset} denna runda!`, 'lg-kris');
     $('event-img').src = 'assets/kris.png';   // placeholder tills Josef genererar bilden (fallback = som andra saknade event-bilder)
     $('event-rubrik').textContent = 'Ön står inför kollaps';
     $('event-text').textContent = 'Centralmakten meddelar kyligt: öns hälsa är kritisk. Rädda den innan rundan är slut — annars faller allt, och ni får börja om. Lösningen är er.';
@@ -485,7 +508,6 @@ function showPendingSlut() {
 
 // SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
-  $('btn-prop').disabled = true; $('btn-prop').classList.remove('lagt', 'gold');   // prisutdelning → POLITIK otryckbar tills rundan återupptas
   const show = async (typ, w) => {
     renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
     $('ov-award').classList.add('open');
@@ -530,10 +552,12 @@ game.on('start', () => run(async () => {
   $('ov-slut').classList.remove('open');
   pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null; cerNastaRunda = null;   // nytt parti → nollställ ev. väntande slutskärm/banner
   map.clearBuildings();
+  loggClear();        // nytt parti → töm händelseloggen
   syncBotOverlay();   // bot-bänk → visa "ta över"-rutan redan när runda 1 börjar
 }));
 
 game.on('roundStart', p => run(async () => {
+  loggRunda(p.round);   // ny rund-rubrik i loggen (förra rundans byggen/byten/politik ligger redan ovanför)
   // Online runda>1: roundStart kommer MEDAN förra rundans ceremoni spelas → vänta med att byta
   // rundnummer tills ceremonin är klar (awardDone), annars hoppar siffran fram för tidigt.
   if (!(ONLINE && p.round > 1)) $('roundnum').textContent = p.round;
@@ -576,6 +600,8 @@ game.on('proposalOpened', p => run(async () => {
 
 game.on('proposalResolved', p => run(async () => {
   audio.play(p.passed ? 'proposal_pass' : 'proposal_fail');
+  const _pnamn = p.type === 'event' ? 'Erbjudande' : (propDefs().find(d => d.type === p.type)?.rubrik || 'Förslag');
+  logg(`🏛 <b>${_pnamn}</b> — ${p.passed ? 'gick igenom ✅' : 'föll ❌'} (${p.yesCount}/4 ja)`, 'lg-politik');
   renderVoteState();
   $('vote-btns').style.display = 'none';
   if (p.type === 'event') {
@@ -883,7 +909,6 @@ game.on('roundReplay', p => run(async () => {
   await banner('ÖN KOLLAPSADE — SPELAR OM RUNDAN', true, 1900);
   const S = E()?.getState();
   if (S) rebuildFromState(S);                         // ritar om byggnader/resurser/öhälsa från rollbacken; tänder .krisglow (S.inCrisis)
-  $('btn-prop').disabled = false;
   $('endwrap').classList.remove('pulse');
   setEndBtn('AVSLUTA<br>OMGÅNG', false);
 }));
@@ -1019,41 +1044,8 @@ function visibleProps() {
   const show = [...GRUND_PROPS, ...extra];
   return show.map(type => defs.find(d => d.type === type)).filter(Boolean);
 }
-$('btn-prop').addEventListener('click', () => {
-  const S = E().getState();
-  audio.play('ui_tap');
-  if ($('ov-award').classList.contains('open')) return;   // prisutdelning pågår → lägg inget förslag mitt i ceremonin
-  if (S.proposal && !S.proposal.resolved) { openVoteModal(S.proposal); return; }   // öppet förslag → visa omröstningen (alla kan läsa/rösta)
-  if (resolving) return;
-  const power = S.powerTeam || null;
-  // Bara maktlaget (eller alla i runda 1 utan makt) som INTE redan lagt får LÄGGA. Övriga läser & diskuterar.
-  const kanLagga = !!game.me && (!power || power === game.me) && !(S.proposedBy || []).includes(game.me);
-  const used = S.usedProposals || [];   // förslagstyper som redan lagts denna runda → gråas ut
-  const q = document.querySelector('#ov-choose h2'), qsub = document.querySelector('#ov-choose .sub');
-  if (q) q.innerHTML = kanLagga ? `${ico('rosta', 24)} LÄGG ETT FÖRSLAG` : `${ico('rosta', 24)} RUNDANS POLITIK`;
-  if (qsub) {
-    qsub.style.fontSize = '';   // nollställ (grundstorlek för maktlag/runda 1)
-    if (kanLagga) qsub.textContent = 'Ett förslag per runda — alla lag röstar, 3 av 4 JA krävs';
-    else if (power) { const farg = AREAS.find(x => x.id === power)?.farg || 'var(--gold)'; qsub.innerHTML = `<b style="color:${farg}">${teamName(power)}</b> lägger förslaget — läs och diskutera, ring och påverka!`; qsub.style.fontSize = '21px'; }
-    else qsub.textContent = 'Läs förslagen — omröstning sker när ett läggs.';
-  }
-  const lista = tutOnlyProp ? visibleProps().filter(p => p.type === tutOnlyProp) : visibleProps();
-  $('proplist').innerHTML = lista.map(p => {
-    const taget = used.includes(p.type);
-    return `<div class="propcard propchoice${taget ? ' used' : ''}${kanLagga ? '' : ' readonly'}" data-type="${p.type}"${(taget || !kanLagga) ? ' aria-disabled="true"' : ''}>
-      <div class="pic">${p.pic}</div>
-      <div class="tx"><b style="color:var(--text)">${p.rubrik}</b>${taget ? ' <span style="color:var(--gold)">· LAGT</span>' : ''}<br>${p.tx}</div>
-    </div>`;
-  }).join('');
-  // Tutorialen: dölj AVBRYT så man inte kan stänga väljaren utan att lägga förslaget (då fastnar steget).
-  $('btn-choose-cancel').style.display = tutOnlyProp ? 'none' : '';
-  if (kanLagga) document.querySelectorAll('.propchoice:not(.used)').forEach(el => el.addEventListener('click', () => {
-    $('ov-choose').classList.remove('open');
-    game.openProposal(el.dataset.type);
-  }));
-  audio.play('ui_open');
-  $('ov-choose').classList.add('open');
-});
+// POLITIK-knappen borttagen (händelseloggen ersatte den). Spelarna lägger inte längre egna förslag
+// via UI:t; bot-/server-lagda förslag visas fortfarande som omröstning (ov-vote) och loggas.
 $('btn-choose-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-choose').classList.remove('open'); });
 
 function openVoteModal(p) {
@@ -1865,44 +1857,10 @@ async function runTutorial() {
   await tutBarrier(2);
   if (tutAbort) return;
 
-  // ——— 4) LÄGG ETT EGET FÖRSLAG → de andra röstar ja → den delade mätaren svarar ———
-  // Övningen visar BARA ett förslag (Grön satsning) så det inte blir en förvirrande valmeny:
-  // spelaren trycker LÄGG FÖRSLAG, klickar på det enda kortet och blir själv förslagsläggare.
-  tutOnlyProp = 'gron';
-  const openedP = tutOnce('proposalOpened', p => p.by === myLag);
-  // 1) Peka på POLITIK-knappen tills förslagsväljaren öppnas.
-  const choiceOpenP = new Promise(res => {
-    const iv = setInterval(() => { if ($('ov-choose').classList.contains('open')) { clearInterval(iv); res('open'); } }, 120);
-    tutAbortP().then(() => clearInterval(iv));
-  });
-  await tutBeat({ ix: 2, txt: 'Nu bestämmer du. Tryck på <b>POLITIK</b>.', beside: '#btn-prop', side: 'left', focus: '#btn-prop',
-    until: choiceOpenP,
-    autoDo: () => { if (!$('ov-choose').classList.contains('open')) $('btn-prop').click(); } });
-  if (tutAbort) { tutOnlyProp = null; return; }
-  // 2) Väljaren är uppe → flytta rutan åt sidan (täcker inte förslaget) och be dem välja kortet.
-  await tutBeat({ ix: 2, txt: 'Välj ditt förslag.', x: 40, y: 360, focus: null,
-    until: openedP,
-    autoDo: () => document.querySelector('.propchoice:not(.used)')?.click() });
-  tutOnlyProp = null;
-  if (tutAbort) return;
-  await delay(500);
-  if (tutAbort) return;
-  // Du är förslagsläggare (inga röstknappar för dig) → vänta medan de andra lagen röstar ja, ett i taget.
-  const resolvedP = tutOnce('proposalResolved');
-  tut.script.botRosta(myLag);                                     // du backar ditt eget förslag
-  for (const b of tut.script.bots) { await delay(650); if (tutAbort) return; tut.script.botRosta(b); }
-  await Promise.race([resolvedP, delay(3000), tutAbortP()]);
-  if (tutAbort) return;
-  await delay(2100);                                              // låt "Förslaget gick igenom"-raden synas + röstrutan stängas
-  if (tutAbort) return;
-  await tutSay({ ix: 2, focus: '.ohbar', x: 520, y: 190,
-    txt: `Ditt förslag gick igenom ✅ — öns hälsa stiger <b>+${tut.E().cfg.gronGain} ${ico('tillvaxt', 18)}</b>.` });
-  if (tutAbort) return;
-  // MAKT-ROTATION: förklara att bara ett lag i taget styr politiken. Knappen hålls NEDSLÄCKT (focus: null)
-  // — den tänds inte här, för den här rundan är det inte din tur att lägga förslag (bara läsa).
-  await tutSay({ ix: 2, focus: null, x: 1040, y: 120,
-    txt: `Men bara <b>ett lag i taget</b> styr politiken — turen <b>roterar varje runda</b>. Är det inte din tur? <b>Ring laget som styr</b> och påverka dem.` });
-  if (tutAbort) return;
+  // ——— (Politik-steget borttaget) ———
+  // POLITIK-knappen är borttagen ur spelet (ersatt av händelseloggen). Det gamla tutorial-steget där
+  // spelaren lade ett eget förslag är därför borttaget. Politiken görs om till fasta händelser kopplade
+  // till öhälsa/byggen — tutorialen får ett nytt moment när den logiken är klar.
   await tutBarrier(3);
   if (tutAbort) return;
 

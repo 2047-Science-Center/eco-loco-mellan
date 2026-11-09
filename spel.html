@@ -177,6 +177,18 @@
   .votebtns { display: flex; gap: 18px; }
   /* Förslaget lagt denna runda → grå/gul, tydligt inte tryckbar (ett förslag per lag/runda). */
   #btn-prop.lagt { background: #2a2824; border-color: var(--gold); color: var(--gold); opacity: 1; }
+  /* ——— Händelselogg: permanent skrollbar historik (där POLITIK-knappen låg) ——— */
+  .panel.logg { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .panel.logg h3 { margin: 0; }
+  .logglist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
+  .loggrad { padding: 5px 9px; border-radius: 8px; background: var(--panel2); color: var(--text); font-size: 14px; line-height: 1.35; }
+  .loggrad .lg-lag { font-weight: 800; }
+  .loggrad.lg-politik { border-left: 3px solid var(--gold); }
+  .loggrad.lg-kris { border-left: 3px solid var(--oh-red); }
+  .loggrad.lg-ohplus .lg-oh { color: var(--oh-green); font-weight: 700; }
+  .loggrad.lg-ohminus .lg-oh { color: var(--oh-red); font-weight: 700; }
+  .loggsep { text-align: center; font-family: var(--font-disp); font-size: 12px; letter-spacing: 2px; color: var(--gold); margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--edge2); }
+  .logglist:empty::before { content: "Händelser dyker upp här under spelets gång…"; color: var(--dim); font-size: 13px; font-style: italic; }
   /* Bytesförfrågan skickad till en människa → knappen blir gul + låst (men AVBRYT går fortfarande). */
   #btn-trade-go.sent { background: var(--led); border-color: var(--led); color: #241E0F; }
   #btn-trade-go.sent:disabled { opacity: 1; cursor: default; }
@@ -460,7 +472,7 @@
     <aside class="col-others">
       <div class="panel toplist"><h3 id="toplist-h">TOPPLISTA</h3><div id="toplist"></div></div>
       <div class="panel klimat-mirror"><div id="reg-klimat-mirror"></div></div>
-      <div class="panel politik"><button class="bigbtn" id="btn-prop">POLITIK</button><div class="politik-sub">Ett förslag per lag · 3 av 4 JA avgör</div></div>
+      <div class="panel logg"><h3>📜 HÄNDELSER PÅ ÖN</h3><div id="logg" class="logglist"></div></div>
     </aside>
   </div>
 
