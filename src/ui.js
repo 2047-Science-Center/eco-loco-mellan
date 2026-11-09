@@ -316,7 +316,7 @@ function loggClear() { const l = $('logg'); if (l) l.innerHTML = ''; _loggRunda 
 function loggRunda(n) {
   const l = $('logg'); if (!l || !n || n === _loggRunda) return;
   _loggRunda = n;
-  const sep = document.createElement('div'); sep.className = 'loggsep'; sep.textContent = `RUNDA ${n}`;
+  const sep = document.createElement('div'); sep.className = 'loggsep'; sep.textContent = `ÅR ${n}`;
   l.appendChild(sep); l.scrollTop = l.scrollHeight;
 }
 function loggLag(id) { const f = AREAS.find(a => a.id === id)?.farg || 'var(--text)'; return `<span class="lg-lag" style="color:${f}">${teamName(id)}</span>`; }
@@ -410,10 +410,10 @@ game.on('crisis', p => run(async () => {
     const reset = E().cfg.krisReset ?? 35;
     $('event-img').src = 'assets/kris.png';   // placeholder tills Josef genererar bilden (fallback = som andra saknade event-bilder)
     $('event-rubrik').textContent = 'Ön står inför kollaps';
-    $('event-text').textContent = 'Centralmakten meddelar kyligt: öns hälsa är kritisk. Rädda den innan rundan är slut — annars faller allt, och ni får börja om. Lösningen är er.';
+    $('event-text').textContent = 'Centralmakten meddelar kyligt: öns hälsa är kritisk. Rädda den innan året är slut — annars faller allt, och ni får börja om. Lösningen är er.';
     $('event-kons').innerHTML =
       `<div class="kons oh">🎯 Få öns hälsa <b>över ${reset}</b></div>` +
-      `<div class="kons"><span class="minus">⏳ 1 runda — annars förlorar <b>alla</b></span></div>`;
+      `<div class="kons"><span class="minus">⏳ 1 år — annars förlorar <b>alla</b></span></div>`;
     $('ov-event').classList.add('warn');
     $('ov-event').classList.add('open');
     await delay(500);                               // hinner läsas innan tryck registreras
@@ -486,10 +486,10 @@ function showPowerBanner(powerTeam) {
   $('power-img').src = `assets/makt/${powerTeam}.png`;          // en scen-bild per lag (assets/makt/)
   if (game.me === powerTeam) {
     $('power-rubrik').innerHTML = 'NI HAR DEN POLITISKA MAKTEN!';
-    $('power-tx').innerHTML = 'Välj vilket förslag ön ska rösta om den här rundan.<br>Lyssna på de andra företagen — eller driv er egen agenda!';
+    $('power-tx').innerHTML = 'Välj vilket förslag ön ska rösta om det här året.<br>Lyssna på de andra företagen — eller driv er egen agenda!';
   } else {
     $('power-rubrik').innerHTML = `<span style="color:${farg}">${namn.toUpperCase()}</span> STYR POLITIKEN!`;
-    $('power-tx').innerHTML = `Den här rundan lägger <b style="color:${farg}">${namn}</b> fram ett politiskt förslag.<br>Vill ni påverka? <b style="color:${farg}">Ring ${namn}</b> och övertyga dem!`;
+    $('power-tx').innerHTML = `Det här året lägger <b style="color:${farg}">${namn}</b> fram ett politiskt förslag.<br>Vill ni påverka? <b style="color:${farg}">Ring ${namn}</b> och övertyga dem!`;
   }
   $('ov-power').classList.add('open');
   audio.play('ui_open');
@@ -541,7 +541,7 @@ game.on('awardDone', p => run(async () => {
   renderRegs();
   if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
   // Prisceremonin klar → nu (när nya rundan faktiskt börjar) byts rundnumret och "RUNDA N"-popupen visas.
-  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`RUNDA ${r}`, false, 1800); await showPowerBanner(roundPowerTeam); }
+  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`ÅR ${r}`, false, 1800); await showPowerBanner(roundPowerTeam); }
   syncBotOverlay();   // ny runda igång → bot-bänk visar "ta över"-rutan (efter ceremonin, inte mitt i den)
 }));
 
@@ -573,7 +573,7 @@ game.on('roundStart', p => run(async () => {
   // (roundStart kommer medan ceremonin fortfarande spelas) → bannras i awardDone. Lokalt: visa direkt.
   if (p.round > 1) {
     if (ONLINE) cerNastaRunda = p.round;
-    else { await banner(`RUNDA ${p.round}`, false, 1300); await showPowerBanner(roundPowerTeam); }
+    else { await banner(`ÅR ${p.round}`, false, 1300); await showPowerBanner(roundPowerTeam); }
   }
   picked = null; expanded = null; resolving = false; klarLag = new Set();
   renderHand(); renderMe(); renderTeams(); renderRegs();
@@ -633,7 +633,7 @@ if (ONLINE) {
   game.on('lobby', m => renderLobby(m));
   game.on('klarUpdate', m => {
     klarLag = new Set(m.klar);
-    if (m.senast && m.senast !== game.me) toast(`✓ ${teamName(m.senast)} har avslutat — rundan körs när alla är klara`);
+    if (m.senast && m.senast !== game.me) toast(`✓ ${teamName(m.senast)} har avslutat — året körs när alla är klara`);
     if (klarSent) setEndBtn(`VÄNTAR…<br>${m.klar.filter(id => lastLobby?.claims[id] === 'human').length}/${m.humans}`, true);
     renderTeams();
   });
@@ -708,7 +708,7 @@ function renderMe() {
   const inc = [];
   if (t.incP) inc.push(`＋${t.incP} ${ico('pengar', 15)}`);
   if (t.incM) inc.push(`＋${t.incM} ${ico('material', 15)}`);
-  $('me-inc').innerHTML = inc.length ? inc.join('  ') + ' / runda' : '';
+  $('me-inc').innerHTML = inc.length ? inc.join('  ') + ' / år' : '';
   renderHandAfford();
   renderPropBtn();
 }
@@ -814,7 +814,7 @@ function renderHand() {
         <img src="${manifest.buildings[c.asset].file}" alt="">
         <div class="info">
           <div class="nm">${c.namn}</div>
-          <div class="gain-badge ${gerCur}">${ico(gerCur, 32)}<span class="gain-num">+${gerNum}</span><span class="gain-lbl">/ runda</span></div>
+          <div class="gain-badge ${gerCur}">${ico(gerCur, 32)}<span class="gain-num">+${gerNum}</span><span class="gain-lbl">/ år</span></div>
           <div class="stat"><span class="k">Kostar</span> <span class="v">${kostHtml}</span></div>
           <div class="stat"><span class="k">Öns hälsa</span> <span class="v ${pos ? 'ohplus' : 'ohminus'}">${pos ? '+' + c.oh : c.oh} 🏝</span></div>
         </div>
@@ -909,7 +909,7 @@ game.on('roundReplay', p => run(async () => {
   $('ov-vote').classList.remove('open'); voteOpenFor = null;
   $('cards').parentElement.classList.remove('hand-locked');
   $('roundnum').textContent = p.round;
-  await banner('ÖN KOLLAPSADE — SPELAR OM RUNDAN', true, 1900);
+  await banner('ÖN KOLLAPSADE — SPELAR OM ÅRET', true, 1900);
   const S = E()?.getState();
   if (S) rebuildFromState(S);                         // ritar om byggnader/resurser/öhälsa från rollbacken; tänder .krisglow (S.inCrisis)
   $('endwrap').classList.remove('pulse');
@@ -1020,7 +1020,7 @@ function propDefs() {
     // ── Grund-3 (ligger alltid kvar) ──
     { type: 'gron', pic: '🌱', rubrik: 'Grön satsning', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)}.<br>Öns hälsa går <b>upp +${c.gronGain}</b>.`, ja: `JA — jag betalar ${c.gronCost} ${ico('pengar', 14)}` },
     { type: 'skatt', pic: '💸', rubrik: 'Miljöskatt', tx: `Värsta boven (<b>${bov.namn}</b>) betalar ${c.taxAmount} ${ico('pengar', 14)}<br>som delas mellan de andra lagen.`, ja: 'JA — beskatta boven' },
-    { type: 'forbud', pic: '🚫', rubrik: 'Förbjud smutsig', tx: `Nästa runda kan <b>ingen</b> bygga det smutsiga kortet.`, ja: 'JA — förbjud smutsig' },
+    { type: 'forbud', pic: '🚫', rubrik: 'Förbjud smutsig', tx: `Nästa år kan <b>ingen</b> bygga det smutsiga kortet.`, ja: 'JA — förbjud smutsig' },
     // ── Extra-förslag (roterar; visas bara när de ligger i S.extraProposals) ──
     { type: 'krispaket', pic: '🆘', rubrik: 'Krispaket', tx: `Alla som röstar JA betalar ${c.krispaketCost} ${ico('pengar', 14)} (eller allt man har).<br>Går det igenom lyfts öns hälsa <b>+${c.krispaketGain}</b>.`, ja: `JA — jag betalar ${c.krispaketCost} ${ico('pengar', 14)}` },
     { type: 'sektorskatt', pic: '🏝', rubrik: 'Sektorskatt', tx: `Pengar-lagen betalar ${c.sektorskattAmount} ${ico('pengar', 14)} var<br>som delas mellan material-lagen.`, ja: 'JA — beskatta pengar-sektorn' },
@@ -1030,14 +1030,14 @@ function propDefs() {
     { type: 'gronstod', pic: '💊', rubrik: 'Riktat grönt stöd', tx: `Alla som röstar JA betalar ${c.gronCost} ${ico('pengar', 14)} → hela potten<br>går till grönaste laget (<b>${gron.namn}</b>).`, ja: `JA — jag skänker ${c.gronCost} ${ico('pengar', 14)}` },
     // ── NYA testförslag ──
     { type: 'grannskatt', pic: '💰', rubrik: 'Grannskatt', tx: `De <b>två rikaste</b> betalar ${c.grannskattAmount} ${ico('pengar', 14)} var →<br>delas på de två fattigaste.`, ja: 'JA — ta från de rika' },
-    { type: 'sektorblockad', pic: '🚧', rubrik: 'Sektorblockad', tx: `Nästa runda får <b>motståndarsektorn</b><br>inte bygga smutsigt.`, ja: 'JA — blockera dem' },
+    { type: 'sektorblockad', pic: '🚧', rubrik: 'Sektorblockad', tx: `Nästa år får <b>motståndarsektorn</b><br>inte bygga smutsigt.`, ja: 'JA — blockera dem' },
     { type: 'allians', pic: '🫂', rubrik: 'Allians', tx: `Varje <b>JA-lag</b> får +${c.alliansBonus} ${ico('pengar', 14)},<br>varje <b>NEJ-lag</b> betalar ${c.alliansBoter} ${ico('pengar', 14)}.`, ja: `JA — gå med` },
     { type: 'kustvakt', pic: '🌊', rubrik: 'Kustvakt', tx: `<b>Räven + Örnen</b> betalar ${c.kustvaktAmount} ${ico('pengar', 14)} var<br>för stormskydd → ön +${c.kustvaktOh}.`, ja: 'JA — skydda kusten' },
     { type: 'skogsvard', pic: '🪵', rubrik: 'Skogsvård', tx: `<b>Oxen + Björnen</b> betalar ${c.skogsvardAmount} ${ico('pengar', 14)} var<br>för att återställa skadad skog och mark → ön +${c.skogsvardOh}.`, ja: 'JA — återställ naturen' },
     { type: 'utslappshandel', pic: '🏭', rubrik: 'Utsläppshandel', tx: `Värsta boven betalar ${c.utslappAmount} ${ico('pengar', 14)} till<br>grönaste laget — ön ${c.utslappOh}.`, ja: 'JA' },
-    { type: 'naturreservat', pic: '🌳', rubrik: 'Naturreservat', tx: `Ön <b>+${c.naturreservatOh}</b> — men <b>ingen</b> får<br>bygga nästa runda.`, ja: 'JA — pausa för naturen' },
+    { type: 'naturreservat', pic: '🌳', rubrik: 'Naturreservat', tx: `Ön <b>+${c.naturreservatOh}</b> — men <b>ingen</b> får<br>bygga nästa år.`, ja: 'JA — pausa för naturen' },
     { type: 'raddningsfond', pic: '🤲', rubrik: 'Räddningsfond', tx: `Alla fyra betalar ${c.raddningsfondCost} ${ico('pengar', 14)}<br>→ ön <b>+${c.raddningsfondOh}</b>.`, ja: 'JA — alla bidrar' },
-    { type: 'byggboom', pic: '🏗️', rubrik: 'Byggboom', tx: `Nästa runda: ${c.byggboomRabatt} ${ico('material', 14)} billigare per bygge,<br>men ön <b>${c.byggboomOh}</b> nu.`, ja: 'JA — billigare bygge' },
+    { type: 'byggboom', pic: '🏗️', rubrik: 'Byggboom', tx: `Nästa år: ${c.byggboomRabatt} ${ico('material', 14)} billigare per bygge,<br>men ön <b>${c.byggboomOh}</b> nu.`, ja: 'JA — billigare bygge' },
   ];
 }
 // Grund-3 + rundans extra (server-auktoritativa i S.extraProposals). INGEN klient-lokal slump här.
@@ -1112,7 +1112,7 @@ function renderRegister(mode = 'arsberattelse') {
   const c = E().contribution(game.me);
   $('reg-body').innerHTML =
     `<div style="font-size:17px;margin-bottom:12px">Ditt avtryck: <span class="ohplus">+${c.impactPos}</span> / <span class="ohminus">${c.impactNeg}</span> · netto <b>${c.netto >= 0 ? '+' + c.netto : c.netto}</b> · kapital <b style="color:var(--led)">${c.kapital}</b></div>` +
-    `<table class="logtable"><tr><th>RUNDA</th><th>DU BYGGDE</th><th>ÖN</th></tr>` +
+    `<table class="logtable"><tr><th>ÅR</th><th>DU BYGGDE</th><th>ÖN</th></tr>` +
     c.log.map(r => `<tr><td>${r.round}</td><td>${r.namn}</td><td class="${r.oh > 0 ? 'ohplus' : r.oh < 0 ? 'ohminus' : ''}">${r.oh === 0 ? '—' : fmtOh(r.oh)}</td></tr>`).join('') + `</table>`;
 }
 
@@ -1743,7 +1743,7 @@ async function startCeremony() {
   await delay(300);
   if (tutAbort) return;
   $('tutveil').style.display = 'none';
-  await banner('RUNDA 1', false, 1500);
+  await banner('ÅR 1', false, 1500);
   if (tutAbort) return;
   loggClear();                                  // töm tutorialens övnings-händelser → loggen tom när runda 1 börjar
   game.attach(realGame);
@@ -1790,14 +1790,14 @@ async function runTutorial() {
 
   // ——— INTRO forts: vad går spelet ut på? (klicka igenom, highlightar relevant yta) ———
   await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190, hold: true,
-    txt: '⏱️ <b>Ni har 8 rundor på er!</b><br>Bygg, handla och påverka ön genom <b>politiska beslut</b>.' });
+    txt: '⏱️ <b>Ni har 8 år på er!</b><br>Bygg, handla och påverka ön genom <b>politiska beslut</b>.' });
   if (tutAbort) return;
   await tutSay({ ix: 0, focus: '.ohbar', x: 520, y: 190, hold: true,
     txt: '🏝️ <b>Men det finns en hake!</b><br>Om <b>öns hälsa sjunker under 60</b> när spelet är slut kollapsar ön. Då förlorar alla – och ingen blir borgmästare!' });
   if (tutAbort) return;
 
   $('timertxt').textContent = '–:––';
-  await banner('ÖVNING — RUNDA 0', false, 1400);
+  await banner('ÖVNING — ÅR 0', false, 1400);
   if (tutAbort) return;
 
   // ——— 1) BYGG (gör) — det billiga lockar ———
@@ -1886,7 +1886,7 @@ async function runTutorial() {
 
   // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
   await tutSay({ ix: 3, focus: '#endwrap', x: 1020, y: 540,
-    txt: `Efter <b>varje runda</b> blir det <b>öråd</b>.` });
+    txt: `Efter <b>varje år</b> blir det <b>öråd</b>.` });
   if (tutAbort) return;
   const roundEndP = tutOnce('roundEnd');
   await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA OMGÅNG</b>.', x: 1040, y: 760, focus: '#endwrap',

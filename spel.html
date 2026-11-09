@@ -157,7 +157,7 @@
   .card.expanded .kop { display: block; }
   .card .saknas { position: absolute; top: 44px; right: 10px; background: #3d2320; border: 2px solid #5e332c; color: var(--led-red); font-size: 14px; font-weight: 800; border-radius: 8px; padding: 5px 9px; display: none; }
   .card.poor .saknas { display: block; }
-  .card.banned::after { content: "🚫 FÖRBJUDEN DENNA RUNDA"; position: absolute; inset: 0; background: rgba(20,18,14,.78); display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; }
+  .card.banned::after { content: "🚫 FÖRBJUDEN DETTA ÅR"; position: absolute; inset: 0; background: rgba(20,18,14,.78); display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; }
   .hand-locked .card { opacity: .45; pointer-events: none; }
   .hand-locked .card.picked { opacity: 1; border-color: var(--led-green); }
   .card.picked::after { content: "BYGGT ✓"; position: absolute; top: 46%; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 800; color: var(--led-green); text-shadow: 0 2px 8px #000; }
@@ -445,7 +445,7 @@
 
   <div class="topbar">
     <div class="tb-top">
-      <div class="chip"><small>RUNDA</small><span id="roundnum">–</span> / <span id="roundmax">8</span></div>
+      <div class="chip"><small>ÅR</small><span id="roundnum">–</span> / <span id="roundmax">8</span></div>
       <div class="hero-oh">
         <span class="hero-lbl">ÖNS HÄLSA</span>
         <div class="ohval" id="ohval">50</div>
@@ -498,7 +498,7 @@
         <button class="btn" id="btn-end">AVSLUTA<br>OMGÅNG</button>
       </div>
       <div class="endtime" id="timertxt">1:30</div>
-      <div class="endlbl">SEN: BOKSLUT</div>
+      <div class="endlbl">SEN: Ö-RÅD</div>
     </div>
   </div>
 
@@ -555,9 +555,9 @@
     <div class="pdots" id="pdots"></div>
     <div id="lobby" style="display:none"></div>
     <div class="howto" id="howto">
-      <div><span class="n">🃏</span><b>Bygg</b><br>Välj 1 kort per runda.<br>Smutsigt är billigt — men skadar ön.</div>
+      <div><span class="n">🃏</span><b>Bygg</b><br>Välj 1 kort per år.<br>Smutsigt är billigt — men skadar ön.</div>
       <div><span class="n">🔁</span><b>Byt</b><br>Du tjänar bara en valuta.<br>Den andra får du byta till dig.</div>
-      <div><span class="n">🗳</span><b>Rösta</b><br>Ett förslag per runda.<br>3 av 4 JA krävs.</div>
+      <div><span class="n">🗳</span><b>Rösta</b><br>Ett förslag per år.<br>3 av 4 JA krävs.</div>
     </div>
     <div class="sub" style="font-size:18px">Håller ön <b style="color:var(--led-green)">över 60</b> efter 8 rundor vinner det rikaste laget. Faller den under — <b style="color:var(--led-red)">förlorar alla.</b></div>
     <button class="bigbtn gold" id="btn-start" style="font-size:26px">STARTA SPELET</button>
@@ -589,7 +589,7 @@
   <!-- Välj förslag -->
   <div class="overlay" id="ov-choose"><div class="modal" style="width:840px">
     <h2>🗳 LÄGG ETT FÖRSLAG</h2>
-    <div class="sub">Ett förslag per runda — alla lag röstar, 3 av 4 JA krävs</div>
+    <div class="sub">Ett förslag per år — alla lag röstar, 3 av 4 JA krävs</div>
     <div id="proplist"></div>
     <div class="votebtns"><button class="nej" id="btn-choose-cancel">AVBRYT</button></div>
   </div></div>
