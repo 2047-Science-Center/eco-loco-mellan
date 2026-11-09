@@ -139,6 +139,7 @@ async function makeOnline() {
     selectCard: t => net.selectCard(t),
     trade: (to, give, gc, get, gc2) => net.trade(to, give, gc, get, gc2),
     openProposal: t => net.openProposal(t),
+    politicsSkip: () => net.politicsSkip(),
     vote: y => net.vote(y),
     klar: () => net.klar(),
     awardsKlara: () => net.awardsKlara(),
@@ -163,6 +164,7 @@ function makeProxy() {
                'event', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
                'botTakeover', 'disconnected', 'reconnected', 'paused',
+               'politicsStart', 'politicsDone', 'politicsTimer',
                'trailer', 'trailerDone',
                'startWindow', 'startGo', 'startWindowCancel', 'tilllobby',
                'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone'];
@@ -184,6 +186,7 @@ function makeProxy() {
     selectCard: (...a) => cur.selectCard(...a),
     trade: (...a) => cur.trade(...a),
     openProposal: (...a) => cur.openProposal(...a),
+    politicsSkip: (...a) => cur.politicsSkip?.(...a),
     vote: (...a) => cur.vote(...a),
     klar: (...a) => cur.klar(...a),
     awardsKlara: (...a) => cur.awardsKlara?.(...a),
@@ -596,7 +599,7 @@ game.on('gameEnd', p => run(async () => {
 
 game.on('proposalOpened', p => run(async () => {
   // proposal_open-ljud spelas centralt (rigg); 'vote' stannar som torr feedback när DU trycker JA/NEJ.
-  renderPropBtn();                 // förslaget lagt → knappen blir "FÖRSLAG LAGT" + oklickbar
+  $('ov-choose').classList.remove('open');   // ÖRÅD: stäng förslagsväljaren → röstningen öppnas
   openVoteModal(p);
 }));
 
@@ -1049,7 +1052,39 @@ function visibleProps() {
 }
 // POLITIK-knappen borttagen (händelseloggen ersatte den). Spelarna lägger inte längre egna förslag
 // via UI:t; bot-/server-lagda förslag visas fortfarande som omröstning (ov-vote) och loggas.
-$('btn-choose-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-choose').classList.remove('open'); });
+$('btn-choose-inget').addEventListener('click', () => { audio.play('ui_close'); $('ov-choose').classList.remove('open'); game.politicsSkip?.(); });
+
+// ═══════════ ÖRÅD-politik (klient): ordförande-ruta → förslagsväljare (5 förslag) → röstning ═══════════
+game.on('politicsStart', p => run(async () => {
+  await banner(`🏛 ${teamName(p.power).toUpperCase()} HAR ORDET`, false, 2200);
+  openPolitikval(p.power);
+}));
+game.on('politicsTimer', p => {
+  const el = p.stage === 'vote' ? $('vote-timer') : $('choose-timer');
+  if (el) { el.textContent = `⏱ ${p.left}s`; el.classList.toggle('hot', p.left <= 10); }
+});
+game.on('politicsDone', () => run(async () => {
+  $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null;
+  $('choose-timer').textContent = ''; $('vote-timer').textContent = '';
+}));
+
+// Förslagsväljaren i ÖRÅD: 5 förslag på ALLA skärmar. Ordföranden kan lägga; övriga ser bara (gråa).
+function openPolitikval(power) {
+  const kanLagga = !!game.me && power === game.me;
+  const farg = AREAS.find(a => a.id === power)?.farg || 'var(--gold)';
+  $('choose-title').innerHTML = kanLagga ? `${ico('rosta', 24)} DU HAR ORDET — VÄLJ ETT FÖRSLAG` : `${ico('rosta', 24)} ${teamName(power).toUpperCase()} HAR ORDET`;
+  $('choose-sub').innerHTML = kanLagga ? 'Lägg ett förslag — sedan röstar alla (3 av 4 JA avgör).' : `<b style="color:${farg}">${teamName(power)}</b> lägger ett beslut — ring och påverka!`;
+  $('proplist').innerHTML = visibleProps().map(p => `<div class="propcard propchoice${kanLagga ? '' : ' readonly'}" data-type="${p.type}"${kanLagga ? '' : ' aria-disabled="true"'}>
+      <div class="pic">${p.pic}</div>
+      <div class="tx"><b style="color:var(--text)">${p.rubrik}</b><br>${p.tx}</div>
+    </div>`).join('');
+  if (kanLagga) document.querySelectorAll('#proplist .propchoice').forEach(el =>
+    el.addEventListener('click', () => { audio.play('ui_tap'); game.openProposal(el.dataset.type); }));
+  $('btn-choose-inget').style.display = kanLagga ? '' : 'none';   // bara ordföranden kan avstå
+  $('choose-timer').classList.remove('hot');
+  audio.play('ui_open');
+  $('ov-choose').classList.add('open');
+}
 
 function openVoteModal(p) {
   voteOpenFor = p;

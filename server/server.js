@@ -141,6 +141,11 @@ const CEREMONY_STEP_MS = 8000; // selfplay: tid per pris (skärm + rigg kliver i
 let resolvingNow = false;
 let eventFiring = false;        // en spelledar-händelse körs (rigg-cue + 3 s fördröjning innan den visas)
 const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjorts innan nästa får läggas (hinner visa resultatet)
+// ÖRÅD-politik: efter prisutdelningen varje år får ordföranden (powerTeam, roterar) en stund att
+// lägga ETT av 5 förslag — eller 'inget förslag'. Läggs ett → röstning → konsekvenser → nästa år.
+let politics = null;                 // { stage:'propose'|'vote'|'done', left, power } eller null (ingen politikfas)
+let politicsTimer = null, botOrdforandeTimer = null;
+const PROPOSE_SECS = 30, VOTE_SECS = 30;
 const BOT_POWER_WAIT_S = 60;         // en bot med makten väntar så här många sek IN I rundan innan den lägger sitt förslag (människor hinner ringa & påverka)
 let proposalCooldownUntil = 0;
 // Inaktiva skärmar → bot: idleMs räknar AKTIV speltid (medan rundtimern tickar) sedan laget senast
@@ -361,6 +366,7 @@ function resetToLobby() {
   stopTimer();
   clearTimeout(cerTimer);
   slutdel = null; cer = null; lastAwards = null; resolvingNow = false; eventFiring = false;
+  clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;   // ÖRÅD-politik avbryts vid omstart
   started = false; paused = false;
   klar = new Set(); tutBeats = {}; awardsVantar = new Set(); trailerPlayedAuto = false;
   for (const id of TEAMS) if (claims[id] === 'bot') claims[id] = null;   // släpp botarna, behåll människornas platser
@@ -376,6 +382,7 @@ function newEngine() {
   engine = new EcoLoco(manifest.config || {});
   engine.setGm(gmMode);   // spegla serverns GM-läge in i den nya motorn
   lastAwards = null; cer = null; slutdel = null; lastGameEnd = null; finaleSent = false;
+  clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;
   // Persistens: ny session (sessionId = tidsstämpel) med metadata-startrad. Fire-and-forget, data/ gitignorerad.
   session = newSession(ROOT, { config: engine.cfg, gmMode, version, claims });
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
@@ -399,6 +406,9 @@ function newEngine() {
   // och ingen rigg self-pacar längre. GM: spelledaren stegar via award_next. Selfplay: server-timer
   // (startAutoCeremony). 'award' broadcastas INTE rått längre; ceremonin bär vinnarna.
   engine.on('award', p => { lastAwards = p; });
+  // ÖRÅD-politik: ordföranden lade → gå till röstning; förslag avgjort → visa resultat ~2,5 s, sedan nästa år.
+  engine.on('proposalOpened', () => politicsToVote());
+  engine.on('proposalResolved', () => { if (politics) { politics.stage = 'done'; clearTimeout(politicsTimer); setTimeout(endPolitics, 2500); } });
   engine.on('roundEnd', () => {
     if (!lastAwards) return;
     const steps = buildCeremonySteps(lastAwards);
@@ -519,7 +529,7 @@ function advanceCeremony() {
   rigg?.endAwards(over);
   broadcast({ type: 'event', event: 'awardDone', payload: { over } });
   cer = null;
-  if (!over) { clearBenchResults(); startTimer(); }                    // prisceremonin klar → släck sabotör-pilen på bänkarna, rundan återupptas
+  if (!over) { clearBenchResults(); startPolitics(); }                 // prisceremonin klar → ÖRÅD-politik (ordförande lägger beslut), sedan startar året
   else fireFinale();                                                   // KRÖNING: efter prisutdelningen → tänd vinnaren + final
   return true;
 }
@@ -619,6 +629,60 @@ function maybeBotProposal() {
     type = (S.oh < 45 && extra.includes('krispaket')) ? 'krispaket' : extra[Math.floor(Math.random() * extra.length)];
   }
   engine.openProposal(type, by);
+}
+
+// ═══════════ ÖRÅD-politik (server-auktoritativ fas efter prisutdelningen) ═══════════
+// Motorn står på det NYA året (roundStart har redan fyrat under ceremonin), så powerTeam +
+// S.extraProposals (5 förslag) är satta. Ordföranden får PROPOSE_SECS att lägga ETT förslag
+// eller 'inget förslag'; läggs ett → VOTE_SECS röstning → konsekvenser → året startar.
+function startPolitics() {
+  const S = engine?.getState();
+  if (!S || S.over) { startTimer(); return; }
+  const power = S.powerTeam || TEAMS[0];
+  politics = { stage: 'propose', left: PROPOSE_SECS, power };
+  broadcast({ type: 'event', event: 'politicsStart', payload: { power, stage: 'propose', left: PROPOSE_SECS } });
+  if (claims[power] === 'bot') { clearTimeout(botOrdforandeTimer); botOrdforandeTimer = setTimeout(() => botOrdforandeLay(power), 6000); }
+  tickPolitics();
+}
+function tickPolitics() {
+  clearTimeout(politicsTimer);
+  politicsTimer = setTimeout(() => {
+    if (!politics) return;
+    if (paused) { tickPolitics(); return; }                 // paus fryser nedräkningen
+    politics.left--;
+    broadcast({ type: 'politicsTimer', stage: politics.stage, left: politics.left });
+    if (politics.left <= 0) {
+      if (politics.stage === 'propose') endPolitics();       // tiden ute utan förslag → inget förslag → nästa år
+      else forceOpenVotes();                                 // röst-tiden ute → tvinga → proposalResolved → endPolitics
+      return;
+    }
+    tickPolitics();
+  }, 1000);
+}
+function politicsToVote() {                                   // ordföranden lade ett förslag (proposalOpened)
+  if (!politics || politics.stage !== 'propose') return;
+  clearTimeout(botOrdforandeTimer);
+  politics.stage = 'vote'; politics.left = VOTE_SECS;
+  broadcast({ type: 'politicsTimer', stage: 'vote', left: VOTE_SECS });
+}
+function endPolitics() {                                      // inget förslag / skip / förslag avgjort → året börjar
+  if (!politics) return;
+  clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;
+  broadcast({ type: 'event', event: 'politicsDone', payload: {} });
+  if (engine && !engine.getState().over) startTimer();
+}
+function botOrdforandeLay(power) {                            // bot-ordförande lägger (eller avstår) så självspel har politik
+  if (!politics || politics.stage !== 'propose' || claims[power] !== 'bot') return;
+  const S = engine.getState();
+  const extra = Array.isArray(S.extraProposals) ? S.extraProposals : [];
+  let type = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud') : (Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud'));
+  if (extra.length && Math.random() < 0.5) type = (S.oh < 45 && extra.includes('krispaket')) ? 'krispaket' : extra[Math.floor(Math.random() * extra.length)];
+  const before = engine.getState().proposal;
+  engine.openProposal(type, power);
+  if (engine.getState().proposal === before) { endPolitics(); return; }   // nekades → inget förslag
+  engine.vote(power, true);
+  broadcast({ type: 'voteUpdate' });
+  checkBotVotes();
 }
 
 // Bot-svar på byteserbjudande (samma logik som mock-läget i ui.js)
@@ -796,6 +860,10 @@ wss.on('connection', ws => {
         engine.vote(lag, true);
         broadcast({ type: 'voteUpdate' });
         checkBotVotes();
+        break;
+      }
+      case 'politicsSkip': {   // ÖRÅD: ordföranden valde INGET FÖRSLAG → hoppa direkt till nästa år
+        if (politics && politics.stage === 'propose' && lag === politics.power) endPolitics();
         break;
       }
       case 'vote': {

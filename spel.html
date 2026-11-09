@@ -208,6 +208,9 @@
   .votebtns button { flex: 1; font: inherit; font-size: 28px; font-weight: 800; letter-spacing: 2px; padding: 20px; border-radius: 14px; cursor: pointer; border: 4px solid; }
   .votebtns .ja { background: #1E4A2C; border-color: #35D97B; color: #C9F5D8; }
   .votebtns .nej { background: #40231E; border-color: #8a4a38; color: #F0CFC5; }
+  .politimer { text-align: center; font-family: var(--font-num); font-weight: 800; font-size: 28px; color: var(--gold); margin: 2px 0 14px; letter-spacing: 1px; }
+  .politimer.hot { color: var(--oh-red); }
+  .propchoice.readonly { pointer-events: none; }   /* icke-ordförande: visa men inte klickbart */
   .votestat { display: flex; justify-content: center; gap: 14px; margin-top: 18px; }
   .votestat .v { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--dim); }
   .votestat .d { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--edge2); background: var(--panel3); }
@@ -588,16 +591,18 @@
 
   <!-- Välj förslag -->
   <div class="overlay" id="ov-choose"><div class="modal" style="width:840px">
-    <h2>🗳 LÄGG ETT FÖRSLAG</h2>
-    <div class="sub">Ett förslag per år — alla lag röstar, 3 av 4 JA krävs</div>
+    <h2 id="choose-title">🗳 LÄGG ETT FÖRSLAG</h2>
+    <div class="sub" id="choose-sub">Ett förslag per år — alla lag röstar, 3 av 4 JA krävs</div>
+    <div class="politimer" id="choose-timer"></div>
     <div id="proplist"></div>
-    <div class="votebtns"><button class="nej" id="btn-choose-cancel">AVBRYT</button></div>
+    <div class="votebtns"><button class="nej" id="btn-choose-inget">INGET FÖRSLAG</button></div>
   </div></div>
 
   <!-- Röstning -->
   <div class="overlay" id="ov-vote"><div class="modal" style="width:840px">
     <h2>🗳 OMRÖSTNING</h2>
     <div class="sub" id="vote-sub"></div>
+    <div class="politimer" id="vote-timer"></div>
     <div class="propcard"><div class="pic" id="vote-pic"></div><div class="tx" id="vote-tx"></div></div>
     <div class="votebtns" id="vote-btns"><button class="ja" id="btn-ja"></button><button class="nej" id="btn-nej">NEJ</button></div>
     <div class="votestat" id="votestat"></div>

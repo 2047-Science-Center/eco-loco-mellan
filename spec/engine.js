@@ -47,10 +47,10 @@ export const DEFAULT_CONFIG = {
   // Grund-3 (gron/skatt/forbud) ligger ALLTID kvar. Från extraProposalsFromRound
   // läggs extraProposalsPerRound SLUMPADE extra-förslag till per runda (roterar → variation
   // mellan rundorna). Motorn sätter dem server-auktoritativt → S.extraProposals (se _rollExtraProposals).
-  extraProposalsFromRound: 2,  // extra-förslag redan fr.o.m. runda 2; runda 1 = bara grund-3
-  extraProposalsPerRound: 2,   // exakt så många slumpade extra-förslag/runda → 3 grund + 2 = 5 förslag att välja på
+  extraProposalsFromRound: 1,  // ÖRÅD: 5 förslag (grund-3 + 2 slumpade) redan från år 1
+  extraProposalsPerRound: 2,   // exakt så många slumpade extra-förslag/år → 3 grund + 2 = 5 förslag att välja på
   krisProposalOh: 20,          // öhälsa under detta → SOS Krispaket ligger ALLTID bland förslagen (även före gate-rundan)
-  powerFromRound: 2,           // MAKT-ROTATION: fr.o.m. denna runda får BARA ett lag (roterar) lägga förslag. Runda 1 = fritt (inlärning).
+  powerFromRound: 1,           // ÖRÅD: ordföranden (roterar) finns från år 1. _powerTeamForRound ger aker→skog→räven→örnen.
 
   // Belopp för de NYA extra-förslagen. Konservativt satta — Klara/Josef får tuna.
   // (Grund-3-siffrorna ovan rörs INTE; nya förslag återanvänder dem där det går.)

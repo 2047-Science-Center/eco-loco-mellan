@@ -79,6 +79,7 @@ export class ServerNet {
   trade(to, give, giveCur, get, getCur) { return this._request({ type: 'tradeOffer', to, give, giveCur, get, getCur }, 30000); }
   tradeAnswer(offerId, accept) { this._send({ type: 'tradeAnswer', offerId, accept }); }
   openProposal(ptype) { this._send({ type: 'openProposal', ptype }); }
+  politicsSkip() { this._send({ type: 'politicsSkip' }); }   // ÖRÅD: ordföranden valde INGET FÖRSLAG
   vote(yes) { this._send({ type: 'vote', yes }); }
   klar() { this._send({ type: 'klar' }); }
   awardsKlara() { this._send({ type: 'awardsKlara' }); }
