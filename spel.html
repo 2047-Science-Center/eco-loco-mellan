@@ -137,6 +137,15 @@
   .card .stat { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 4px 0; }
   .card .stat .k { color: var(--dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; width: 54px; }
   .card .stat .v { font-family: var(--font-num); font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+  .card .stat .v.ohplus { color: var(--oh-green); }
+  .card .stat .v.ohminus { color: var(--oh-red); }
+  /* Byggnadskort: EGEN VINNING (pengar/material till dig) är den stora kroken; öns hälsa är liten text.
+     Syfte: den som går på bilden/siffran dras till egennyttan → mer konflikt. */
+  .card .gain-badge { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+  .card .gain-badge .gain-num { font-family: var(--font-num); font-weight: 800; font-size: 44px; line-height: 1; }
+  .card .gain-badge.pengar .gain-num { color: var(--pengar); text-shadow: 0 0 14px rgba(240,179,60,.5); }
+  .card .gain-badge.material .gain-num { color: var(--material); text-shadow: 0 0 14px rgba(143,179,196,.5); }
+  .card .gain-badge .gain-lbl { font-size: 11px; color: var(--dim); letter-spacing: .3px; max-width: 72px; line-height: 1.2; text-transform: capitalize; }
   .ohplus { color: var(--led-green); font-weight: 800; }
   .ohminus { color: var(--led-red); font-weight: 800; }
   .card .kop { margin: 0 14px 12px; background: var(--gold); color: #241E0F; border: 0; border-radius: 10px; font: inherit; font-size: 20px; font-weight: 800; letter-spacing: 2px; padding: 12px; cursor: pointer; display: none; }

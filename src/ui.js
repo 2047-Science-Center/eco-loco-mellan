@@ -800,7 +800,8 @@ function renderHand() {
   const banned = E().getState().banDirtyThisRound;
   $('cards').innerHTML = hand.map(c => {
     const kostHtml = [c.kp ? `${c.kp}${ico('pengar', 14)}` : '', c.km ? `${c.km}${ico('material', 14)}` : ''].filter(Boolean).join(' + ');
-    const gerHtml = c.gp ? `+${c.gp}${ico('pengar', 14)} /runda` : `+${c.gm}${ico('material', 14)} /runda`;
+    const gerCur = c.gp ? 'pengar' : 'material';           // egen vinning (inkomst till DIG) — den stora visuella kroken
+    const gerNum = c.gp || c.gm;
     const pos = c.oh > 0;
     return `
     <div class="card ${c.tier} ${banned && c.tier === 'smutsig' ? 'banned' : ''}" data-tier="${c.tier}">
@@ -809,9 +810,9 @@ function renderHand() {
         <img src="${manifest.buildings[c.asset].file}" alt="">
         <div class="info">
           <div class="nm">${c.namn}</div>
-          <div class="oh-badge ${pos ? 'pos' : 'neg'}">${pos ? ico('tillvaxt', 30) : ico('industri', 30)}<span class="oh-num">${pos ? '+' + c.oh : c.oh}</span><span class="oh-lbl">öhälsa / runda</span></div>
+          <div class="gain-badge ${gerCur}">${ico(gerCur, 32)}<span class="gain-num">+${gerNum}</span><span class="gain-lbl">${gerCur} / runda till dig</span></div>
           <div class="stat"><span class="k">Kostar</span> <span class="v">${kostHtml}</span></div>
-          <div class="stat"><span class="k">Ger</span> <span class="v">${gerHtml}</span></div>
+          <div class="stat"><span class="k">Öns hälsa</span> <span class="v ${pos ? 'ohplus' : 'ohminus'}">${pos ? '+' + c.oh : c.oh} 🏝</span></div>
         </div>
       </div>
       <button class="kop">KÖP — BYGG PÅ ÖN</button>
