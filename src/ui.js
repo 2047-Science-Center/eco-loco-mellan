@@ -381,7 +381,6 @@ function eventKonsHTML(p) {
 game.on('event', p => run(async () => {
   const warn = p.id !== 'godskord' && p.id !== 'gronafonden' && p.id !== 'pengaslapp';
   renderMe(); renderTeams(); renderRegs();
-  logg(`${warn ? '⚠️' : '🎉'} Händelse: <b>${p.rubrik || p.text || 'Händelse'}</b>`, warn ? 'lg-kris' : '');
   if (p.bild) {
     $('event-img').src = p.bild;
     $('event-rubrik').textContent = p.rubrik || '';
@@ -409,7 +408,6 @@ game.on('crisis', p => run(async () => {
     $('krisglow').classList.add('on');
     renderMe(); renderTeams(); renderRegs();
     const reset = E().cfg.krisReset ?? 35;
-    logg(`⚠️ <b>KRIS</b> — öns hälsa är kritisk, höj den över ${reset} denna runda!`, 'lg-kris');
     $('event-img').src = 'assets/kris.png';   // placeholder tills Josef genererar bilden (fallback = som andra saknade event-bilder)
     $('event-rubrik').textContent = 'Ön står inför kollaps';
     $('event-text').textContent = 'Centralmakten meddelar kyligt: öns hälsa är kritisk. Rädda den innan rundan är slut — annars faller allt, och ni får börja om. Lösningen är er.';
@@ -1732,6 +1730,7 @@ async function startCeremony() {
   $('tutveil').style.display = 'none';
   await banner('RUNDA 1', false, 1500);
   if (tutAbort) return;
+  loggClear();                                  // töm tutorialens övnings-händelser → loggen tom när runda 1 börjar
   game.attach(realGame);
   game.startGame();
 }
