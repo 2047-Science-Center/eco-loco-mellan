@@ -543,9 +543,10 @@ game.on('awardDone', p => run(async () => {
   $('ov-award').classList.remove('open');
   renderRegs();
   if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
-  // Prisceremonin klar → nu (när nya rundan faktiskt börjar) byts rundnumret och "RUNDA N"-popupen visas.
-  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`ÅR ${r}`, false, 1800); await showPowerBanner(roundPowerTeam); }
-  syncBotOverlay();   // ny runda igång → bot-bänk visar "ta över"-rutan (efter ceremonin, inte mitt i den)
+  // ÖRÅD: årssiffran + "ÅR N"-bannern byts INTE här. Örådet (ordförande → förslag → röstning) hör
+  // ihop med prisutdelningen och sker direkt efteråt; nya året börjar först när örådet är klart
+  // (politicsDone). cerNastaRunda hålls kvar tills dess.
+  syncBotOverlay();
 }));
 
 game.on('roundEnd', () => run(async () => renderRegs()));
@@ -1082,6 +1083,9 @@ game.on('politicsTimer', p => {
 game.on('politicsDone', () => run(async () => {
   $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null;
   $('choose-timer').textContent = ''; $('vote-timer').textContent = '';
+  // Örådet klart → NU byter årssiffran och "ÅR N"-bannern visas, sedan spelas det nya året.
+  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`ÅR ${r}`, false, 1600); }
+  syncBotOverlay();
 }));
 
 // Förslagsväljaren i ÖRÅD: 5 förslag på ALLA skärmar. Ordföranden kan lägga; övriga ser bara (gråa).
