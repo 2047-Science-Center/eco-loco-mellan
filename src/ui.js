@@ -309,7 +309,8 @@ game.on('resolveStart', () => run(async () => {
   resolving = true;
   $('endwrap').classList.remove('pulse');
   $('cards').parentElement.classList.add('hand-locked');
-  setEndBtn('BOKSLUT…', true);
+  setEndBtn('ÖRÅD…', true);
+  await banner('🏛 ÖRÅD', false, 1600);   // året avslutas → EN tydlig ÖRÅD-popup, sedan bokslut + prisutdelning (blockerar inte prisernas takt)
 }));
 
 // ═══════════ Händelselogg — permanent skrollbar historik i högerkolumnen (ersätter POLITIK-knappen) ═══════════
@@ -511,7 +512,6 @@ function showPendingSlut() {
 
 // SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
-  await banner('🏛 ÖRÅD', false, 1800);   // rundan slut → stor ÖRÅD-popup, sedan prisutdelningen
   const show = async (typ, w) => {
     renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
     $('ov-award').classList.add('open');
@@ -530,7 +530,6 @@ game.on('award', p => run(async () => {
 
 // GM-LÄGE: servern dirigerar — skärmen visar det pris spelledaren klickar fram (ingen auto-stegning).
 game.on('awardCeremony', () => run(async () => {
-  await banner('🏛 ÖRÅD', false, 1800);   // rundan slut → stor ÖRÅD-popup, sedan prisutdelningen
   $('awardcard').innerHTML = `<img src="assets/slut/prisutdelning-start.png" alt="" style="height:auto;object-fit:contain">`   // full bredd, full höjd (ingen beskärning/ikon) → rutan växer med bilden
     + `<div class="aw-tx"><h4>Öråd</h4><div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div></div>`;
   $('ov-award').classList.add('open');
