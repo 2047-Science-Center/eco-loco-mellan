@@ -10,6 +10,7 @@
 // SVG:ns viewBox är något större så havet + lag-markörerna får plats runt bilden.
 
 import { logoSVG } from './logos.js';
+import { AREAS } from '../spec/engine.js';   // lag-metadata (namn, sektor) för klickbara företags-ikoner
 
 export const VIEW = { w: 1536, h: 1024 };                 // kartbildens mått
 const VB = { x: -130, y: -60, w: 1796, h: 1170 };          // viewBox med havsmarginal
@@ -154,6 +155,14 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     });
     t.textContent = AREA_NAMES[id].toUpperCase();
     g.appendChild(t);
+    // Klickbar företags-ikon → info: lag, vad de tillverkar (sektor) och område de ansvarar för.
+    const area = AREAS.find(a => a.id === id);
+    g.style.cursor = 'pointer';
+    g.addEventListener('click', ev => { ev.stopPropagation(); showTip({ x, y: y + 44 }, [
+      { t: area?.namn || id.toUpperCase(), size: 34, weight: 800, fill: area?.farg || '#EFE8D6' },
+      { t: `Område: ${AREA_NAMES[id]}`, size: 25, weight: 700, fill: '#C9BFA6' },
+      { t: `Tillverkar: ${area?.sektor === 'pengar' ? 'Pengar' : 'Material'}`, size: 25, weight: 700, fill: area?.sektor === 'pengar' ? '#F0B33C' : '#8FB3C4' },
+    ]); });
     world.appendChild(g);
   }
 
@@ -202,26 +211,27 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   svg.appendChild(tipLayer);
   let activeTip = null;
   function hideTip() { if (activeTip) { activeTip.remove(); activeTip = null; } }
-  function showTip(foot, info) {
+  // Info-ruta med en lista rader [{t,size,weight,fill}] — används av både byggnader och lag-ikoner.
+  function showTip(foot, lines) {
     hideTip();
-    const w = 380, h = 156, pad = 16;
+    const w = 400, pad = 18, lineH = 44, h = pad * 2 + lines.length * lineH;
     let x = foot.x - w / 2; x = Math.max(VB.x + 12, Math.min(x, VB.x + VB.w - w - 12));
-    let y = foot.y - 150 - h; if (y < VB.y + 12) y = foot.y + 44;   // under byggnaden om det inte får plats ovanför
+    let y = foot.y - 150 - h; if (y < VB.y + 12) y = foot.y + 44;   // under ikonen om det inte får plats ovanför
     const g = el('g', { style: 'pointer-events:none' });
     g.appendChild(el('rect', { x, y, width: w, height: h, rx: 18, fill: '#14120E', opacity: 0.96, stroke: '#4A443A', 'stroke-width': 2 }));
-    const lines = [
-      { t: info.namn, size: 32, weight: 800, fill: '#EFE8D6' },
-      { t: `${info.oh > 0 ? '+' : ''}${info.oh} öhälsa`, size: 28, weight: 700, fill: info.oh > 0 ? '#3DD68C' : info.oh < 0 ? '#F0564B' : '#C9BfA6' },
-      { t: info.lagNamn, size: 25, weight: 700, fill: '#C9A94F' },
-    ];
     lines.forEach((ln, i) => {
-      const t = el('text', { x: x + w / 2, y: y + pad + 32 + i * 42, 'text-anchor': 'middle', 'font-size': ln.size, 'font-weight': ln.weight, fill: ln.fill });
+      const t = el('text', { x: x + w / 2, y: y + pad + 30 + i * lineH, 'text-anchor': 'middle', 'font-size': ln.size, 'font-weight': ln.weight, fill: ln.fill });
       t.textContent = ln.t;
       g.appendChild(t);
     });
     tipLayer.appendChild(g);
     activeTip = g;
   }
+  const buildingLines = info => [
+    { t: info.namn, size: 32, weight: 800, fill: '#EFE8D6' },
+    { t: `${info.oh > 0 ? '+' : ''}${info.oh} öhälsa`, size: 28, weight: 700, fill: info.oh > 0 ? '#3DD68C' : info.oh < 0 ? '#F0564B' : '#C9BfA6' },
+    { t: info.lagNamn, size: 25, weight: 700, fill: '#C9A94F' },
+  ];
   // Klick på tom karta/hav → stäng ev. öppen info-ruta (byggnads-klick stoppar bubblingen).
   svg.addEventListener('click', hideTip);
 
@@ -246,7 +256,7 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     // Klickbar byggnad → visa info-ruta (namn · öhälso-effekt · vilket lag som byggde).
     if (info) {
       g.style.cursor = 'pointer';
-      g.addEventListener('click', ev => { ev.stopPropagation(); showTip(foot, info); });
+      g.addEventListener('click', ev => { ev.stopPropagation(); showTip(foot, buildingLines(info)); });
     }
     // kontaktskugga: grundar den grövre tilen mot den (nu texturerade) ytan
     g.appendChild(el('ellipse', {
