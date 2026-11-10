@@ -18,9 +18,10 @@ export function mockOpponentsAct(engine, humans) {
   const S = engine.getState();
   const oh = S.oh, redZone = engine.cfg.redZone;
   const rounds = engine.cfg.rounds ?? 8, threshold = engine.cfg.threshold ?? 60;
-  // SLUTSPELS-MATTE: de sista åren "räknar" botarna — är ön under tröskeln och spelet nästan slut
-  // bygger de grönt för att rädda ön (annars dör den på mållinjen). redZone-krisen gäller alltid.
-  const slutspel = (rounds - S.round) <= 2 && oh < threshold + 4;
+  // SLUTSPELS-MATTE: de sista åren "räknar" botarna — är ön UNDER tröskeln (threshold − 4) och spelet
+  // nästan slut bygger de grönt för att rädda ön. Ligger ön nära/över tröskeln förlitar de sig på att
+  // någon annan tar ansvaret och bygger hellre girigt. (redZone-farozonen nedan gäller alltid.)
+  const slutspel = (rounds - S.round) <= 2 && oh < threshold - 4;
   S.teams.filter(t => !skip.has(t.id) && !t.choice).forEach(t => {
     const hand = handFor(t.id).filter(c => !(S.banDirtyThisRound && c.tier === 'smutsig'));
     let card;

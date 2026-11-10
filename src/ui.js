@@ -528,10 +528,15 @@ game.on('award', p => run(async () => {
   renderRegs();
 }));
 
-// Prisutdelningen börjar: byggena är redan avslöjade → NU stor ÖRÅD-popup, sedan direkt första priset.
-// (Servern väntar in bannern innan första awardStep, så första priset inte får förkortad tid.)
+// Prisutdelningen börjar: byggena är redan avslöjade → NU släcks skärmen ner (mörk overlay) och
+// stor ÖRÅD-skylt visas, sedan direkt första priset (awardStep ersätter innehållet på samma mörka
+// skärm). Servern väntar in skylten (2 s) innan första awardStep så första priset får full tid.
 game.on('awardCeremony', () => run(async () => {
-  await banner('🏛 ÖRÅD', false, 1700);
+  $('awardcard').innerHTML = `<div class="aw-tx" style="text-align:center;padding:24px 8px">`
+    + `<div style="font-family:var(--font-disp);font-size:72px;font-weight:800;letter-spacing:6px;color:var(--gold)">🏛 ÖRÅD</div>`
+    + `<div class="who" style="font-size:19px;color:var(--dim);margin-top:8px">Året är slut — rådet samlas</div></div>`;
+  $('ov-award').classList.add('open');   // .overlay-bakgrunden släcker ner skärmen → kvar tänd genom hela prisutdelningen
+  await delay(1700);
 }));
 game.on('awardStep', p => run(async () => {
   renderAwardCard(p.typ, p.w);
