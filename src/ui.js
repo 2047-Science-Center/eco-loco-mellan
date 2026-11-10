@@ -1612,8 +1612,19 @@ if (ONLINE) {
   // Servern startade runda 1 (den gemensamma grinden slog till) → lämna tutorialen/väntläget och hoppa
   // in i spelet. Gäller BÅDE lär-delen och ceremonin/nedräkningen — EN källa (servern) startar partiet.
   realGame.on('start', () => {
-    if (!tutRunning || game.backend === realGame) return;
-    convergeToGame();
+    if (tutRunning && game.backend !== realGame) { convergeToGame(); return; }   // tutorial/ceremoni → spel
+    // OMSTART (STARTA NYTT SPEL efter slut): spelet är redan på realGame. Riv ner slut-/öråd-overlays
+    // och bygg vyn på nytt DIREKT (denna lyssnare går inte via den seriella kön → funkar även om kön
+    // fastnat i slut-/finalsekvensen, vilket var varför "spela igen" inte gjorde något).
+    if (game.backend === realGame) {
+      fireTutAbort();
+      ['ov-slut', 'ov-award', 'ov-choose', 'ov-vote', 'ov-power', 'ov-bot', 'ov-event', 'ov-register'].forEach(id => $(id)?.classList.remove('open'));
+      pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null; cerNastaRunda = null;
+      map.clearBuildings(); loggClear();
+      const S = realGame.E()?.getState();
+      if (S && S.round >= 1 && !S.over) rebuildFromState(S);
+      renderMe(); renderTeams(); renderRegs(); renderHand();
+    }
   });
 }
 

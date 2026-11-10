@@ -534,7 +534,9 @@ export class EcoLoco {
     this._rollExtraProposals();                      // rulla rundans extra-förslag (server-auktoritativt) före roundStart
     this._drawEvent();                               // dra rundans händelse (före roundStart → servern ser pendingEvent)
     this._emit('roundStart', { round: this.S.round, powerTeam: this.S.powerTeam });
-    if (!this.gm && this.S.pendingEvent) this._runEvent(this.S.pendingEvent);   // auto-läge: applicera direkt
+    // Auto-läge: händelsen appliceras normalt direkt vid årsstart. Servern stänger av detta
+    // (autoEventAtStart:false) och kör i stället händelsen ~30 s in i året — inte i örådet.
+    if (!this.gm && this.cfg.autoEventAtStart !== false && this.S.pendingEvent) this._runEvent(this.S.pendingEvent);
     this._captureRound();                            // snapshot EFTER rundsetup + ev. auto-händelse = replay-punkt
   }
 

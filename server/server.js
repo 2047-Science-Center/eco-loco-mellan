@@ -147,6 +147,7 @@ let politics = null;                 // { stage:'propose'|'vote'|'done', left, p
 let politicsTimer = null, botOrdforandeTimer = null;
 const PROPOSE_SECS = 30, VOTE_SECS = 30;
 const BOT_POWER_WAIT_S = 60;         // en bot med makten väntar så här många sek IN I rundan innan den lägger sitt förslag (människor hinner ringa & påverka)
+const EVENT_DELAY_S = 30;            // årets slumphändelse dyker upp så här många sek IN I året (inte i örådet)
 let proposalCooldownUntil = 0;
 // Inaktiva skärmar → bot: idleMs räknar AKTIV speltid (medan rundtimern tickar) sedan laget senast
 // gjorde något. Prisutdelning/paus räknas INTE (vakten står still då), och klockan persistar över
@@ -381,6 +382,7 @@ function resetToLobby() {
 function newEngine() {
   engine = new EcoLoco(manifest.config || {});
   engine.setGm(gmMode);   // spegla serverns GM-läge in i den nya motorn
+  engine.cfg.autoEventAtStart = false;   // händelsen körs INTE vid årsstart (i örådet) → servern kör den ~30 s in i året
   lastAwards = null; cer = null; slutdel = null; lastGameEnd = null; finaleSent = false;
   clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;
   // Persistens: ny session (sessionId = tidsstämpel) med metadata-startrad. Fire-and-forget, data/ gitignorerad.
@@ -454,14 +456,14 @@ function startTimer() {
   const full = roundFull();
   timerLeft = full;
   let countdownFired = false;                 // 10 s-nedräkningen fyras en gång per runda
-  let botFired = false;                        // maktbotens förslag läggs en gång, BOT_POWER_WAIT_S in i rundan
+  let eventFired = false;                      // årets händelse körs en gång, EVENT_DELAY_S in i året (ej i örådet)
   broadcast({ type: 'timer', left: timerLeft, full });
   timerInt = setInterval(() => {
     if (paused) return;   // pausad → frys nedräkningen. Inget rigg-cue skickas, så ambiencen loopar vidare.
     timerLeft--;
     broadcast({ type: 'timer', left: timerLeft, full });
-    // ~1 min in i rundan → en bot med makten lägger sitt förslag (människor har hunnit ringa & påverka).
-    if (!botFired && timerLeft <= full - BOT_POWER_WAIT_S) { botFired = true; maybeBotProposal(); }
+    // ~30 s in i året → årets händelse dyker upp (inte i örådet). Selfplay: servern kör den.
+    if (!eventFired && timerLeft <= full - EVENT_DELAY_S) { eventFired = true; maybeFireEvent(); }
     // 10 s kvar → NEDRÄKNING i riggen (ljus + ljud), samma cue som spelledarens NEDRÄKNING-knapp.
     // SYSTEMCEREMONI (ungated via riggSend) så den spelar i BÅDA lägena — även "med spelledare".
     if (timerLeft <= 10 && timerLeft > 0 && !countdownFired) { countdownFired = true; riggSend('ecoloco/rigg/countdown', 1); }
@@ -597,6 +599,16 @@ function maybeResolve() {
   const p = engine.getState().proposal;
   if (p && !p.resolved) return;                            // röstning pågår
   if (liveHumanIds().every(id => klar.has(id))) { stopTimer(); forceResolve(); }
+}
+
+// Kör årets dragna händelse NU (~EVENT_DELAY_S in i året, via rundtimern) — inte vid årsstart/örådet.
+// Selfplay (utan spelledare): servern kör den automatiskt. Med spelledare kör spelledaren den själv (ja/nej).
+function maybeFireEvent() {
+  if (gmMode) return;                                           // med spelledare → spelledaren kör händelsen
+  const S = engine?.getState();
+  if (!S || S.over || !S.pendingEvent) return;
+  if (S.proposal && !S.proposal.resolved) return;              // vänta om en omröstning pågår
+  engine.resolveEventDecision('ja');                           // kör den dragna händelsen → 'event'/'proposalOpened' broadcastas
 }
 
 // Lägg maktbotens (eller en fri-runda-bots) förslag NU. Triggas av rundtimern BOT_POWER_WAIT_S in i
