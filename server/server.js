@@ -557,7 +557,7 @@ function startAutoCeremony() {
     if (!cer) return;
     rigg?.beginAwards();
     broadcast({ type: 'event', event: 'awardCeremony', payload: { total } });
-    cerTimer = setTimeout(step, 700);                                  // kort pre-award-paus (matchar scen-bytet)
+    cerTimer = setTimeout(step, 2000);                                 // paus medan skärmens ÖRÅD-popup visas → första priset får full tid
   }, 300);
   function step() {
     if (!cer) return;

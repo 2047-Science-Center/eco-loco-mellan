@@ -310,7 +310,7 @@ game.on('resolveStart', () => run(async () => {
   $('endwrap').classList.remove('pulse');
   $('cards').parentElement.classList.add('hand-locked');
   setEndBtn('ÖRÅD…', true);
-  await banner('🏛 ÖRÅD', false, 1600);   // året avslutas → EN tydlig ÖRÅD-popup, sedan bokslut + prisutdelning (blockerar inte prisernas takt)
+  // Bokslutet (byggen/byten/öhälsa) avslöjas först. ÖRÅD-popupen visas EFTER det, precis före priserna (awardCeremony).
 }));
 
 // ═══════════ Händelselogg — permanent skrollbar historik i högerkolumnen (ersätter POLITIK-knappen) ═══════════
@@ -528,11 +528,10 @@ game.on('award', p => run(async () => {
   renderRegs();
 }));
 
-// GM-LÄGE: servern dirigerar — skärmen visar det pris spelledaren klickar fram (ingen auto-stegning).
+// Prisutdelningen börjar: byggena är redan avslöjade → NU stor ÖRÅD-popup, sedan direkt första priset.
+// (Servern väntar in bannern innan första awardStep, så första priset inte får förkortad tid.)
 game.on('awardCeremony', () => run(async () => {
-  $('awardcard').innerHTML = `<img src="assets/slut/prisutdelning-start.png" alt="" style="height:auto;object-fit:contain">`   // full bredd, full höjd (ingen beskärning/ikon) → rutan växer med bilden
-    + `<div class="aw-tx"><h4>Öråd</h4><div class="who" style="font-size:18px;color:var(--dim)">Spelledaren presenterar priserna…</div></div>`;
-  $('ov-award').classList.add('open');
+  await banner('🏛 ÖRÅD', false, 1700);
 }));
 game.on('awardStep', p => run(async () => {
   renderAwardCard(p.typ, p.w);
