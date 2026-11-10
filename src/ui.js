@@ -562,7 +562,7 @@ game.on('start', () => run(async () => {
 }));
 
 game.on('roundStart', p => run(async () => {
-  loggRunda(p.round);   // ny rund-rubrik i loggen (förra rundans byggen/byten/politik ligger redan ovanför)
+  if (p.round === 1) loggRunda(1);   // år 1: avdelaren direkt. År 2+ sätts den EFTER örådet (politicsDone) så örådsbeslutet hamnar under rätt år.
   // Online runda>1: roundStart kommer MEDAN förra rundans ceremoni spelas → vänta med att byta
   // rundnummer tills ceremonin är klar (awardDone), annars hoppar siffran fram för tidigt.
   if (!(ONLINE && p.round > 1)) $('roundnum').textContent = p.round;
@@ -582,7 +582,7 @@ game.on('roundStart', p => run(async () => {
   renderHand(); renderMe(); renderTeams(); renderRegs();
   renderPropBtn();                                                // gata LÄGG FÖRSLAG på maktlaget (inte bara disabled=false)
   $('endwrap').classList.remove('pulse');
-  setEndBtn('AVSLUTA<br>OMGÅNG', false);
+  setEndBtn('AVSLUTA<br>ÅR', false);
   syncBotOverlay();   // bot-rutan öppnas igen BARA om bänken fortfarande körs av en bot (annars stängd)
 }));
 
@@ -916,7 +916,7 @@ game.on('roundReplay', p => run(async () => {
   const S = E()?.getState();
   if (S) rebuildFromState(S);                         // ritar om byggnader/resurser/öhälsa från rollbacken; tänder .krisglow (S.inCrisis)
   $('endwrap').classList.remove('pulse');
-  setEndBtn('AVSLUTA<br>OMGÅNG', false);
+  setEndBtn('AVSLUTA<br>ÅR', false);
 }));
 
 function humanCount() {
@@ -1082,8 +1082,9 @@ game.on('politicsTimer', p => {
 game.on('politicsDone', () => run(async () => {
   $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null;
   $('choose-timer').textContent = ''; $('vote-timer').textContent = '';
-  // Örådet klart → NU byter årssiffran och "ÅR N"-bannern visas, sedan spelas det nya året.
-  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; await banner(`ÅR ${r}`, false, 1600); }
+  // Örådet klart → NU byter årssiffran, loggens ÅR-avdelare sätts (så örådsbeslutet ligger kvar
+  // under året vars öråd det var) och "ÅR N"-bannern visas, sedan spelas det nya året.
+  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; loggRunda(r); await banner(`ÅR ${r}`, false, 1600); }
   syncBotOverlay();
 }));
 
@@ -1866,6 +1867,7 @@ async function runTutorial() {
   if (tutAbort) return;
 
   // ——— 1) BYGG (gör) — det billiga lockar ———
+  setEndBtn('AVSLUTA<br>ÅR', true);   // TUTORIAL: AVSLUTA ÅR nedsläckt under hela lektionen — tänds först vid sista steget (tryck på avsluta år)
   const dirtyTier = E().getState().banDirtyThisRound ? 'standard' : 'smutsig';
   await tutBeat({ ix: 0, txt: 'Bygg en byggnad. Tryck på ett kort.', x: 520, y: 560, focus: '.handbar',
     until: tutOnce('build', p => p.teamId === myLag),
@@ -1954,7 +1956,8 @@ async function runTutorial() {
     txt: `Efter <b>varje år</b> blir det <b>öråd</b>.` });
   if (tutAbort) return;
   const roundEndP = tutOnce('roundEnd');
-  await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA OMGÅNG</b>.', x: 1040, y: 760, focus: '#endwrap',
+  setEndBtn('AVSLUTA<br>ÅR', false);   // NU tänds knappen → nu får man avsluta året
+  await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA ÅR</b>.', x: 1040, y: 760, focus: '#endwrap',
     until: roundEndP,
     autoDo: () => $('btn-end').click() });
   if (tutAbort) return;

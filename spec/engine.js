@@ -329,7 +329,8 @@ export class EcoLoco {
         const share = Math.floor(pay / others.length);
         others.forEach(t => t.pengar += share);
       } else if (p.type === 'forbud') {
-        this.S.banDirtyNextRound = true;
+        // ÖRÅD: beslutet tas i början av året som strax spelas → gäller DETTA år (inte året efter).
+        this.S.banDirtyThisRound = true;
 
       // ─── Extra-förslag ur poolen (alla [BYGG] = befintliga primitiver P1–P6) ───
       } else if (p.type === 'krispaket') {
@@ -393,7 +394,7 @@ export class EcoLoco {
       } else if (p.type === 'sektorblockad') {
         // 🚫 Nästa runda får den ANDRA sektorn (än förslagsläggarens) inte bygga smutsigt.
         const by = this.team(p.by);
-        this.S.banDirtySektorNextRound = by && by.sektor === 'pengar' ? 'material' : 'pengar';
+        this.S.banDirtySektorThisRound = by && by.sektor === 'pengar' ? 'material' : 'pengar';   // ÖRÅD: gäller året som strax spelas
       } else if (p.type === 'allians') {
         // 🤝 JA-lag får bonus, NEJ-lag betalar böter (koalition vs utanförskap).
         this.S.teams.forEach(t => {
@@ -416,14 +417,14 @@ export class EcoLoco {
       } else if (p.type === 'naturreservat') {
         // 🌳 Ön +hälsa, men INGEN får bygga nästa runda.
         this.S.gronQueued += this.cfg.naturreservatOh;
-        this.S.banAllNextRound = true;
+        this.S.banAllThisRound = true;   // ÖRÅD: ingen bygger året som strax spelas
       } else if (p.type === 'raddningsfond') {
         // 🤲 Alla fyra betalar lika → ön +hälsa (oavsett röst, om förslaget går igenom).
         this.S.teams.forEach(t => t.pengar = Math.max(0, t.pengar - this.cfg.raddningsfondCost));
         this.S.gronQueued += this.cfg.raddningsfondOh;
       } else if (p.type === 'byggboom') {
         // 🏗️ Billigare byggen nästa runda (material-rabatt) men ön tar en smäll nu.
-        this.S.buildDiscountNextRound = this.cfg.byggboomRabatt;
+        this.S.buildDiscountThisRound = this.cfg.byggboomRabatt;   // ÖRÅD: rabatten gäller året som strax spelas
         this.S.gronQueued += this.cfg.byggboomOh;
       }
     }
