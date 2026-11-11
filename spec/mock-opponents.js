@@ -71,12 +71,14 @@ export function mockOpponentsVote(engine, humans) {
   const rik = engine.richest(), gron = engine._greenest();
   S.teams.filter(t => !skip.has(t.id) && p.votes[t.id] === undefined).forEach(t => {
     let yes = false;
-    if (p.type === 'gron') yes = (S.oh < 55 && t.pengar >= engine.cfg.gronCost) || Math.random() < 0.35;
+    // Vid KRIS (låg öhälsa) röstar botarna grönt oavsett plånbok — överlevnad går före pengar.
+    // (Den som röstar ja men är pank betalar bara det den har — motorn klampar till 0.)
+    if (p.type === 'gron') yes = S.oh < 45 || (S.oh < 58 && t.pengar >= engine.cfg.gronCost) || Math.random() < 0.3;
     if (p.type === 'skatt') yes = t.id !== worst.id;
-    if (p.type === 'forbud') yes = S.oh < 52 || Math.random() < 0.4;
+    if (p.type === 'forbud') yes = S.oh < 58 || Math.random() < 0.4;
     if (p.type === 'event') yes = Math.random() < 0.6;   // händelse-frestelse (t.ex. sponsrat): botarna nappar oftast
     // ── Extra-förslag: egennytta + öhälso-hänsyn (gör att de kan passera i auto/multiplayer) ──
-    if (p.type === 'krispaket') yes = (S.oh < 50 && t.pengar >= engine.cfg.krispaketCost) || Math.random() < 0.3;
+    if (p.type === 'krispaket') yes = S.oh < 45 || (S.oh < 55 && t.pengar >= engine.cfg.krispaketCost) || Math.random() < 0.3;
     if (p.type === 'sektorskatt') yes = t.sektor === 'material';          // materiallagen vinner, pengar-lagen förlorar
     if (p.type === 'solidaritet') yes = t.id !== rik.id;                  // alla utom rikaste
     if (p.type === 'lojalitet') yes = t.pengar >= engine.cfg.lojalitetBoter || Math.random() < 0.5;

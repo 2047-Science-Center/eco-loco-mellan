@@ -507,9 +507,9 @@ function pauseForAwards() {
   stopTimer();
   const full = roundFull();
   timerLeft = full;
-  if (!cer || !cer.steps.length) {                 // ingen prisutdelning denna runda → kör vidare direkt
-    broadcast({ type: 'timer', left: timerLeft, full });
-    return startTimer();
+  if (!cer || !cer.steps.length) {                 // ingen prisutdelning denna runda (ingen vinnare) → hoppa INTE över örådet
+    broadcast({ type: 'timer', left: timerLeft, full, paused: true });
+    return startPolitics();                         // kör örådet direkt (det startar sedan årets timer via endPolitics)
   }
   broadcast({ type: 'timer', left: timerLeft, full, paused: true });
   // Rundtimern står stilla tills ceremonin når awardDone. GM: spelledarens award_next startar den.

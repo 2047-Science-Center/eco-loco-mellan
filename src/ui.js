@@ -532,11 +532,11 @@ game.on('award', p => run(async () => {
 // stor ÖRÅD-skylt visas, sedan direkt första priset (awardStep ersätter innehållet på samma mörka
 // skärm). Servern väntar in skylten (2 s) innan första awardStep så första priset får full tid.
 game.on('awardCeremony', () => run(async () => {
+  $('awardcard').className = 'awardcard';   // nollställ ev. 'sab'-klass (röd ram) från förra årets sabotör-pris → ÖRÅD får vanlig grå/silvrig ram
   $('awardcard').innerHTML = `<div class="aw-tx" style="text-align:center;padding:24px 8px">`
     + `<div style="font-family:var(--font-disp);font-size:72px;font-weight:800;letter-spacing:6px;color:var(--gold)">🏛 ÖRÅD</div>`
     + `<div class="who" style="font-size:19px;color:var(--dim);margin-top:8px">Året är slut — rådet samlas</div></div>`;
-  $('ov-award').classList.add('open');   // .overlay-bakgrunden släcker ner skärmen → kvar tänd genom hela prisutdelningen
-  await delay(1700);
+  $('ov-award').classList.add('open');   // .overlay-bakgrunden släcker ner skärmen → kvar tänd genom hela prisutdelningen. Servern väntar 2 s innan första priset (ingen klient-fördröjning som äter prisets tid).
 }));
 game.on('awardStep', p => run(async () => {
   renderAwardCard(p.typ, p.w);
@@ -1956,8 +1956,8 @@ async function runTutorial() {
   if (tutAbort) return;
 
   // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
-  await tutSay({ ix: 3, focus: '#endwrap', x: 1020, y: 540,
-    txt: `Efter <b>varje år</b> blir det <b>öråd</b>.` });
+  await tutSay({ ix: 3, focus: null, x: 1020, y: 540,
+    txt: `Efter <b>varje år</b> blir det <b>öråd</b>.` });   // lys INTE upp AVSLUTA ÅR här — den tänds först vid sista steget
   if (tutAbort) return;
   const roundEndP = tutOnce('roundEnd');
   setEndBtn('AVSLUTA<br>ÅR', false);   // NU tänds knappen → nu får man avsluta året
