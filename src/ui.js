@@ -1,8 +1,10 @@
 // ui.js — Eco Loco (Mellan): vylager i två lägen bakom SAMMA spelfasad.
-//   spel.html              → LOKALT: motorn kör i webbläsaren, mock-opponents styr 3 lag
-//   spel.html?online=1     → ONLINE: server/server.js äger motorn; denna klient är en
-//                            statslös vy (lag väljs i lobbyn, resten blir botar)
-//   spel.html?online=1&lag=aker → kioskläge: gör anspråk på ett lag direkt (NUC-autostart)
+//   spel.html              → ONLINE (standard): server/server.js äger motorn; denna klient är
+//                            en statslös vy (lag väljs i lobbyn, resten blir botar). HELA öråds-/
+//                            prisflödet är serverstyrt och finns BARA här.
+//   spel.html?lag=aker     → kioskläge: gör anspråk på ett lag direkt (NUC-autostart)
+//   spel.html?local=1      → LOKALT (dev-mock): motorn kör i webbläsaren, mock-opponents styr 3 lag.
+//                            SAKNAR öråd/politik/serverceremoni — bara för snabb UI-pyssel utan server.
 //
 // Fasadens kontrakt: game.on(event, cb) för motorns 12 events + timer/lobby/…,
 // game.E() = läsare (team/leaderboards/contribution/getState/cfg), actions som promises.
@@ -20,7 +22,7 @@ import { ico, moodIco, curIco } from './icons.js';
 const $ = id => document.getElementById(id);
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const params = new URLSearchParams(location.search);
-const ONLINE = params.has('online');
+const ONLINE = !params.has('local');   // online är STANDARD; ?local=1 ger den gamla dev-mocken (utan öråd)
 
 const manifest = await (await fetch('./spec/assets.json')).json();
 const slots = Object.fromEntries(Object.entries(manifest.slots).filter(([k]) => k !== '_readme'));
@@ -536,11 +538,16 @@ game.on('awardCeremony', () => run(async () => {
   $('awardcard').innerHTML = `<div class="aw-tx" style="text-align:center;padding:24px 8px">`
     + `<div style="font-family:var(--font-disp);font-size:72px;font-weight:800;letter-spacing:6px;color:var(--gold)">🏛 ÖRÅD</div>`
     + `<div class="who" style="font-size:19px;color:var(--dim);margin-top:8px">Året är slut — rådet samlas</div></div>`;
-  $('ov-award').classList.add('open');   // .overlay-bakgrunden släcker ner skärmen → kvar tänd genom hela prisutdelningen. Servern väntar 2 s innan första priset (ingen klient-fördröjning som äter prisets tid).
+  $('ov-award').classList.add('open');   // .overlay-bakgrunden släcker ner skärmen → kvar tänd genom hela prisutdelningen.
+  // SELFPLAY: håll ÖRÅD-skylten kvar KLIENTSTYRT. Serverns paus räcker inte — bokslutet (byggen/öhälsa)
+  // kan dra över den, och då racar skylten mot första priset och blinkar förbi. Här står den garanterat
+  // kvar innan nästa köjobb (första awardStep) får rita över. Spelledarläge: skylten stegas av spelledaren.
+  if (!E()?.getState()?.gmMode) await delay(3000);
 }));
 game.on('awardStep', p => run(async () => {
   renderAwardCard(p.typ, p.w);
   $('ov-award').classList.add('open');
+  if (!E()?.getState()?.gmMode) await delay(5000);   // SELFPLAY: varje pris hålls kvar 5 s klientstyrt (lika med serverns takt → låser sig när ikapp, pacar själv om bokslutet drog över)
 }));
 game.on('awardDone', p => run(async () => {
   $('ov-award').classList.remove('open');
@@ -834,6 +841,7 @@ function renderHand() {
   document.querySelectorAll('#cards .card').forEach(el => {
     el.addEventListener('click', ev => {
       if ((picked && !flerByggen()) || resolving) return;   // MED SPELLEDARE: bygg hur många du vill
+      if (el.classList.contains('banned')) return;          // förbjudet smutsigt kort → inert (motorn nekar ändå)
       const tier = el.dataset.tier;
       if (ev.target.classList.contains('kop')) { buyCard(tier); return; }
       audio.play('ui_tap');
@@ -1089,6 +1097,9 @@ game.on('politicsDone', () => run(async () => {
   // Örådet klart → NU byter årssiffran, loggens ÅR-avdelare sätts (så örådsbeslutet ligger kvar
   // under året vars öråd det var) och "ÅR N"-bannern visas, sedan spelas det nya året.
   if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; loggRunda(r); await banner(`ÅR ${r}`, false, 1600); }
+  // Örådet kan ha ändrat vad som får byggas DETTA år (förbud → smutsigt kort förbjudet, naturreservat,
+  // sektorblockad, byggboom). roundStart ritade handen FÖRE örådet, så rita om den NU när besluten gäller.
+  renderHand(); renderMe(); renderTeams(); renderRegs();
   syncBotOverlay();
 }));
 
@@ -1215,7 +1226,14 @@ $('btn-again').addEventListener('click', () => {
     $('ov-slut').classList.remove('open');
     $('ov-start').classList.add('open');
     if (lastLobby) renderLobby(lastLobby);
-  } else game.playAgain();
+  } else {
+    game.playAgain();
+    // ROBUST OMSTART (online): normalt river realGame.on('start') slut-vyn och bygger om. Skulle
+    // klienten ha fastnat i slut-/slutdelssekvensen (kön hänger) → ladda om sidan efter 2,5 s;
+    // den återansluter till den nu omstartade servern och hoppar in i runda 1. "Starta nytt spel"
+    // gör alltid NÅGOT synligt. Lyckas den normala vägen är ov-slut redan stängd → ingen omladdning.
+    if (ONLINE) setTimeout(() => { if ($('ov-slut').classList.contains('open')) location.reload(); }, 2500);
+  }
 });
 
 // ═══════════════ Toasts & banner ═══════════════

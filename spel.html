@@ -157,7 +157,8 @@
   .card.expanded .kop { display: block; }
   .card .saknas { position: absolute; top: 44px; right: 10px; background: #3d2320; border: 2px solid #5e332c; color: var(--led-red); font-size: 14px; font-weight: 800; border-radius: 8px; padding: 5px 9px; display: none; }
   .card.poor .saknas { display: block; }
-  .card.banned::after { content: "🚫 FÖRBJUDEN DETTA ÅR"; position: absolute; inset: 0; background: rgba(20,18,14,.78); display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; }
+  .card.banned { pointer-events: none; filter: grayscale(.6); }   /* förbjudet kort: ej klickbart, tydligt nedtonat */
+  .card.banned::after { content: "🚫 FÖRBJUDEN DETTA ÅR"; position: absolute; inset: 0; z-index: 6; background: rgba(20,18,14,.78); color: #fff; text-align: center; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; letter-spacing: .5px; }
   .hand-locked .card { opacity: .45; pointer-events: none; }
   .hand-locked .card.picked { opacity: 1; border-color: var(--led-green); }
   .card.picked::after { content: "BYGGT ✓"; position: absolute; top: 46%; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 800; color: var(--led-green); text-shadow: 0 2px 8px #000; }

@@ -137,7 +137,7 @@ let awardsFailsafe = null;     // timeout som startar timern även om någon kli
 let lastAwards = null;         // senaste rundans prisvinnare (motorns 'award'-event)
 let cer = null;                // prisutdelning som SERVERN dirigerar (båda lägen): { steps:[{typ,w}], i }
 let cerTimer = null;           // selfplay: auto-stegarens timer (server-dirigerad lockstep skärm+rigg)
-const CEREMONY_STEP_MS = 8000; // selfplay: tid per pris (skärm + rigg kliver i exakt denna takt)
+const CEREMONY_STEP_MS = 5000; // selfplay: tid per pris (skärm + rigg kliver i exakt denna takt)
 let resolvingNow = false;
 let eventFiring = false;        // en spelledar-händelse körs (rigg-cue + 3 s fördröjning innan den visas)
 const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjorts innan nästa får läggas (hinner visa resultatet)
@@ -557,7 +557,7 @@ function startAutoCeremony() {
     if (!cer) return;
     rigg?.beginAwards();
     broadcast({ type: 'event', event: 'awardCeremony', payload: { total } });
-    cerTimer = setTimeout(step, 2000);                                 // paus medan skärmens ÖRÅD-popup visas → första priset får full tid
+    cerTimer = setTimeout(step, 3500);                                 // paus medan skärmens ÖRÅD-popup visas (3,5 s → hinner läsas som ceremoni) → sedan första priset med full tid
   }, 300);
   function step() {
     if (!cer) return;
@@ -844,7 +844,7 @@ wss.on('connection', ws => {
         break;
       }
       case 'selectCard': {
-        if (!lag || resolvingNow) break;
+        if (!engine || !lag || resolvingNow) break;   // ingen motor (lobby/omstart) → ignorera vilsen klient i stället för att krascha
         const res = engine.selectCard(lag, m.tier);
         send(ws, { type: 'actionResult', reqId: m.reqId, res });
         break;
@@ -864,8 +864,9 @@ wss.on('connection', ws => {
       case 'openProposal': {
         // ETT FÖRSLAG PER LAG/RUNDA: blockera bara om ett förslag är OAVGJORT just nu (inte om det
         // senaste redan avgjorts). Motorn nekar lag som redan lagt sitt förslag denna runda.
+        if (!engine || !lag || resolvingNow) break;   // ingen motor → ignorera
         const pp = engine.getState().proposal;
-        if (!lag || resolvingNow || (pp && !pp.resolved) || Date.now() < proposalCooldownUntil) break;
+        if ((pp && !pp.resolved) || Date.now() < proposalCooldownUntil) break;
         const before = engine.getState().proposal;
         engine.openProposal(m.ptype, lag);
         if (engine.getState().proposal === before) break;   // motorn nekade (redan lagt / ej tillåtet)
@@ -879,7 +880,7 @@ wss.on('connection', ws => {
         break;
       }
       case 'vote': {
-        if (!lag) break;
+        if (!engine || !lag) break;
         engine.vote(lag, !!m.yes);
         broadcast({ type: 'voteUpdate' });
         checkBotVotes();
@@ -887,7 +888,7 @@ wss.on('connection', ws => {
         break;
       }
       case 'tradeOffer': {
-        if (!lag) break;
+        if (!engine || !lag) break;
         const target = claims[m.to];
         const t = engine.team(lag);
         if (t[m.giveCur] < m.give) { send(ws, { type: 'tradeResult', reqId: m.reqId, res: { ok: false, why: 'du saknar täckning' } }); break; }
@@ -906,7 +907,7 @@ wss.on('connection', ws => {
         break;
       }
       case 'tradeAnswer': {
-        const o = offers.get(m.offerId); if (!o) break;
+        const o = offers.get(m.offerId); if (!o || !engine) break;
         offers.delete(m.offerId);
         const res = m.accept ? engine.transfer(o.from, o.to, o.give, o.giveCur, o.get, o.getCur) : { ok: false, reason: 'tackade nej' };
         send(o.fromWs, { type: 'tradeResult', reqId: o.reqId, res: res.ok ? { ok: true } : { ok: false, why: res.reason } });
