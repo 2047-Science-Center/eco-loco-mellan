@@ -13,7 +13,7 @@ ersätter inte `ARCHITECTURE.md` (mock→drift), `RIGG-KONTRAKT.md` (signalsöm)
 | Lager | Fil | Ansvar |
 |---|---|---|
 | **Motor (sanning)** | `spec/engine.js` | Regler, balans, state. Ren modul, ingen DOM/nät. `EcoLoco`-klassen (internt namn — behålls). Kör oförändrad i webbläsare och i Node. |
-| **Innehåll (data)** | `spec/assets.json` | Config-overrides, byggnader, slots, ljud-manifest. Läses LIVE. `spec/slutdel.js` = podiefrågor + reveal-kort (ren data). `EVENTS`/`EVENT_CONFIG` ligger i engine.js. |
+| **Innehåll (data)** | `spec/assets.json` | Config-overrides, byggnader, slots, ljud-manifest. Läses LIVE. `spec/slutdel.js` = podiefrågor + reveal-kort (ren data). Händelsebanker: `spec/content/{company-crises,company-events,ohalsa-events,gm-events}.js` + `events.js` (bara 'rost'-erbjudanden kvar, sponsrat). |
 | **Server (auktoritativ)** | `server/server.js` | Äger EN motorinstans i drift, statiska filer + WebSocket, lobby/botar/klar-logik/hjärtslag, GM-flagga, award-/slutdel-stegning. |
 | **Persistens** | `server/persist.js` | Fire-and-forget JSONL + `<id>.summary.json` per session till `data/` (gitignorerad). Tappar motorns eventström. |
 | **Klient-fasad** | `src/ui.js` | Vylager. Tre backends bakom SAMMA fasad via `makeProxy`: `makeLocal` (mock), `makeOnline` (`src/net.js`), `makeTutorial`. Seriell event-kö med scenpauser. |
@@ -67,6 +67,18 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
 - **Chrome och spel-copy ska gå via `src/icons.js`** (`ico()/moodIco()/curIco()`), inte emoji.
   Tillgängliga id: pengar, material, tillvaxt, industri, on, byt, rosta, krona, varning, trofe,
   sabotor, borsen, lage1–5 (moods). Nya symboler ritas som fasett-ikon där, inte som ny emoji.
+  **Politik-förslagens ikoner (2026-11-19):** forbud, naturreservat, gron, krispaket, marknadsavtal,
+  gronstod, allians, skatt, utslappshandel, solidaritet, grannskatt, sektorskatt, naturbruksskatt,
+  kustvakt, skogsvard — en per förslag, satta i `propDefs()` (`src/ui.js`) via `ico(id, 64)`. Vote-rutan
+  renderar `def.pic` med `innerHTML` (SVG-sträng), inte `textContent`.
+  **Chrome-ikoner (2026-11-19):** vag (dilemma), orad (öråd/politik), mal (KRIS-mål), happening,
+  bot (dator), bygge (logg), bok (årsberättelse). Emoji utbytt i logg, prisutdelning, slutbild,
+  klimatregister, banner, lobby. Statiska ikoner i `spel.html` sätts via `<span data-ico="id" data-sz="px">`
+  som `src/ui.js` fyller på load.
+  **Status-ikoner (2026-11-19):** ja (grön bock), nej (rött kryss) — ersätter ✅/❌/✓ i logg,
+  omröstningsresultat, toasts och lobby. Kvar som vanliga tecken (ej fasett): 😮‍💨, 🎬, ⏳, CSS-stämpeln
+  "BYGGT ✓" (`spel.html` `.card.picked::after`), samt enstaka prosa-emoji i tutorial. Spelledarpanelen
+  (`spelledare.html`, internt) rör vi separat.
 
 ### Karta/seating
 - Koordinatsystem = kartbildens pixlar `0–1536 × 0–1024` (samma som `assets.json → slots`).
@@ -103,6 +115,37 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
 - `node --check spec/engine.js spec/slutdel.js server/server.js server/persist.js src/*.js` efter kod-ändring.
 - `node server/server.js` + `spel.html?online=1` i två fönster för multiplayer-känsla.
 - Slutdel: `spel.html?slutdeltest=1` (ingen server krävs). Balans: `tools/simulera.js`.
+- Händelser: `tools/ohalsa-event-test.js` (trösklar/effekter, legacy-läge) + `tools/fordrojd-ohalsa-test.js`
+  (fördröjd presentation). Jämförelse före/efter: `tools/fordrojd-sim.js`.
+
+---
+
+## 5b. Händelsesystemet — kategorier & timing (uppdaterad 2026-11-19)
+**Det GAMLA fullt slumpade systemet är BORTTAGET (2026-11-19).** `EVENT_CONFIG`/`chansPerRunda`,
+slumpdragningen (`_drawEvent`), GM:s pending-flöde (`chooseEvent`/`drawRandomEvent`/`resolveEventDecision`
++ servern `event`/`valjEvent`/`slumpaEvent`/`EVENT_KATALOG`/`eventforslag`) och auto-händelserna
+(storm/skogsbrand/uppror/torka/godskord/gronafonden/marknadskrasch) finns inte längre. De gamla
+motsvarigheterna lever vidare i de tre kategorierna (skogsbrand → company-crisis `skog_major`,
+marknadskrasch → gm `gm_marknadskrasch` osv.). KVAR i `events.js`: bara 'rost'-erbjudandet `sponsrat`
+som Ö-rådets beslutspool kan dra. Rigg-cuerna är OMPEKADE till de nya händelse-id:na (`EVENT_RIGG_CUE`
+i server.js), fyras av `companyEvent`-handlern; latchande cues (kris/fanfar) återställs efter pausen.
+
+Tre händelsekategorier (motorn), presenterade som popups med ~10 s auto-paus (servern fryser byggtimern):
+- **Företagshändelser** (`foretag`: kriser + prestationer) — **direkt** när villkoret uppfylls under byggfasen.
+  LOKALA KRISER (2026-11-19): kräver BÅDE ackumulerad skada ≤ tröskel OCH att årskravet nåtts — config
+  `companyCrisisThreshold {minor:-15,major:-25}` + `companyCrisisMinRound {minor:2,major:4}` (DEFAULT_CONFIG,
+  config-styrt så gamla −10/−20 utan årskrav kan köras i samma motor). Passeras tröskeln ett tillåtet år →
+  direkt vid bygget; passerades den tidigare → köas vid byggfasens START (`engine.fireDueCrises()`, servern i
+  `startTimer` efter Ö-råd — aldrig under bokslut/Ö-råd). Mellan/Skola; Flash saknar kriser. Se
+  `design/MELLAN-NYA-KRISGRANSER.md`.
+- **Öhälsohändelser** (`ohalsa`: NATUREN BLOMSTRAR/MILJÖLYFT/VÄRMEBÖLJA/STORM) — **FÖRDRÖJDA** (`cfg.ohalsaDelayed`,
+  default på): KVALIFICERAS vid bokslut (`_qualifyPendingOhalsa` → `S.pendingOhalsa`), VISAS ~`ohalsaDelaySeconds`
+  (30 s) **aktiv byggtid** in i NÄSTA byggfas via `fireNextPendingOhalsa()` (servern räknar aktiv tid i byggtimerns
+  tick). Effekt tillämpas vid visning, en gång/parti. RESURSBRIST (Skola) är UNDANTAGEN → alltid omedelbar vid
+  bokslut (pågående produktionseffekt får ej fördröjas). Legacy omedelbart beteende: `ohalsaDelayed:false`.
+- **GM-händelser** (`gm`) — när spelledaren aktiverar. **KRIS** är separat (`crisis`-event, bokslut ≤20) och orörd.
+- Trösklar/effekter ligger i `spec/content/*.js` och ändras ALDRIG utan avstämning (invariant 1).
+  Se `design/MELLAN-FORDROJDA-HANDELSER.md` + `design/MELLAN-HANDELSETATHET.md`.
 
 ---
 
@@ -121,8 +164,9 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
    `font-family: Menlo` och vinner över `--font-num`-regeln (rad 23) → Chakra Petch slår inte igenom på
    resurs-/timer-/stepper-/award-/ranktabell-siffror. **Åtgärd:** byt till `var(--font-num)`.
 4. **Ikon vs emoji — halv migrering.** `icons.js` används i chrome + hand + topplista + bytesmodal, men
-   toasts, event-popup (`🪙🧱🏝🌱🏭`), award-popup (`🏆🌱💀🏅`), politik-modal (`🌱💸🚫`), register
-   (`👑⚠️`), lobby/slutskärm (`🤖👑💀`) kör fortfarande emoji — trots att motsvarande fasett-ikoner finns
+   toasts, event-popup (`🪙🧱🏝🌱🏭`), award-popup (`🏆🌱💀🏅`), register (`👑⚠️`), lobby/slutskärm
+   (`🤖👑💀`) kör fortfarande emoji. (Politik-modalens 15 förslag är klara 2026-11-19 → egna fasett-ikoner,
+   se §Ikoner.) Trots att motsvarande fasett-ikoner finns
    (trofe/sabotor/krona/varning/tillvaxt/industri/pengar/material). Inkonsekvent. Mest kosmetiskt. **Åtgärd:**
    ersätt stegvis; `CUR_ICON` och `fmtOh` i `src/ui.js` är de centrala emoji-källorna.
 5. **Startceremonin är kopplad till tutorial-läget.** Körs bara i `runTutorial()` (mode=tutorial).

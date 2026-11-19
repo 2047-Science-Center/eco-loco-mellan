@@ -26,7 +26,8 @@ Migration A→B och Python→Blocks är osynlig nedåt: båda lagren nedan är f
 | `ecoloco/rigg/ceremoni` | startceremonin (tutorial→runda 1), skickas från skärmen | `countdown` = riser-soundscape + LED-chase 1–4 + klockljud · `climax` = vitt ljus i 3 s · `runda1` = fade till rundans look | nej |
 | `ecoloco/rigg/blandare` | spelet vill köra blandaren (valfri cue, ej inkopplad i rigg.js än) | `1` = på, `0` = av | nej |
 | `ecoloco/rigg/ljud` | central "show"-ljud (ej på skärmen) | ljud-id/filnamn, t.ex. `round_start`, `win`, `lose`, `relief`, `proposal_open`, `event_storm.mp3` | nej |
-| `ecoloco/rigg/eventforslag` | GM-läge, vid rundstart: rundans dragna händelse (för spelledarpanelen) | `{"id":...,"namn":...,"text":...}` | nej |
+| `ecoloco/rigg/kris` | KRIS på/av. Latchas av `crisis`-event (öh ≤ krisZon). En visad företags-/öhälsohändelse med special-cue `kris` pulsar larm och återställer sedan topicen till sanningen (`inCrisis`) efter händelsepausen. | `1` = på, `0` = av | nej |
+| `ecoloco/rigg/gm/alla_grona` | special-cue `fanfar` (stora positiva vändningar) → "allt grönt"-look. Återställs till `0` efter händelsepausen. | `1`/`0` | nej |
 | `ecoloco/rigg/final` | KRÖNING efter sista prisutdelningen (sista steget klickat) | `{"result":"win"\|"lose","lag":"aker\|skog\|tundra\|stad"\|null}` (ren sträng `win`/`lose` accepteras också) → hjärnan: mörker → kort paus → ljus + fanfar (vinnarsidan tänds vid vinst) | nej |
 
 Retur-kanal (spelledarpanel → server, icke-retained): `ecoloco/spel/gm`
