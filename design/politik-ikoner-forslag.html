@@ -1,0 +1,289 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Politik-ikoner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;700;800&family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+  /* Kontrollpanel-estetiken från spel.html — ett medvetet mörkt, enfärgstema. */
+  :root {
+    --bg:#121009; --panel:#211E17; --panel2:#2A261D; --panel3:#0C0B07;
+    --edge:#4A443A; --edge2:#5C5547; --gold:#C9A94F; --text:#F2ECDD; --dim:#B8AF9A;
+    --green:#3DD68C; --red:#F0564B;
+    --disp:"Oxanium","Avenir Next",system-ui,sans-serif;
+    --num:"Chakra Petch",ui-monospace,Menlo,monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:var(--disp); line-height:1.4; }
+  .wrap { max-width:860px; margin:0 auto;
+          padding-left:max(16px, env(safe-area-inset-left,0px));
+          padding-right:max(16px, env(safe-area-inset-right,0px));
+          padding-block:30px 72px; }
+
+  header h1 { font-size:24px; letter-spacing:3px; color:var(--gold); font-weight:800; margin:0 0 6px; }
+  header p { color:var(--dim); font-size:14px; margin:0; max-width:620px; }
+
+  .bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+         margin:22px 0 26px; padding:14px 16px; background:var(--panel); border:2px solid var(--edge); border-radius:12px; }
+  .bar .lbl { font-size:12px; letter-spacing:1.5px; color:var(--dim); font-weight:700; text-transform:uppercase; }
+  .toggle { display:inline-flex; border:2px solid var(--edge2); border-radius:10px; overflow:hidden; }
+  .toggle button { font:inherit; font-weight:800; font-size:13px; letter-spacing:1px; padding:9px 16px;
+                   background:var(--panel3); color:var(--dim); border:0; cursor:pointer; }
+  .toggle button.on { background:var(--gold); color:#241E0F; }
+  .bar .note { font-size:12px; color:var(--dim); margin-left:auto; }
+
+  h2 { font-size:12px; letter-spacing:2.5px; color:var(--gold); font-weight:800; text-transform:uppercase;
+       margin:30px 0 14px; padding-bottom:7px; border-bottom:1px solid var(--edge); }
+
+  /* .propcard — kopierad look från spel.html (röstkortet i örådet) */
+  .propcard { display:flex; gap:18px; align-items:center; background:var(--panel3);
+              border:3px solid var(--edge2); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .propcard .pic { flex:none; width:72px; height:72px; display:flex; align-items:center; justify-content:center; }
+  .propcard .tx { font-size:20px; line-height:1.4; min-width:0; }
+  .propcard .tx .rub { color:var(--text); font-weight:800; display:block; margin-bottom:2px; }
+  .propcard .tx b { color:var(--green); }
+  .propcard .tx small { color:var(--dim); font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:700; }
+
+  @media (max-width:540px) {
+    .propcard { gap:12px; padding:13px 13px; }
+    .propcard .pic { width:56px; height:56px; }
+    .propcard .tx { font-size:16px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>POLITIK-IKONER</h1>
+    <p>Alla 15 politiska förslag (Mellan/Skola) med förslag på en <b style="color:var(--text)">unik, egen
+       symbol</b> var — ritade i spelets fasett-stil, inte emoji och utan att låna de befintliga
+       funktionsikonerna (pengar, material …). <b style="color:var(--text)">Omgång 2:</b> tydligare motiv och
+       en bredare färgpalett (blå, orange, straw, mynt-grön …) så de blir lättare att särskilja — ett test av
+       att släppa den strama profilen. Visade i örådets riktiga röstkorts-layout. Mynten/kuberna i texten är
+       spelets valuta-ikoner, inte förslagens symboler.</p>
+  </header>
+
+  <div class="bar">
+    <span class="lbl">Cirkel runt ikonen</span>
+    <div class="toggle" id="tgl">
+      <button data-c="0" class="on">UTAN</button>
+      <button data-c="1">MED</button>
+    </div>
+    <span class="note">Inget är inlagt i spelet än — det här är ett utkast att reagera på.</span>
+  </div>
+
+  <h2>Framtida beslut</h2>
+  <div data-cat="framtida"></div>
+  <h2>Samarbete</h2>
+  <div data-cat="samarbete"></div>
+  <h2>Drabbar boven / den rikaste</h2>
+  <div data-cat="boven"></div>
+  <h2>Sektorkonflikt</h2>
+  <div data-cat="sektor"></div>
+</div>
+
+<script>
+const D = '#1E1E1A';
+
+// Valuta-mini-ikoner för brödtexten (spelets pengar/material, INTE förslagssymboler)
+const P = `<svg width="15" height="15" viewBox="0 0 100 100" style="vertical-align:-.16em"><polygon points="50,10 78,22 90,50 78,78 50,90 22,78 10,50 22,22" fill="#F0B33C"/><polygon points="50,10 78,22 90,50 10,50 22,22" fill="#F7CE78"/><polygon points="90,50 78,78 50,90 50,50" fill="#B5832A"/></svg>`;
+const M = `<svg width="15" height="15" viewBox="0 0 100 100" style="vertical-align:-.16em"><polygon points="50,16 84,35 50,54 16,35" fill="#B9D4E0"/><polygon points="16,35 50,54 50,90 16,71" fill="#8FB3C4"/><polygon points="84,35 50,54 50,90 84,71" fill="#5E8699"/></svg>`;
+
+// 15 unika förslagssymboler (fasett-stil: ljus uppe-vänster, bas, mörk nere-höger, #1E1E1A-accent)
+const ICONS = {
+  forbud: `
+    <polygon points="40,34 60,34 64,86 36,86" fill="#8A8372"/>
+    <polygon points="40,34 49,34 47,86 36,86" fill="#B8AF9A"/>
+    <polygon points="55,34 60,34 64,86 59,86" fill="#6E685A"/>
+    <polygon points="37,29 63,29 63,36 37,36" fill="#B8AF9A"/>
+    <line x1="38" y1="54" x2="62" y2="54" stroke="#1E1E1A" stroke-width="1.8" opacity="0.28"/>
+    <line x1="37" y1="70" x2="63" y2="70" stroke="#1E1E1A" stroke-width="1.8" opacity="0.28"/>
+    <path d="M41,30 Q38,24 45,23 Q52,21 54,27 Q56,32 49,33 Q43,33 41,30 Z" fill="#C9C0AE" opacity="0.5"/>
+    <path d="M34,23 Q31,16 39,15 Q47,13 49,19 Q51,25 44,26 Q36,27 34,23 Z" fill="#B8AF9A" opacity="0.5"/>
+    <path d="M47,17 Q45,9 54,8 Q62,7 63,15 Q64,21 56,21 Q49,22 47,17 Z" fill="#D8D1C2" opacity="0.5"/>
+    <path d="M30,15 Q28,8 36,8 Q44,7 45,14 Q46,20 38,20 Q31,20 30,15 Z" fill="#C9C0AE" opacity="0.45"/>
+    <line x1="22" y1="84" x2="80" y2="20" stroke="#F0564B" stroke-width="5" stroke-linecap="round"/>`,
+  naturreservat: `
+    <polygon points="50,14 68,42 32,42" fill="#3DD68C"/>
+    <polygon points="50,14 32,42 44,38" fill="#7FE7B5"/>
+    <polygon points="50,14 68,42 56,38" fill="#2A9E64"/>
+    <polygon points="50,26 70,54 30,54" fill="#3DD68C"/>
+    <polygon points="50,26 30,54 43,49" fill="#7FE7B5"/>
+    <polygon points="50,26 70,54 57,49" fill="#2A9E64"/>
+    <polygon points="46,54 54,54 54,66 46,66" fill="#8A6A3A"/>
+    <rect x="22" y="70" width="56" height="5" fill="#C9A94F"/>
+    <rect x="22" y="70" width="56" height="2" fill="#E4CE8C"/>
+    <rect x="26" y="66" width="5" height="20" fill="#937A34"/>
+    <rect x="47" y="66" width="5" height="20" fill="#C9A94F"/>
+    <rect x="68" y="66" width="5" height="20" fill="#937A34"/>`,
+  gron: `
+    <polygon points="34,60 66,60 64,67 36,67" fill="#D9794A"/>
+    <polygon points="34,60 66,60 66,63 34,63" fill="#E8936A"/>
+    <polygon points="37,67 63,67 58,86 42,86" fill="#C66B3D"/>
+    <polygon points="37,67 50,67 46,86 42,86" fill="#D9794A"/>
+    <polygon points="58,67 63,67 58,86 54,86" fill="#A5512A"/>
+    <polygon points="48,62 52,62 51,42 49,42" fill="#2A9E64"/>
+    <polygon points="50,43 34,28 20,23 31,41" fill="#3DD68C"/>
+    <polygon points="50,43 34,28 20,23" fill="#7FE7B5"/>
+    <line x1="21" y1="24" x2="49" y2="42" stroke="#2A9E64" stroke-width="1.8" opacity="0.65"/>
+    <polygon points="50,43 66,28 80,23 69,41" fill="#3DD68C"/>
+    <polygon points="50,43 66,28 80,23" fill="#7FE7B5"/>
+    <line x1="79" y1="24" x2="51" y2="42" stroke="#2A9E64" stroke-width="1.8" opacity="0.65"/>`,
+  krispaket: `
+    <rect x="20" y="32" width="60" height="50" rx="9" fill="#F0564B"/>
+    <path d="M20,41 Q20,32 29,32 H71 Q80,32 80,41 Z" fill="#F58A82"/>
+    <rect x="20" y="70" width="60" height="12" rx="6" fill="#B33A32"/>
+    <path d="M41,32 V26 Q41,22 45,22 H55 Q59,22 59,26 V32" fill="none" stroke="#8A8372" stroke-width="4"/>
+    <rect x="45" y="44" width="10" height="28" rx="2" fill="#F3ECDD"/>
+    <rect x="36" y="53" width="28" height="10" rx="2" fill="#F3ECDD"/>`,
+  marknadsavtal: `
+    <polygon points="26,16 70,16 74,84 30,84" fill="#F3ECDD"/>
+    <polygon points="26,16 48,16 50,84 30,84" fill="#FFFFFF"/>
+    <polygon points="70,16 74,84 66,84 64,16" fill="#D8D1C2"/>
+    <line x1="35" y1="30" x2="63" y2="30" stroke="#8A8372" stroke-width="2.6" opacity="0.7"/>
+    <line x1="35" y1="39" x2="63" y2="39" stroke="#8A8372" stroke-width="2.6" opacity="0.7"/>
+    <line x1="35" y1="48" x2="55" y2="48" stroke="#8A8372" stroke-width="2.6" opacity="0.7"/>
+    <polyline points="36,62 44,70 60,52" fill="none" stroke="#3DD68C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="58" cy="76" r="9" fill="#F0564B"/>
+    <circle cx="58" cy="76" r="9" fill="none" stroke="#B33A32" stroke-width="2"/>
+    <polygon points="58,70 60,75 65,75 61,78 63,83 58,80 53,83 55,78 51,75 56,75" fill="#F58A82"/>`,
+  gronstod: `
+    <circle cx="50" cy="52" r="33" fill="#C9A94F"/>
+    <circle cx="50" cy="52" r="23" fill="#F3ECDD"/>
+    <circle cx="50" cy="52" r="13" fill="#C9A94F"/>
+    <circle cx="50" cy="52" r="33" fill="none" stroke="#937A34" stroke-width="2"/>
+    <circle cx="50" cy="52" r="23" fill="none" stroke="#937A34" stroke-width="1.5"/>
+    <polygon points="50,36 62,54 50,66 38,54" fill="#3DD68C"/>
+    <polygon points="50,36 38,54 50,54" fill="#7FE7B5"/>
+    <polygon points="50,36 62,54 50,54" fill="#2A9E64"/>`,
+  allians: `
+    <circle cx="38" cy="50" r="21" fill="none" stroke="#C9A94F" stroke-width="9"/>
+    <circle cx="62" cy="50" r="21" fill="none" stroke="#3DD68C" stroke-width="9"/>
+    <path d="M50,31 A21,21 0 0,1 50,69" fill="none" stroke="#2A9E64" stroke-width="9"/>`,
+  skatt: `
+    <polygon points="30,38 78,28 82,48 34,58" fill="#6BA87A"/>
+    <polygon points="30,38 78,28 79,35 31,45" fill="#8CC79A"/>
+    <polygon points="31,45 79,35 82,48 34,58" fill="#4E8A60"/>
+    <circle cx="55" cy="43" r="6" fill="#D6EEDC" opacity="0.75"/>
+    <ellipse cx="46" cy="82" rx="23" ry="8" fill="#B5832A"/>
+    <ellipse cx="46" cy="77" rx="23" ry="8" fill="#F0B33C"/>
+    <ellipse cx="46" cy="76" rx="23" ry="8" fill="#B5832A"/>
+    <ellipse cx="46" cy="71" rx="23" ry="8" fill="#F7CE78"/>
+    <ellipse cx="46" cy="70" rx="23" ry="8" fill="#B5832A"/>
+    <ellipse cx="46" cy="65" rx="23" ry="8" fill="#F0B33C"/>`,
+  utslappshandel: `
+    <path d="M30,54 Q28,42 40,42 Q43,32 55,35 Q68,33 68,45 Q80,45 80,55 Q80,63 70,63 H36 Q28,63 28,56 Q28,54 30,54 Z" fill="#B8AF9A"/>
+    <path d="M30,54 Q28,42 40,42 Q43,32 55,35 L55,47 Q40,47 30,54 Z" fill="#D8D1C2"/>
+    <polygon points="28,74 46,74 46,70 56,77 46,84 46,80 28,80" fill="#3DD68C"/>
+    <polygon points="72,90 54,90 54,94 44,87 54,80 54,84 72,84" fill="#F0564B"/>`,
+  solidaritet: `
+    <path d="M50,82 L22,53 Q13,41 25,33 Q37,27 50,41 Q63,27 75,33 Q87,41 78,53 Z" fill="#F0564B"/>
+    <path d="M50,41 Q37,27 25,33 Q13,41 22,53 L50,82 Z" fill="#F58A82"/>
+    <path d="M50,41 Q63,27 75,33 Q87,41 78,53 L50,82 Z" fill="#B33A32"/>`,
+  grannskatt: `
+    <polygon points="12,56 27,43 42,56 42,82 12,82" fill="#C9A94F"/>
+    <polygon points="12,56 27,43 27,82 12,82" fill="#E4CE8C"/>
+    <polygon points="27,43 42,56 42,82 27,82" fill="#937A34"/>
+    <polygon points="58,56 73,43 88,56 88,82 58,82" fill="#8FB3C4"/>
+    <polygon points="58,56 73,43 73,82 58,82" fill="#B9D4E0"/>
+    <polygon points="73,43 88,56 88,82 73,82" fill="#5E8699"/>
+    <polygon points="43,60 49,55 49,58 51,58 51,55 57,60 51,65 51,62 49,62 49,65" fill="#F3ECDD"/>`,
+  sektorskatt: `
+    <g fill="#EE8A45">
+      <rect x="45" y="12" width="10" height="18"/>
+      <rect x="45" y="70" width="10" height="18"/>
+      <rect x="12" y="45" width="18" height="10"/>
+      <rect x="70" y="45" width="18" height="10"/>
+      <rect x="22" y="24" width="10" height="18" transform="rotate(-45 27 33)"/>
+      <rect x="68" y="58" width="10" height="18" transform="rotate(-45 73 67)"/>
+      <rect x="68" y="24" width="10" height="18" transform="rotate(45 73 33)"/>
+      <rect x="22" y="58" width="10" height="18" transform="rotate(45 27 67)"/>
+    </g>
+    <circle cx="50" cy="50" r="27" fill="#EE8A45"/>
+    <path d="M50,23 A27,27 0 0,0 23,50 L50,50 Z" fill="#F2A773"/>
+    <circle cx="50" cy="50" r="12" fill="#1E1E1A"/>
+    <circle cx="50" cy="50" r="7" fill="#C05A28"/>`,
+  naturbruksskatt: `
+    <rect x="37" y="28" width="4" height="14" fill="#6E685A"/>
+    <polygon points="12,56 40,56 40,70 12,70" fill="#F0564B"/>
+    <polygon points="12,56 40,56 40,60 12,60" fill="#F58A82"/>
+    <polygon points="40,40 60,40 60,70 40,70" fill="#F0564B"/>
+    <polygon points="40,40 50,40 50,70 40,70" fill="#F58A82"/>
+    <polygon points="56,40 60,40 60,70 56,70" fill="#B33A32"/>
+    <polygon points="42,31 62,31 60,40 40,40" fill="#B33A32"/>
+    <polygon points="44,43 56,43 56,53 44,53" fill="#8FB3C4"/>
+    <polygon points="44,43 50,43 50,53 44,53" fill="#B9D4E0"/>
+    <circle cx="68" cy="72" r="16" fill="#2A2824"/>
+    <circle cx="68" cy="72" r="7" fill="#C9A94F"/>
+    <circle cx="68" cy="72" r="3" fill="#8A6A3A"/>
+    <circle cx="24" cy="76" r="10" fill="#2A2824"/>
+    <circle cx="24" cy="76" r="4.5" fill="#C9A94F"/>`,
+  kustvakt: `
+    <polygon points="44,12 56,12 58,18 42,18" fill="#6E685A"/>
+    <polygon points="42,18 58,18 60,30 40,30" fill="#F0B33C"/>
+    <polygon points="42,18 58,18 59,24 41,24" fill="#F7CE78"/>
+    <polygon points="60,24 84,16 84,33" fill="#F7CE78" opacity="0.45"/>
+    <polygon points="40,24 16,16 16,33" fill="#F7CE78" opacity="0.45"/>
+    <polygon points="40,30 60,30 64,76 36,76" fill="#F3ECDD"/>
+    <polygon points="40,30 49,30 47,76 36,76" fill="#FFFFFF"/>
+    <polygon points="55,30 60,30 64,76 59,76" fill="#D8D1C2"/>
+    <polygon points="39,40 61,40 61,49 38,49" fill="#F0564B"/>
+    <polygon points="37,58 63,58 64,67 36,67" fill="#F0564B"/>
+    <path d="M12,80 Q22,74 31,80 Q40,86 49,80 Q58,74 67,80 Q76,86 85,80 L88,92 L10,92 Z" fill="#5E8699"/>
+    <path d="M12,82 Q22,76 31,82 Q40,88 49,82 Q58,76 67,82 Q76,88 85,82" fill="none" stroke="#8FB3C4" stroke-width="2.4"/>`,
+  skogsvard: `
+    <polygon points="38,16 49,34 27,34" fill="#3DD68C"/>
+    <polygon points="38,16 27,34 38,34" fill="#7FE7B5"/>
+    <polygon points="38,28 53,50 23,50" fill="#2A9E64"/>
+    <polygon points="38,28 23,50 38,50" fill="#3DD68C"/>
+    <polygon points="38,44 57,68 19,68" fill="#2A9E64"/>
+    <polygon points="38,44 19,68 38,68" fill="#3DD68C"/>
+    <polygon points="34,68 42,68 42,82 34,82" fill="#8A6A3A"/>
+    <polygon points="66,28 74,28 72,60 68,60" fill="#C9A94F"/>
+    <polygon points="66,26 74,26 74,31 66,31" fill="#E4CE8C"/>
+    <polygon points="62,60 78,60 76,80 64,80" fill="#8FB3C4"/>
+    <polygon points="62,60 70,60 69,80 64,80" fill="#B9D4E0"/>`,
+};
+
+const PROPS = [
+  { cat:'framtida', id:'forbud', rub:'Förbjud smutsig', tx:`Nästa år kan <b>ingen</b> bygga det smutsiga kortet.` },
+  { cat:'framtida', id:'naturreservat', rub:'Naturreservat', tx:`Ön <b>+12</b> — men <b>ingen</b> får bygga nästa år.` },
+  { cat:'samarbete', id:'gron', rub:'Grön satsning', tx:`Alla som röstar JA betalar 8 ${P}. Öns hälsa går <b>upp +14</b>.` },
+  { cat:'samarbete', id:'krispaket', rub:'Krispaket', tx:`Alla som röstar JA betalar 15 ${P} (eller allt man har). Går det igenom lyfts öns hälsa <b>+28</b>.` },
+  { cat:'samarbete', id:'marknadsavtal', rub:'Marknadsavtal', tx:`Bonus <b>+8 ${P} till alla</b> — men <b>bara om exakt 3 av 4</b> röstar JA. En måste avstå.` },
+  { cat:'samarbete', id:'gronstod', rub:'Riktat grönt stöd', tx:`Alla som röstar JA betalar 8 ${P} → hela potten går till grönaste laget (<b>Björnen</b>).` },
+  { cat:'samarbete', id:'allians', rub:'Allians', tx:`Varje <b>JA-lag</b> får +8 ${P}, varje <b>NEJ-lag</b> betalar 8 ${P}.` },
+  { cat:'boven', id:'skatt', rub:'Miljöskatt', tx:`Värsta boven (<b>Örnen</b>) betalar 20 ${P} som delas mellan de andra lagen.` },
+  { cat:'boven', id:'utslappshandel', rub:'Utsläppshandel', tx:`Värsta boven betalar 15 ${P} till grönaste laget — ön −6.` },
+  { cat:'boven', id:'solidaritet', rub:'Solidaritetsskatt', tx:`Rikaste laget (<b>Räven</b>) betalar 15 ${P} + 10 ${M} som delas mellan de tre andra.` },
+  { cat:'boven', id:'grannskatt', rub:'Grannskatt', tx:`De <b>två rikaste</b> betalar 12 ${P} var → delas på de två fattigaste.` },
+  { cat:'sektor', id:'sektorskatt', rub:'Industriskatt', tx:`<b>Räven + Örnen</b> betalar 12 ${P} var som delas mellan Oxen + Björnen.` },
+  { cat:'sektor', id:'naturbruksskatt', rub:'Naturbruksskatt', tx:`<b>Oxen + Björnen</b> betalar 12 ${P} var som delas mellan Räven + Örnen.` },
+  { cat:'sektor', id:'kustvakt', rub:'Kustvakt', tx:`<b>Räven + Örnen</b> betalar 8 ${P} var för stormskydd → ön +10.` },
+  { cat:'sektor', id:'skogsvard', rub:'Skogsvård', tx:`<b>Oxen + Björnen</b> betalar 8 ${P} var för att återställa skadad skog och mark → ön +10.` },
+];
+
+function svg(id, circle) {
+  let ring = '', body = ICONS[id];
+  if (circle) {
+    ring = `<circle cx="50" cy="50" r="48" fill="#26251F"/>`
+         + `<circle cx="50" cy="50" r="48" fill="none" stroke="#C9A94F" stroke-width="4"/>`
+         + `<circle cx="50" cy="50" r="41" fill="none" stroke="#000" stroke-width="1.5" opacity="0.35"/>`;
+    body = `<g transform="translate(50,50) scale(0.72) translate(-50,-50)">${body}</g>`;
+  }
+  return `<svg width="100%" height="100%" viewBox="0 0 100 100">${ring}${body}</svg>`;
+}
+
+let circle = false;
+function render() {
+  for (const cat of ['framtida','samarbete','boven','sektor']) {
+    document.querySelector(`[data-cat="${cat}"]`).innerHTML = PROPS.filter(p => p.cat === cat).map(p =>
+      `<div class="propcard"><div class="pic">${svg(p.id, circle)}</div>
+         <div class="tx"><span class="rub">${p.rub}</span>${p.tx}</div></div>`).join('');
+  }
+}
+document.getElementById('tgl').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  circle = b.dataset.c === '1';
+  document.querySelectorAll('#tgl button').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+render();
+</script>
