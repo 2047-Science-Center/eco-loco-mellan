@@ -1,0 +1,1679 @@
+{
+  "events": [
+    {
+      "ev": "start",
+      "payload": {
+        "areas": [
+          {
+            "farg": "#E7C24C",
+            "id": "aker",
+            "namn": "Oxen",
+            "sektor": "material"
+          },
+          {
+            "farg": "#3F8F4A",
+            "id": "skog",
+            "namn": "Björnen",
+            "sektor": "material"
+          },
+          {
+            "farg": "#D98A3C",
+            "id": "tundra",
+            "namn": "Räven",
+            "sektor": "pengar"
+          },
+          {
+            "farg": "#8A8F96",
+            "id": "stad",
+            "namn": "Örnen",
+            "sektor": "pengar"
+          }
+        ],
+        "config": {
+          "alliansBonus": 8,
+          "alliansBoter": 8,
+          "byggboomOh": -10,
+          "byggboomRabatt": 5,
+          "companyCrisisMinRound": {
+            "major": 4,
+            "minor": 2
+          },
+          "companyCrisisThreshold": {
+            "major": -25,
+            "minor": -15
+          },
+          "decisionSystem": "politics",
+          "earlyRounds": 3,
+          "grannskattAmount": 12,
+          "greenZone": 70,
+          "gronCost": 8,
+          "gronGain": 14,
+          "humanTeam": "aker",
+          "krisGameOver": false,
+          "krisGrind": true,
+          "krisMaxReplay": 2,
+          "krisProposalOh": 20,
+          "krisReplay": true,
+          "krisReset": 35,
+          "krisZon": 20,
+          "krispaketCost": 15,
+          "krispaketGain": 28,
+          "kustvaktAmount": 8,
+          "kustvaktOh": 10,
+          "lojalitetBonus": 6,
+          "lojalitetBoter": 8,
+          "lojalitetOh": 4,
+          "marknadsavtalBonus": 8,
+          "marknadsavtalOh": 2,
+          "maxBuildsPerYear": null,
+          "naturreservatOh": 12,
+          "ohMax": 100,
+          "ohStart": 50,
+          "ohalsaDelaySeconds": 30,
+          "ohalsaDelayed": true,
+          "politics": {
+            "proposalCount": 5,
+            "selection": {
+              "fillRemaining": "random"
+            }
+          },
+          "powerFromRound": 2,
+          "raddningsfondCost": 5,
+          "raddningsfondOh": 15,
+          "redZone": 35,
+          "resursbristProdFaktor": 0.8,
+          "rounds": 8,
+          "sektorskattAmount": 12,
+          "skogsvardAmount": 8,
+          "skogsvardOh": 10,
+          "slotsPerArea": 10,
+          "solidaritetMaterial": 10,
+          "solidaritetPengar": 15,
+          "startMaterial": 35,
+          "startPengar": 35,
+          "taxAmount": 20,
+          "threshold": 60,
+          "timerSec": 120,
+          "timerSecEarly": 120,
+          "utslappAmount": 15,
+          "utslappOh": -6
+        }
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": null,
+        "round": 1
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": 0,
+        "mode": "neutralt",
+        "value": 50
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "aker",
+        "card": {
+          "asset": "aker_standard",
+          "gm": 7,
+          "gp": 0,
+          "km": 6,
+          "kp": 8,
+          "namn": "Jordbruk",
+          "oh": -3,
+          "tier": "standard"
+        },
+        "cost": {
+          "material": 6,
+          "pengar": 8
+        },
+        "slotIndex": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "skog",
+        "card": {
+          "asset": "skog_gron",
+          "gm": 5,
+          "gp": 0,
+          "km": 10,
+          "kp": 14,
+          "namn": "Skogsjordbruk",
+          "oh": 3,
+          "tier": "gron"
+        },
+        "cost": {
+          "material": 10,
+          "pengar": 14
+        },
+        "slotIndex": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "tundra",
+        "card": {
+          "asset": "tundra_smutsig",
+          "gm": 0,
+          "gp": 9,
+          "km": 8,
+          "kp": 0,
+          "namn": "Oljeplattform",
+          "oh": -6,
+          "tier": "smutsig"
+        },
+        "cost": {
+          "material": 8,
+          "pengar": 0
+        },
+        "slotIndex": 0,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "stad",
+        "card": {
+          "asset": "stad_standard",
+          "gm": 0,
+          "gp": 7,
+          "km": 8,
+          "kp": 6,
+          "namn": "Kontor & hotell",
+          "oh": -3,
+          "tier": "standard"
+        },
+        "cost": {
+          "material": 8,
+          "pengar": 6
+        },
+        "slotIndex": 0,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "aker",
+        "type": "forbud"
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "forbud",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 7,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 5,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 9,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 7,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": -9,
+        "mode": "neutralt",
+        "value": 41
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": {
+          "farg": "#3F8F4A",
+          "namn": "Björnen",
+          "teamId": "skog",
+          "varde": 3
+        },
+        "led": {
+          "farg": "#D98A3C",
+          "namn": "Räven",
+          "teamId": "tundra",
+          "varde": 1
+        },
+        "round": 1,
+        "sab": {
+          "farg": "#D98A3C",
+          "namn": "Räven",
+          "teamId": "tundra",
+          "varde": -6
+        }
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 1
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": "aker",
+        "round": 2
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "aker",
+        "card": {
+          "asset": "aker_gron",
+          "gm": 5,
+          "gp": 0,
+          "km": 10,
+          "kp": 14,
+          "namn": "Ekologiskt jordbruk",
+          "oh": 3,
+          "tier": "gron"
+        },
+        "cost": {
+          "material": 10,
+          "pengar": 14
+        },
+        "slotIndex": 1,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "skog",
+        "card": {
+          "asset": "skog_smutsig",
+          "gm": 9,
+          "gp": 0,
+          "km": 0,
+          "kp": 8,
+          "namn": "Sågverk",
+          "oh": -6,
+          "tier": "smutsig"
+        },
+        "cost": {
+          "material": 0,
+          "pengar": 8
+        },
+        "slotIndex": 1,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "tundra",
+        "card": {
+          "asset": "tundra_standard",
+          "gm": 0,
+          "gp": 7,
+          "km": 8,
+          "kp": 6,
+          "namn": "Fabrik",
+          "oh": -3,
+          "tier": "standard"
+        },
+        "cost": {
+          "material": 8,
+          "pengar": 6
+        },
+        "slotIndex": 1,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "stad",
+        "card": {
+          "asset": "stad_gron",
+          "gm": 0,
+          "gp": 5,
+          "km": 14,
+          "kp": 10,
+          "namn": "Solceller",
+          "oh": 3,
+          "tier": "gron"
+        },
+        "cost": {
+          "material": 14,
+          "pengar": 10
+        },
+        "slotIndex": 1,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "aker",
+        "type": "grannskatt"
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "grannskatt",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 12,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 14,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 16,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 12,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": -3,
+        "mode": "daligt",
+        "value": 38
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": 3
+        },
+        "led": null,
+        "round": 2,
+        "sab": {
+          "farg": "#3F8F4A",
+          "namn": "Björnen",
+          "teamId": "skog",
+          "varde": -6
+        }
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 2
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": "skog",
+        "round": 3
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "aker",
+        "card": {
+          "asset": "aker_smutsig",
+          "gm": 9,
+          "gp": 0,
+          "km": 0,
+          "kp": 8,
+          "namn": "Industrijordbruk",
+          "oh": -6,
+          "tier": "smutsig"
+        },
+        "cost": {
+          "material": 0,
+          "pengar": 8
+        },
+        "slotIndex": 2,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "tundra",
+        "card": {
+          "asset": "tundra_gron",
+          "gm": 0,
+          "gp": 5,
+          "km": 14,
+          "kp": 10,
+          "namn": "Vindkraft",
+          "oh": 3,
+          "tier": "gron"
+        },
+        "cost": {
+          "material": 14,
+          "pengar": 10
+        },
+        "slotIndex": 2,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "stad",
+        "card": {
+          "asset": "stad_smutsig",
+          "gm": 0,
+          "gp": 9,
+          "km": 8,
+          "kp": 0,
+          "namn": "Kolkraftverk",
+          "oh": -6,
+          "tier": "smutsig"
+        },
+        "cost": {
+          "material": 8,
+          "pengar": 0
+        },
+        "slotIndex": 2,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "skog",
+        "type": "gronstod"
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "gronstod",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 21,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 14,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": -9,
+        "mode": "daligt",
+        "value": 29
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": {
+          "farg": "#D98A3C",
+          "namn": "Räven",
+          "teamId": "tundra",
+          "varde": 3
+        },
+        "led": {
+          "farg": "#3F8F4A",
+          "namn": "Björnen",
+          "teamId": "skog",
+          "varde": 30
+        },
+        "round": 3,
+        "sab": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": -6
+        }
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 3
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": "tundra",
+        "round": 4
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "aker",
+        "card": {
+          "asset": "aker_standard",
+          "gm": 7,
+          "gp": 0,
+          "km": 6,
+          "kp": 8,
+          "namn": "Jordbruk",
+          "oh": -3,
+          "tier": "standard"
+        },
+        "cost": {
+          "material": 6,
+          "pengar": 8
+        },
+        "slotIndex": 3,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "skog",
+        "card": {
+          "asset": "skog_gron",
+          "gm": 5,
+          "gp": 0,
+          "km": 10,
+          "kp": 14,
+          "namn": "Skogsjordbruk",
+          "oh": 3,
+          "tier": "gron"
+        },
+        "cost": {
+          "material": 10,
+          "pengar": 14
+        },
+        "slotIndex": 2,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "tundra",
+        "type": "skogsvard"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": 10,
+        "mode": "daligt",
+        "value": 39
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "skogsvard",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 28,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 19,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": 0,
+        "mode": "daligt",
+        "value": 39
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": {
+          "farg": "#3F8F4A",
+          "namn": "Björnen",
+          "teamId": "skog",
+          "varde": 3
+        },
+        "led": {
+          "farg": "#D98A3C",
+          "namn": "Räven",
+          "teamId": "tundra",
+          "varde": 21
+        },
+        "round": 4,
+        "sab": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": -3
+        }
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 4
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": "stad",
+        "round": 5
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "stad",
+        "type": "solidaritet"
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "solidaritet",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 28,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 19,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": 0,
+        "mode": "daligt",
+        "value": 39
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": null,
+        "led": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": 34
+        },
+        "round": 5,
+        "sab": null
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 5
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": "aker",
+        "round": 6
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "aker",
+        "type": "sektorskatt"
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "sektorskatt",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 28,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 19,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": 0,
+        "mode": "daligt",
+        "value": 39
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": null,
+        "led": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": 40
+        },
+        "round": 6,
+        "sab": null
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 6
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": "skog",
+        "round": 7
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "aker",
+        "card": {
+          "asset": "aker_standard",
+          "gm": 7,
+          "gp": 0,
+          "km": 6,
+          "kp": 8,
+          "namn": "Jordbruk",
+          "oh": -3,
+          "tier": "standard"
+        },
+        "cost": {
+          "material": 6,
+          "pengar": 8
+        },
+        "slotIndex": 4,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "skog",
+        "card": {
+          "asset": "skog_gron",
+          "gm": 5,
+          "gp": 0,
+          "km": 10,
+          "kp": 14,
+          "namn": "Skogsjordbruk",
+          "oh": 3,
+          "tier": "gron"
+        },
+        "cost": {
+          "material": 10,
+          "pengar": 14
+        },
+        "slotIndex": 3,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "skog",
+        "type": "marknadsavtal"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": 2,
+        "mode": "neutralt",
+        "value": 41
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "marknadsavtal",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 35,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 24,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": 0,
+        "mode": "neutralt",
+        "value": 41
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": {
+          "farg": "#3F8F4A",
+          "namn": "Björnen",
+          "teamId": "skog",
+          "varde": 3
+        },
+        "led": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": 29
+        },
+        "round": 7,
+        "sab": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": -3
+        }
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 7
+      }
+    },
+    {
+      "ev": "roundStart",
+      "payload": {
+        "powerTeam": "tundra",
+        "round": 8
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "aker",
+        "card": {
+          "asset": "aker_gron",
+          "gm": 5,
+          "gp": 0,
+          "km": 10,
+          "kp": 14,
+          "namn": "Ekologiskt jordbruk",
+          "oh": 3,
+          "tier": "gron"
+        },
+        "cost": {
+          "material": 10,
+          "pengar": 14
+        },
+        "slotIndex": 5,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "build",
+      "payload": {
+        "area": "skog",
+        "card": {
+          "asset": "skog_smutsig",
+          "gm": 9,
+          "gp": 0,
+          "km": 0,
+          "kp": 8,
+          "namn": "Sågverk",
+          "oh": -6,
+          "tier": "smutsig"
+        },
+        "cost": {
+          "material": 0,
+          "pengar": 8
+        },
+        "slotIndex": 4,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "proposalOpened",
+      "payload": {
+        "by": "tundra",
+        "type": "byggboom"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": -10,
+        "mode": "daligt",
+        "value": 31
+      }
+    },
+    {
+      "ev": "proposalResolved",
+      "payload": {
+        "passed": true,
+        "type": "byggboom",
+        "votes": {
+          "aker": true,
+          "skog": true,
+          "stad": false,
+          "tundra": true
+        },
+        "yesCount": 3
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 40,
+        "pengar": 0,
+        "teamId": "aker"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 33,
+        "pengar": 0,
+        "teamId": "skog"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "tundra"
+      }
+    },
+    {
+      "ev": "income",
+      "payload": {
+        "material": 0,
+        "pengar": 21,
+        "teamId": "stad"
+      }
+    },
+    {
+      "ev": "ohalsa",
+      "payload": {
+        "delta": -3,
+        "mode": "daligt",
+        "value": 28
+      }
+    },
+    {
+      "ev": "award",
+      "payload": {
+        "eld": {
+          "farg": "#E7C24C",
+          "namn": "Oxen",
+          "teamId": "aker",
+          "varde": 3
+        },
+        "led": {
+          "farg": "#3F8F4A",
+          "namn": "Björnen",
+          "teamId": "skog",
+          "varde": 25
+        },
+        "round": 8,
+        "sab": {
+          "farg": "#3F8F4A",
+          "namn": "Björnen",
+          "teamId": "skog",
+          "varde": -6
+        }
+      }
+    },
+    {
+      "ev": "roundEnd",
+      "payload": {
+        "round": 8
+      }
+    },
+    {
+      "ev": "gameEnd",
+      "payload": {
+        "klimatbov": {
+          "namn": "Oxen",
+          "skada": -15,
+          "teamId": "aker"
+        },
+        "oh": 28,
+        "reason": "Ön nådde bara 28 — under tröskeln 60.",
+        "threshold": 60,
+        "winner": {
+          "kapital": 200,
+          "namn": "Oxen",
+          "teamId": "aker"
+        },
+        "won": false
+      }
+    }
+  ],
+  "finalState": {
+    "activeCompanyEvent": null,
+    "banAllNextRound": false,
+    "banAllThisRound": false,
+    "banDirtyNextRound": false,
+    "banDirtySektorNextRound": null,
+    "banDirtySektorThisRound": null,
+    "banDirtyThisRound": false,
+    "buildDiscountNextRound": 0,
+    "buildDiscountThisRound": 0,
+    "companyEventQueue": [],
+    "drawnEvents": [],
+    "eventPool": [
+      "storm",
+      "skogsbrand",
+      "uppror",
+      "torka",
+      "godskord",
+      "sponsrat",
+      "gronafonden",
+      "marknadskrasch"
+    ],
+    "firedCompanyEvents": [],
+    "gmDecisionsUsed": [],
+    "gronQueued": 0,
+    "inCrisis": false,
+    "krisReplaysLeft": 2,
+    "lastDelta": -3,
+    "oh": 28,
+    "ohAtYearStart": 41,
+    "over": true,
+    "pendingEvent": null,
+    "pendingOhalsa": [],
+    "powerTeam": "tundra",
+    "proposal": null,
+    "proposalChoices": [
+      "marknadsavtal",
+      "skogsvard",
+      "naturreservat",
+      "byggboom",
+      "grannskatt"
+    ],
+    "proposedBy": [],
+    "resursbristAktiv": false,
+    "round": 8,
+    "teams": [
+      {
+        "_builtThisYear": 0,
+        "_gronStreak": 1,
+        "_gronThisYear": 0,
+        "_roundCards": [],
+        "_roundGain": 16,
+        "_roundOh": 0,
+        "_roundStartWealth": 184,
+        "built": 6,
+        "choice": null,
+        "dirtyBuilt": 4,
+        "farg": "#E7C24C",
+        "gronBuilt": 2,
+        "id": "aker",
+        "impactNeg": -15,
+        "impactPos": 6,
+        "incM": 40,
+        "incP": 0,
+        "log": [
+          {
+            "namn": "Ekologiskt jordbruk",
+            "oh": 3,
+            "round": 8
+          },
+          {
+            "namn": "Jordbruk",
+            "oh": -3,
+            "round": 7
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 6
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 5
+          },
+          {
+            "namn": "Jordbruk",
+            "oh": -3,
+            "round": 4
+          },
+          {
+            "namn": "Industrijordbruk",
+            "oh": -6,
+            "round": 3
+          },
+          {
+            "namn": "Ekologiskt jordbruk",
+            "oh": 3,
+            "round": 2
+          },
+          {
+            "namn": "Jordbruk",
+            "oh": -3,
+            "round": 1
+          }
+        ],
+        "material": 197,
+        "namn": "Oxen",
+        "pengar": 3,
+        "sektor": "material",
+        "slots": [
+          {
+            "asset": "aker_standard",
+            "tier": "standard"
+          },
+          {
+            "asset": "aker_gron",
+            "tier": "gron"
+          },
+          {
+            "asset": "aker_smutsig",
+            "tier": "smutsig"
+          },
+          {
+            "asset": "aker_standard",
+            "tier": "standard"
+          },
+          {
+            "asset": "aker_standard",
+            "tier": "standard"
+          },
+          {
+            "asset": "aker_gron",
+            "tier": "gron"
+          }
+        ],
+        "totalImpact": -9
+      },
+      {
+        "_builtThisYear": 0,
+        "_gronStreak": 0,
+        "_gronThisYear": 0,
+        "_roundCards": [],
+        "_roundGain": 25,
+        "_roundOh": 0,
+        "_roundStartWealth": 131,
+        "built": 5,
+        "choice": null,
+        "dirtyBuilt": 2,
+        "farg": "#3F8F4A",
+        "gronBuilt": 3,
+        "id": "skog",
+        "impactNeg": -12,
+        "impactPos": 9,
+        "incM": 33,
+        "incP": 0,
+        "log": [
+          {
+            "namn": "Sågverk",
+            "oh": -6,
+            "round": 8
+          },
+          {
+            "namn": "Skogsjordbruk",
+            "oh": 3,
+            "round": 7
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 6
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 5
+          },
+          {
+            "namn": "Skogsjordbruk",
+            "oh": 3,
+            "round": 4
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 3
+          },
+          {
+            "namn": "Sågverk",
+            "oh": -6,
+            "round": 2
+          },
+          {
+            "namn": "Skogsjordbruk",
+            "oh": 3,
+            "round": 1
+          }
+        ],
+        "material": 153,
+        "namn": "Björnen",
+        "pengar": 3,
+        "sektor": "material",
+        "slots": [
+          {
+            "asset": "skog_gron",
+            "tier": "gron"
+          },
+          {
+            "asset": "skog_smutsig",
+            "tier": "smutsig"
+          },
+          {
+            "asset": "skog_gron",
+            "tier": "gron"
+          },
+          {
+            "asset": "skog_gron",
+            "tier": "gron"
+          },
+          {
+            "asset": "skog_smutsig",
+            "tier": "smutsig"
+          }
+        ],
+        "totalImpact": -3
+      },
+      {
+        "_builtThisYear": 0,
+        "_gronStreak": 1,
+        "_gronThisYear": 0,
+        "_roundCards": [],
+        "_roundGain": 21,
+        "_roundOh": 0,
+        "_roundStartWealth": 136,
+        "built": 3,
+        "choice": null,
+        "dirtyBuilt": 2,
+        "farg": "#D98A3C",
+        "gronBuilt": 1,
+        "id": "tundra",
+        "impactNeg": -9,
+        "impactPos": 3,
+        "incM": 0,
+        "incP": 21,
+        "log": [
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 8
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 7
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 6
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 5
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 4
+          },
+          {
+            "namn": "Vindkraft",
+            "oh": 3,
+            "round": 3
+          },
+          {
+            "namn": "Fabrik",
+            "oh": -3,
+            "round": 2
+          },
+          {
+            "namn": "Oljeplattform",
+            "oh": -6,
+            "round": 1
+          }
+        ],
+        "material": 6,
+        "namn": "Räven",
+        "pengar": 151,
+        "sektor": "pengar",
+        "slots": [
+          {
+            "asset": "tundra_smutsig",
+            "tier": "smutsig"
+          },
+          {
+            "asset": "tundra_standard",
+            "tier": "standard"
+          },
+          {
+            "asset": "tundra_gron",
+            "tier": "gron"
+          }
+        ],
+        "totalImpact": -6
+      },
+      {
+        "_builtThisYear": 0,
+        "_gronStreak": 0,
+        "_gronThisYear": 0,
+        "_roundCards": [],
+        "_roundGain": 21,
+        "_roundOh": 0,
+        "_roundStartWealth": 136,
+        "built": 3,
+        "choice": null,
+        "dirtyBuilt": 2,
+        "farg": "#8A8F96",
+        "gronBuilt": 1,
+        "id": "stad",
+        "impactNeg": -9,
+        "impactPos": 3,
+        "incM": 0,
+        "incP": 21,
+        "log": [
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 8
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 7
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 6
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 5
+          },
+          {
+            "namn": "—",
+            "oh": 0,
+            "round": 4
+          },
+          {
+            "namn": "Kolkraftverk",
+            "oh": -6,
+            "round": 3
+          },
+          {
+            "namn": "Solceller",
+            "oh": 3,
+            "round": 2
+          },
+          {
+            "namn": "Kontor & hotell",
+            "oh": -3,
+            "round": 1
+          }
+        ],
+        "material": 0,
+        "namn": "Örnen",
+        "pengar": 157,
+        "sektor": "pengar",
+        "slots": [
+          {
+            "asset": "stad_standard",
+            "tier": "standard"
+          },
+          {
+            "asset": "stad_gron",
+            "tier": "gron"
+          },
+          {
+            "asset": "stad_smutsig",
+            "tier": "smutsig"
+          }
+        ],
+        "totalImpact": -6
+      }
+    ],
+    "usedProposals": []
+  },
+  "seed": 2654435769,
+  "steps": 8
+}

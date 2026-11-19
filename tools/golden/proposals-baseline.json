@@ -1,0 +1,812 @@
+{
+  "cases": [
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "forbud",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": true,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      },
+      "type": "forbud"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 12,
+            "mode": "bra",
+            "value": 62
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "naturreservat",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": true,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 12,
+        "oh": 62,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      },
+      "type": "naturreservat"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 14,
+            "mode": "bra",
+            "value": 64
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "gron",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 14,
+        "oh": 64,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      },
+      "type": "gron"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 28,
+            "mode": "bra",
+            "value": 78
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "krispaket",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 28,
+        "oh": 78,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 20
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 20
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 20
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      },
+      "type": "krispaket"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 2,
+            "mode": "neutralt",
+            "value": 52
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "marknadsavtal",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 2,
+        "oh": 52,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 43
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 43
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 43
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 43
+          }
+        ]
+      },
+      "type": "marknadsavtal"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "gronstod",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 51
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      },
+      "type": "gronstod"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "allians",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 43
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 43
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 43
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 27
+          }
+        ]
+      },
+      "type": "allians"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "skatt",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 15
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 41
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 41
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 41
+          }
+        ]
+      },
+      "type": "skatt"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": -6,
+            "mode": "neutralt",
+            "value": 44
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "utslappshandel",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": -6,
+        "oh": 44,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      },
+      "type": "utslappshandel"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "solidaritet",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 25,
+            "pengar": 20
+          },
+          {
+            "id": "skog",
+            "material": 38,
+            "pengar": 40
+          },
+          {
+            "id": "tundra",
+            "material": 38,
+            "pengar": 40
+          },
+          {
+            "id": "stad",
+            "material": 38,
+            "pengar": 40
+          }
+        ]
+      },
+      "type": "solidaritet"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "grannskatt",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 23
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 23
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 47
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 47
+          }
+        ]
+      },
+      "type": "grannskatt"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "sektorskatt",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 47
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 47
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 23
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 23
+          }
+        ]
+      },
+      "type": "sektorskatt"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "naturbruksskatt",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 0,
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 23
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 23
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 47
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 47
+          }
+        ]
+      },
+      "type": "naturbruksskatt"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 10,
+            "mode": "neutralt",
+            "value": 60
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "kustvakt",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 10,
+        "oh": 60,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 27
+          }
+        ]
+      },
+      "type": "kustvakt"
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 10,
+            "mode": "neutralt",
+            "value": 60
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "passed": true,
+            "type": "skogsvard",
+            "votes": {
+              "aker": true,
+              "skog": true,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 3
+          }
+        }
+      ],
+      "state": {
+        "banAllThisRound": false,
+        "banDirtySektorThisRound": null,
+        "banDirtyThisRound": false,
+        "buildDiscountThisRound": 0,
+        "gronQueued": 0,
+        "lastDelta": 10,
+        "oh": 60,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 27
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      },
+      "type": "skogsvard"
+    }
+  ],
+  "scenario": "proposals",
+  "seed": 2654435769
+}

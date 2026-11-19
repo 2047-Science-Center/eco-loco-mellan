@@ -1,0 +1,558 @@
+{
+  "cases": [
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": -5,
+            "mode": "neutralt",
+            "value": 45
+          }
+        },
+        {
+          "ev": "event",
+          "payload": {
+            "bild": "assets/event_storm.png",
+            "effekter": [
+              {
+                "egen": 0,
+                "material": 0,
+                "namn": "Räven",
+                "pengar": -12,
+                "sektor": "pengar",
+                "teamId": "tundra"
+              },
+              {
+                "egen": 0,
+                "material": 0,
+                "namn": "Örnen",
+                "pengar": -12,
+                "sektor": "pengar",
+                "teamId": "stad"
+              }
+            ],
+            "id": "storm",
+            "ljud": "assets/audio/rigg/event_storm.mp3",
+            "oh": -5,
+            "rubrik": "Höststormen är här",
+            "text": "Centralmyndigheten meddelar: kusten tar emot. De som byggt mot havet får bära vädrets kostnad — resten av ön önskar er lycka till.",
+            "traffade": [
+              "tundra",
+              "stad"
+            ]
+          }
+        }
+      ],
+      "id": "storm",
+      "state": {
+        "oh": 45,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 23
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 23
+          }
+        ]
+      }
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": -8,
+            "mode": "neutralt",
+            "value": 42
+          }
+        },
+        {
+          "ev": "event",
+          "payload": {
+            "bild": "assets/event_skogsbrand.png",
+            "effekter": [
+              {
+                "egen": 0,
+                "material": -15,
+                "namn": "Björnen",
+                "pengar": 0,
+                "sektor": "material",
+                "teamId": "skog"
+              }
+            ],
+            "id": "skogsbrand",
+            "ljud": "assets/audio/rigg/event_skogsbrand.mp3",
+            "oh": -8,
+            "rubrik": "Det brinner i Björnens skogar",
+            "text": "Elden frågade inte om lov. Björnens lager går upp i rök, och röken lägger sig över hela ön. Tack för er förståelse.",
+            "traffade": [
+              "skog"
+            ]
+          }
+        }
+      ],
+      "id": "skogsbrand",
+      "state": {
+        "oh": 42,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 20,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      }
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": -3,
+            "mode": "neutralt",
+            "value": 47
+          }
+        },
+        {
+          "ev": "event",
+          "payload": {
+            "bild": "assets/event_uppror.png",
+            "effekter": [
+              {
+                "egen": 0,
+                "material": -10,
+                "namn": "Oxen",
+                "pengar": -15,
+                "sektor": "material",
+                "teamId": "aker"
+              }
+            ],
+            "id": "uppror",
+            "ljud": "assets/audio/rigg/event_uppror.mp3",
+            "oh": -3,
+            "rubrik": "Folket har fått nog",
+            "text": "Missnöjet har hittat en adress: öns rikaste. Centralmakten ser på med milt ogillande medan era lager plundras.",
+            "traffade": [
+              "aker"
+            ]
+          }
+        }
+      ],
+      "id": "uppror",
+      "state": {
+        "oh": 47,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 25,
+            "pengar": 20
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      }
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": -4,
+            "mode": "neutralt",
+            "value": 46
+          }
+        },
+        {
+          "ev": "event",
+          "payload": {
+            "bild": "assets/event_torka.png",
+            "effekter": [
+              {
+                "egen": 0,
+                "material": -12,
+                "namn": "Oxen",
+                "pengar": 0,
+                "sektor": "material",
+                "teamId": "aker"
+              },
+              {
+                "egen": 0,
+                "material": -12,
+                "namn": "Björnen",
+                "pengar": 0,
+                "sektor": "material",
+                "teamId": "skog"
+              }
+            ],
+            "id": "torka",
+            "ljud": "assets/audio/rigg/event_torka.mp3",
+            "oh": -4,
+            "rubrik": "Torkan slår till",
+            "text": "Ingen regndans hjälpte. Åker och skog ger mindre i år — ön noterar att råvaror plötsligt blivit en bristvara.",
+            "traffade": [
+              "aker",
+              "skog"
+            ]
+          }
+        }
+      ],
+      "id": "torka",
+      "state": {
+        "oh": 46,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 23,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 23,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      }
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 2,
+            "mode": "neutralt",
+            "value": 52
+          }
+        },
+        {
+          "ev": "event",
+          "payload": {
+            "bild": "assets/event_godskord.png",
+            "effekter": [
+              {
+                "egen": 8,
+                "material": 0,
+                "namn": "Oxen",
+                "pengar": 0,
+                "sektor": "material",
+                "teamId": "aker"
+              },
+              {
+                "egen": 8,
+                "material": 0,
+                "namn": "Björnen",
+                "pengar": 0,
+                "sektor": "material",
+                "teamId": "skog"
+              },
+              {
+                "egen": 8,
+                "material": 0,
+                "namn": "Räven",
+                "pengar": 0,
+                "sektor": "pengar",
+                "teamId": "tundra"
+              },
+              {
+                "egen": 8,
+                "material": 0,
+                "namn": "Örnen",
+                "pengar": 0,
+                "sektor": "pengar",
+                "teamId": "stad"
+              }
+            ],
+            "id": "godskord",
+            "ljud": "assets/audio/rigg/event_godskord.mp3",
+            "oh": 2,
+            "rubrik": "Ett ovanligt gott år",
+            "text": "Vädret var med oss, för en gångs skull. Alla fyra lag får fylla på sina lager — njut, det varar inte.",
+            "traffade": [
+              "aker",
+              "skog",
+              "tundra",
+              "stad"
+            ]
+          }
+        }
+      ],
+      "id": "godskord",
+      "state": {
+        "oh": 52,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 43,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 43,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 43
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 43
+          }
+        ]
+      }
+    },
+    {
+      "emitted": [
+        {
+          "ev": "proposalOpened",
+          "payload": {
+            "by": null,
+            "event": {
+              "bild": "assets/event_sponsrat.png",
+              "id": "sponsrat",
+              "ja": 15,
+              "ljud": "assets/audio/rigg/event_sponsrat.mp3",
+              "rostFraga": "Ska ön anta koncernens erbjudande?",
+              "rubrik": "Ett erbjudande ni knappast kan tacka nej till",
+              "text": "En vänligt sinnad koncern vill investera i ön — mot att vi blundar för lite smuts. Rösta nu: tar ni pengarna?"
+            },
+            "type": "event"
+          }
+        },
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": -6,
+            "mode": "neutralt",
+            "value": 44
+          }
+        },
+        {
+          "ev": "proposalResolved",
+          "payload": {
+            "event": {
+              "id": "sponsrat",
+              "rubrik": "Ett erbjudande ni knappast kan tacka nej till"
+            },
+            "passed": true,
+            "type": "event",
+            "votes": {
+              "aker": true,
+              "skog": false,
+              "stad": false,
+              "tundra": true
+            },
+            "yesCount": 2
+          }
+        }
+      ],
+      "id": "sponsrat",
+      "state": {
+        "oh": 44,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 50
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 50
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      }
+    },
+    {
+      "emitted": [
+        {
+          "ev": "ohalsa",
+          "payload": {
+            "delta": 3,
+            "mode": "neutralt",
+            "value": 53
+          }
+        },
+        {
+          "ev": "event",
+          "payload": {
+            "bild": "assets/event_gronafonden.png",
+            "effekter": [
+              {
+                "egen": 0,
+                "material": 0,
+                "namn": "Oxen",
+                "pengar": 12,
+                "sektor": "material",
+                "teamId": "aker"
+              }
+            ],
+            "id": "gronafonden",
+            "ljud": "assets/audio/rigg/event_gronafonden.mp3",
+            "oh": 3,
+            "rubrik": "Gröna fonden delar ut",
+            "text": "Den som skött ön bäst belönas av omvärlden. Centralmakten gratulerar — övriga lag uppmanas vänligen att ta efter.",
+            "traffade": [
+              "aker"
+            ]
+          }
+        }
+      ],
+      "id": "gronafonden",
+      "state": {
+        "oh": 53,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 47
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 35
+          }
+        ]
+      }
+    },
+    {
+      "emitted": [
+        {
+          "ev": "event",
+          "payload": {
+            "bild": "assets/event_marknadskrasch.png",
+            "effekter": [
+              {
+                "egen": 0,
+                "material": 0,
+                "namn": "Räven",
+                "pengar": -15,
+                "sektor": "pengar",
+                "teamId": "tundra"
+              },
+              {
+                "egen": 0,
+                "material": 0,
+                "namn": "Örnen",
+                "pengar": -15,
+                "sektor": "pengar",
+                "teamId": "stad"
+              }
+            ],
+            "id": "marknadskrasch",
+            "ljud": "assets/audio/rigg/event_marknadskrasch.mp3",
+            "oh": 0,
+            "rubrik": "Marknaden kollapsar",
+            "text": "Pengar är bara papper i dag. Pengar-lagens förmögenheter smälter bort medan råvaror plötsligt är allt som räknas.",
+            "traffade": [
+              "tundra",
+              "stad"
+            ]
+          }
+        }
+      ],
+      "id": "marknadskrasch",
+      "state": {
+        "oh": 50,
+        "teams": [
+          {
+            "id": "aker",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "skog",
+            "material": 35,
+            "pengar": 35
+          },
+          {
+            "id": "tundra",
+            "material": 35,
+            "pengar": 20
+          },
+          {
+            "id": "stad",
+            "material": 35,
+            "pengar": 20
+          }
+        ]
+      }
+    }
+  ],
+  "scenario": "events",
+  "seed": 2654435769
+}
