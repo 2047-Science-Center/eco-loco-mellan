@@ -8,6 +8,9 @@
 // Botarnas kortval emitteras som 'build' just då = "revealen" vid bokslut.
 
 import { handFor } from './engine.js';
+import { proposalById } from './content/proposals.js';
+import { dilemmaById } from './content/dilemmas.js';
+import { botVoteProposal, botChooseDilemma } from './bot-policy.js';
 
 // humans: ett lag-id (mock på en skärm) ELLER en array av lag-id (multiplayer:
 // alla lag som styrs av människor hoppas över — botarna fyller resten).
@@ -61,33 +64,20 @@ function ensureAfford(engine, t, card, skip) {
   });
 }
 
-// Bot-röstning på ett öppet förslag (kalla efter att människorna röstat).
+// Bot-röstning på ett öppet beslut (kalla efter att människorna röstat). Version-agnostiskt via
+// spec/bot-policy.js — INGA hårdkodade förslags-ID:n. Hanterar politik (ja/nej) OCH dilemma (A/B).
 export function mockOpponentsVote(engine, humans) {
   const skip = skipSet(humans);
   const S = engine.getState();
   const p = S.proposal;
   if (!p || p.resolved) return;
-  const worst = engine.worstPolluter();
-  const rik = engine.richest(), gron = engine._greenest();
+  const cfg = engine.cfg;
   S.teams.filter(t => !skip.has(t.id) && p.votes[t.id] === undefined).forEach(t => {
-    let yes = false;
-    // Vid KRIS (låg öhälsa) röstar botarna grönt oavsett plånbok — överlevnad går före pengar.
-    // (Den som röstar ja men är pank betalar bara det den har — motorn klampar till 0.)
-    if (p.type === 'gron') yes = S.oh < 45 || (S.oh < 58 && t.pengar >= engine.cfg.gronCost) || Math.random() < 0.3;
-    if (p.type === 'skatt') yes = t.id !== worst.id;
-    if (p.type === 'forbud') yes = S.oh < 58 || Math.random() < 0.4;
-    if (p.type === 'event') yes = Math.random() < 0.6;   // händelse-frestelse (t.ex. sponsrat): botarna nappar oftast
-    // ── Extra-förslag: egennytta + öhälso-hänsyn (gör att de kan passera i auto/multiplayer) ──
-    if (p.type === 'krispaket') yes = S.oh < 45 || (S.oh < 55 && t.pengar >= engine.cfg.krispaketCost) || Math.random() < 0.3;
-    if (p.type === 'sektorskatt') yes = t.sektor === 'material';          // materiallagen vinner, pengar-lagen förlorar
-    if (p.type === 'solidaritet') yes = t.id !== rik.id;                  // alla utom rikaste
-    if (p.type === 'lojalitet') yes = t.pengar >= engine.cfg.lojalitetBoter || Math.random() < 0.5;
-    if (p.type === 'marknadsavtal') yes = Math.random() < 0.6;            // koordination: oftast ja
-    if (p.type === 'gronstod') yes = (t.id === gron.id) || Math.random() < 0.35;
-    // 🌲 Skogsvård: betalarna (Oxen/Björnen) nappar om ön behöver det och de har råd; övriga får nyttan gratis → oftast ja.
-    if (p.type === 'skogsvard') yes = (t.id === 'aker' || t.id === 'skog')
-      ? (S.oh < 55 && t.pengar >= engine.cfg.skogsvardAmount)
-      : (S.oh < 60 || Math.random() < 0.5);
-    engine.vote(t.id, yes);
+    if (p.kind === 'dilemma') {
+      engine.vote(t.id, botChooseDilemma(engine, dilemmaById(p.dilemmaId), t, cfg));   // A/B
+    } else {
+      // politik: ja/nej utifrån förslagets effekter (p.type 'event' = runtime-händelse → def saknas → nappar oftast)
+      engine.vote(t.id, botVoteProposal(engine, proposalById(p.type), t, cfg));
+    }
   });
 }

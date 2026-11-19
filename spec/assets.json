@@ -365,13 +365,6 @@
     "countdown_start": "assets/audio/rigg/countdown_start.mp3",
     "larm": "assets/audio/rigg/larm.mp3",
     "happening": "assets/audio/rigg/happening.mp3",
-    "event_storm": "assets/audio/rigg/event_storm.mp3",
-    "event_skogsbrand": "assets/audio/rigg/event_skogsbrand.mp3",
-    "event_uppror": "assets/audio/rigg/event_uppror.mp3",
-    "event_torka": "assets/audio/rigg/event_torka.mp3",
-    "event_godskord": "assets/audio/rigg/event_godskord.mp3",
-    "event_sponsrat": "assets/audio/rigg/event_sponsrat.mp3",
-    "event_gronafonden": "assets/audio/rigg/event_gronafonden.mp3",
-    "event_marknadskrasch": "assets/audio/rigg/event_marknadskrasch.mp3"
+    "event_sponsrat": "assets/audio/rigg/event_sponsrat.mp3"
   }
 }
