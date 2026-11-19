@@ -16,6 +16,7 @@ export class ServerNet {
     this.connected = false;
     this.phase = 'lobby';        // RUMS-FLÖDE: serverns senaste fas (bärs i varje meddelande)
     this.claims = {};            // lag → 'human'|'bot'|null (bärs i varje meddelande; spelledarpultens stations-lista)
+    this.variant = null;         // { selected, running, options } — spelversion (Slice 1), bärs i varje meddelande
   }
   on(ev, cb) { (this._h[ev] ||= []).push(cb); return this; }
   _emit(ev, p) { (this._h[ev] || []).forEach(cb => cb(p)); }
@@ -30,6 +31,8 @@ export class ServerNet {
         const m = JSON.parse(e.data);
         if (typeof m.phase === 'string') this.phase = m.phase;   // RUMS-FLÖDE: fasen bärs i varje send()
         if (m.claims) this.claims = m.claims;                    // lag-status (human/bot/tom) bärs i varje send()
+        if (m.variant) this.variant = m.variant;                 // spelversion (vald/pågående) bärs i varje send()
+        if (m.config && this.reader) this.reader.cfg = m.config;  // PARTIETS config bärs i varje send() → replikan speglar alltid rätt variant (år, bygggräns, trösklar). Fixar att ett nytt parti annars visade lobbyns standard (8 år/obegränsat) tills man laddade om.
         // state följer med varje meddelande (null när ingen motor finns = lobby/omstart) → spegla rakt av.
         if (this.reader && 'state' in m) this.reader.S = m.state;
         else if (m.state && this.reader) this.reader.S = m.state;
@@ -80,7 +83,7 @@ export class ServerNet {
   tradeAnswer(offerId, accept) { this._send({ type: 'tradeAnswer', offerId, accept }); }
   openProposal(ptype) { this._send({ type: 'openProposal', ptype }); }
   politicsSkip() { this._send({ type: 'politicsSkip' }); }   // ÖRÅD: ordföranden valde INGET FÖRSLAG
-  vote(yes) { this._send({ type: 'vote', yes }); }
+  vote(v) { this._send(typeof v === 'string' ? { type: 'vote', choice: v } : { type: 'vote', yes: v }); }   // ja/nej (bool) ELLER dilemma A/B (sträng)
   klar() { this._send({ type: 'klar' }); }
   awardsKlara() { this._send({ type: 'awardsKlara' }); }
   tutBeat(beat) { this._send({ type: 'tutBeat', beat }); }

@@ -74,12 +74,14 @@
   .btn .prog{font-family:var(--font-num);font-size:16px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.25)}
   .row{display:grid;gap:12px}
   .row.two{grid-template-columns:1fr 1fr}
+  .row.three{grid-template-columns:1fr 1fr 1fr}
   .row.pick{grid-template-columns:1fr auto;align-items:stretch}
   .eventpick{margin-top:4px;border-top:1px solid var(--edge);padding-top:12px}
   .eventpick label{display:block;font-size:12px;color:var(--dim);letter-spacing:.5px;margin-bottom:8px}
   .eventpick select{background:var(--panel2);color:var(--text);border:2px solid var(--edge);border-radius:10px;padding:0 12px;font:inherit;font-size:16px;min-height:var(--tap)}
   .eventpick select:disabled{opacity:.5}
-  #event-slumpa{width:auto;padding:0 18px;flex-direction:row;font-size:15px}
+  #gm-event-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .gm-ev{font-size:13px;letter-spacing:1px}
   .row.auto{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 
   .masterbar{display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:14px;
@@ -182,21 +184,26 @@
       </div>
 
       <div class="card">
-        <h2>RUNDANS HÄNDELSE</h2>
-        <div class="eventbox" id="event-box">
-          <h3 id="event-rubrik">Ingen händelse väntar</h3>
-          <p id="event-text">I spelledarläge dras en händelse varje runda — kör eller hoppa den här.</p>
-        </div>
-        <div class="row two">
-          <button class="btn ja" id="event-ja" disabled>KÖR · JA</button>
-          <button class="btn nej" id="event-nej" disabled>HOPPA · NEJ</button>
-        </div>
+        <h2>DIREKTA GM-HÄNDELSER <span class="hint">— verkställs direkt</span></h2>
+        <div class="eventpick" id="gm-event-grid"></div>
+        <p class="note">Varje händelse kan köras en gång per spel. Spelet pausas ~10 s medan effekten visas; resurser kan aldrig bli negativa.</p>
+      </div>
+
+      <div class="card">
+        <h2>DILEMMAN &amp; OMRÖSTNINGAR <span class="hint">— befintliga banker</span></h2>
         <div class="eventpick">
-          <label>Välj själv utifrån spelet — eller lämna till slumpen</label>
+          <label>Kollektivt dilemma (A/B)</label>
           <div class="row pick">
-            <select id="event-val" disabled></select>
-            <button class="btn safe" id="event-slumpa" disabled title="Dra en ny slumpmässig händelse">🎲 SLUMPA</button>
+            <select id="dilemma-val" disabled></select>
+            <button class="btn safe" id="dilemma-aktivera" disabled>⚖️ AKTIVERA</button>
           </div>
+          <label style="margin-top:8px">Individuell omröstning (ja/nej)</label>
+          <div class="row pick">
+            <select id="rost-val" disabled></select>
+            <button class="btn safe" id="rost-aktivera" disabled>🗳 AKTIVERA</button>
+          </div>
+          <button class="btn" id="decision-slumpa" disabled style="margin-top:8px">🎲 SLUMPA BESLUT</button>
+          <p class="note" id="dilemma-note">Spelet pausas, lagen röstar, sedan återupptas bygget automatiskt. Varje beslut en gång per spel.</p>
         </div>
       </div>
 
@@ -303,6 +310,16 @@
   <section class="view" data-view="admin">
     <div class="grid3">
       <div class="card">
+        <h2>SPELVERSION <span class="hint">— gäller NÄSTA parti</span></h2>
+        <p class="note" style="margin-bottom:10px">Nästa: <b id="variant-selected" style="color:var(--gold)">Mellan</b> · Pågående: <b id="variant-running">–</b></p>
+        <div class="row three">
+          <button class="btn" id="variant-flash" data-variant="flash">FLASH</button>
+          <button class="btn primary" id="variant-mellan" data-variant="mellan">MELLAN</button>
+          <button class="btn" id="variant-skola" data-variant="skola">SKOLA</button>
+        </div>
+        <p class="note" style="margin-top:8px">Byte ändrar inte ett pågående parti — det slår in när nästa parti startas.</p>
+      </div>
+      <div class="card">
         <h2>PARTI <span class="hint">— fungerar alltid</span></h2>
         <p class="note" style="margin-bottom:10px">Fas just nu: <b id="partifas" style="color:var(--gold)">–</b></p>
         <button class="btn primary" id="lobby-btn">↺ OMSTART → LOBBYN<small>river allt (spel/intro/tutorial) och tar alla till lobbyn</small></button>
@@ -393,7 +410,7 @@ const LAG = [
 const net = new ServerNet();
 net.on('disconnected', () => { setConn(false); });
 net.on('reconnected', () => { setConn(true); render(); });
-['timer','roundStart','ohalsa','roundEnd','gameEnd','lobby','notis','voteUpdate','paused','eventforslag',
+['timer','roundStart','ohalsa','roundEnd','gameEnd','lobby','notis','voteUpdate','paused',
  'event','award','awardCeremony','awardStep','awardDone','tilllobby','tillattract','trailer','trailerDone','start','startGo','startWindow',
  'klarUpdate','tutReadyUpdate',
  'slutdelStart','slutdelQuestion','slutdelReveal','slutdelDist','slutdelDone'].forEach(ev => net.on(ev, p => onEvent(ev, p)));
@@ -459,18 +476,38 @@ function render() {
                : 'Prisutdelning pågår')
     : (gmOn ? 'Väntar på prisutdelning (vid rundslut).' : 'Aktiv i spelledarläge under prisutdelningen.');
 
-  // händelse
-  const pe = s.pendingEvent;
-  const hasEv = gmOn && s.started && !s.over && pe;
-  $('#event-rubrik').textContent = hasEv ? (pe.rubrik || 'Händelse') : 'Ingen händelse väntar';
-  $('#event-text').textContent = hasEv ? (pe.text || '') : 'I spelledarläge dras en händelse varje runda — kör, hoppa eller byt den här.';
-  $('#event-ja').disabled = !hasEv; $('#event-nej').disabled = !hasEv;
-  // händelseväljaren: bygg optionslistan en gång (katalogen är statisk), markera den som ligger pending
-  const kanValja = gmOn && s.started && !s.over;
-  const sel = $('#event-val'), kat = s.eventKatalog || [];
-  if (sel._n !== kat.length) { sel.innerHTML = kat.map(e => `<option value="${e.id}">${e.rubrik}</option>`).join(''); sel._n = kat.length; }
-  if (pe) sel.value = pe.id;
-  sel.disabled = !kanValja; $('#event-slumpa').disabled = !kanValja;
+  // Beslut/händelser aktiverbara bara i GM-läge, under byggfasen (phase='spel'), pågående parti, ej slut.
+  const kanGm = gmOn && s.started && !s.over && (net.phase === 'spel');
+  const anvanda = s.firedCompanyEvents || [];          // GM-direkthändelser som redan körts (en gång/spel)
+  const beslutAnvanda = s.gmDecisionsUsed || [];       // GM-aktiverade dilemman/omröstningar
+
+  // DIREKTA GM-HÄNDELSER: en knapp per händelse, markerad "ANVÄND" när den körts.
+  const grid = $('#gm-event-grid'), gkat = s.gmKatalog || [];
+  if (grid._n !== gkat.length) {
+    grid.innerHTML = gkat.map(e => `<button class="btn safe gm-ev" data-gmev="${e.id}">${e.namn}</button>`).join('');
+    grid._n = gkat.length;
+    grid.querySelectorAll('[data-gmev]').forEach(b => b.onclick = () => {
+      net.gmcmd({ cmd: 'gmEvent', id: b.dataset.gmev }); toast('GM-händelse: ' + b.textContent.trim());
+    });
+  }
+  grid.querySelectorAll('[data-gmev]').forEach(b => {
+    const used = anvanda.includes(b.dataset.gmev);
+    b.disabled = !kanGm || used;
+    b.textContent = (gkat.find(e => e.id === b.dataset.gmev)?.namn || '') + (used ? ' ✓' : '');
+  });
+
+  // DILEMMAN (A/B): markera använda i listan.
+  const dsel = $('#dilemma-val'), dkat = s.dilemmaKatalog || [];
+  if (dsel._n !== dkat.length) { dsel.innerHTML = dkat.map(d => `<option value="${d.id}">${d.namn}</option>`).join(''); dsel._n = dkat.length; }
+  [...dsel.options].forEach(o => o.textContent = (dkat.find(d => d.id === o.value)?.namn || o.value) + (beslutAnvanda.includes(o.value) ? ' ✓' : ''));
+  dsel.disabled = !kanGm; $('#dilemma-aktivera').disabled = !kanGm;
+
+  // OMRÖSTNINGAR (rost, ja/nej): sponsrat m.fl.
+  const rsel = $('#rost-val'), rkat = s.rostKatalog || [];
+  if (rsel._n !== rkat.length) { rsel.innerHTML = rkat.map(r => `<option value="${r.id}">${r.namn}</option>`).join(''); rsel._n = rkat.length; }
+  [...rsel.options].forEach(o => o.textContent = (rkat.find(r => r.id === o.value)?.namn || o.value) + (beslutAnvanda.includes(o.value) ? ' ✓' : ''));
+  rsel.disabled = !kanGm; $('#rost-aktivera').disabled = !kanGm;
+  $('#decision-slumpa').disabled = !kanGm;
 
   // slutdel
   const over = !!s.over;
@@ -482,6 +519,14 @@ function render() {
 
   // admin
   $('#sl-val').textContent = withSpelledare ? 'MED' : 'UTAN';
+
+  // Spelversion (Slice 1): visa valet för nästa parti + vad pågående parti kör, markera valt.
+  const vi = net.variant || {};
+  const vNamn = id => id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Standard';
+  const partiPagar = (net.phase || 'lobby') !== 'lobby';
+  $('#variant-selected').textContent = vNamn(vi.selected ?? null);
+  $('#variant-running').textContent = partiPagar ? vNamn(vi.running ?? null) : '–';
+  document.querySelectorAll('[data-variant]').forEach(b => b.classList.toggle('primary', (b.dataset.variant || '') === (vi.selected || '')));
 
   // Start-/hopp-knappar: fas-medvetna så man ser VAD som går just nu (grå = går inte).
   // net.phase bärs i varje servermeddelande: 'lobby' | 'intro' | 'tutorial' | 'spel' | 'slutdel'.
@@ -542,10 +587,9 @@ const PRIS = { led: '🏆 Ledande', foretagare: '🏆 Ledande', eld: '🌱 Eldsj
 
 // ——— GRUPP A: spel-kommandon ———
 $('#award-btn').onclick = () => { net.gmcmd({ cmd: 'award_next' }); toast('Nästa pris'); };
-$('#event-ja').onclick  = () => { net.gmcmd({ cmd: 'event', beslut: 'ja' }); toast('Kör händelsen'); };
-$('#event-nej').onclick = () => { net.gmcmd({ cmd: 'event', beslut: 'nej' }); toast('Hoppar händelsen'); };
-$('#event-val').onchange = () => { net.gmcmd({ cmd: 'valjEvent', id: $('#event-val').value }); toast('Bytte rundans händelse'); };
-$('#event-slumpa').onclick = () => { net.gmcmd({ cmd: 'slumpaEvent' }); toast('Slumpar ny händelse'); };
+$('#dilemma-aktivera').onclick = () => { net.gmcmd({ cmd: 'gmDecision', id: $('#dilemma-val').value, kind: 'dilemma' }); toast('Aktiverar dilemma (byggfasen pausas)'); };
+$('#rost-aktivera').onclick    = () => { net.gmcmd({ cmd: 'gmDecision', id: $('#rost-val').value, kind: 'event' }); toast('Aktiverar omröstning (byggfasen pausas)'); };
+$('#decision-slumpa').onclick  = () => { net.gmcmd({ cmd: 'gmRandomDecision' }); toast('Slumpar ett beslut'); };
 $('#pausbtn').onclick   = () => { net.gmcmd({ cmd: 'pause', on: !paused }); };
 $('#pengbtn').onclick   = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'pengaslapp' }); toast('Pengasläpp (+10/+10 till alla)'); });
 $('#gm-switch').onclick = () => {
@@ -611,6 +655,17 @@ $('#slutdel-next').onclick  = () => { net.gmcmd({ cmd: 'slutdel_next' }); if (sl
 $('#lobby-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.tillLobby(); toast('Alla till lobbyn (omstart)'); });
 $('#attract-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'tillattract' }); toast('Alla till attract-skärmen (ny grupp)'); });
 $('#forcestart-btn').onclick = () => { net.gmcmd({ cmd: 'forcestart' }); toast('Tvingar gemensam nedräkning → runda 1'); };
+document.querySelectorAll('[data-variant]').forEach(b => {
+  b.onclick = () => {
+    const v = b.dataset.variant || null;
+    net.gmcmd({ cmd: 'variant', val: v });
+    // optimistisk uppdatering så etikett + markering följer klicket direkt (serverns svar bekräftar sen)
+    if (net.variant) net.variant.selected = v;
+    $('#variant-selected').textContent = v ? v.charAt(0).toUpperCase() + v.slice(1) : 'Standard';
+    document.querySelectorAll('[data-variant]').forEach(x => x.classList.toggle('primary', (x.dataset.variant || '') === (v || '')));
+    toast('Nästa parti: ' + (v ? v : 'standard'));
+  };
+});
 $('#startspel-btn').onclick = () => { net.gmcmd({ cmd: 'startspel' }); toast('Startar spelet (intro → tutorial → nedräkning)'); };
 $('#tillrunda1-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'tillrunda1' }); toast('Hoppar direkt till runda 1 (skippar intro + tutorial)'); });
 $('#trailer-btn').onclick = () => { net.gmcmd({ cmd: 'trailer' }); toast('Spelar intro-trailer'); };

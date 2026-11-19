@@ -11,7 +11,7 @@ export function setPublisher(fn) { publish = fn; }
 
 const P = (t, m) => publish(t, typeof m === 'object' ? JSON.stringify(m) : String(m));
 
-const base = s => String(s).split('/').pop();   // 'assets/audio/rigg/event_storm.mp3' -> 'event_storm.mp3'
+const base = s => String(s).split('/').pop();   // 'assets/audio/rigg/event_sponsrat.mp3' -> 'event_sponsrat.mp3'
 
 export function attachRigg(engine, opts = {}) {
   if (opts.publish) setPublisher(opts.publish);

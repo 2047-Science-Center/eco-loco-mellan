@@ -159,6 +159,10 @@
   .card.poor .saknas { display: block; }
   .card.banned { pointer-events: none; filter: grayscale(.6); }   /* förbjudet kort: ej klickbart, tydligt nedtonat */
   .card.banned::after { content: "🚫 FÖRBJUDEN DETTA ÅR"; position: absolute; inset: 0; z-index: 6; background: rgba(20,18,14,.78); color: #fff; text-align: center; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; letter-spacing: .5px; }
+  .clicklock { cursor: wait; }                                        /* 3 s klick-lås när en händelse/omröstning dyker upp */
+  #vote-btns.clicklock { opacity: .4; pointer-events: none; }         /* röst-knappar inaktiva de första 3 s */
+  .card.byggstopp { pointer-events: none; filter: grayscale(.6); }   /* byggstopp (naturreservat): INGET kort får byggas i år */
+  .card.byggstopp::after { content: "🚫 BYGGSTOPP I ÅR"; position: absolute; inset: 0; z-index: 6; background: rgba(20,18,14,.78); color: #fff; text-align: center; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; letter-spacing: .5px; }
   .hand-locked .card { opacity: .45; pointer-events: none; }
   .hand-locked .card.picked { opacity: 1; border-color: var(--led-green); }
   .card.picked::after { content: "BYGGT ✓"; position: absolute; top: 46%; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 800; color: var(--led-green); text-shadow: 0 2px 8px #000; }
@@ -209,6 +213,9 @@
   .votebtns button { flex: 1; font: inherit; font-size: 28px; font-weight: 800; letter-spacing: 2px; padding: 20px; border-radius: 14px; cursor: pointer; border: 4px solid; }
   .votebtns .ja { background: #1E4A2C; border-color: #35D97B; color: #C9F5D8; }
   .votebtns .nej { background: #40231E; border-color: #8a4a38; color: #F0CFC5; }
+  /* DILEMMA (A/B): INTE grön/röd (ja/nej) — två JÄMBÖRDIGA val. A = blå, B = bärnsten. */
+  .votebtns.dilemma .ja { background: #17323F; border-color: #6FA8C7; color: #DCEEF7; }
+  .votebtns.dilemma .nej { background: #3A2C14; border-color: #E0A64C; color: #F7E8CA; }
   .politimer { text-align: center; font-family: var(--font-num); font-weight: 800; font-size: 28px; color: var(--gold); margin: 2px 0 14px; letter-spacing: 1px; }
   .politimer.hot { color: var(--oh-red); }
   .propchoice.readonly { pointer-events: none; }   /* icke-ordförande: visa men inte klickbart */
@@ -217,6 +224,8 @@
   .votestat .d { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--edge2); background: var(--panel3); }
   .votestat .d.ja { background: #35D97B; border-color: #1E4A2C; }
   .votestat .d.nej { background: #E04438; border-color: #6e2a24; }
+  .votestat.dilemma .d.ja { background: #6FA8C7; border-color: #1b3a47; }   /* A = blå */
+  .votestat.dilemma .d.nej { background: #E0A64C; border-color: #5c4518; }  /* B = bärnsten */
 
   .tradegrid { display: flex; align-items: center; gap: 22px; margin: 8px 0 20px; }
   .tradebox { flex: 1; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 18px; text-align: center; }
@@ -479,8 +488,8 @@
         </div>
         <div class="inc" id="me-inc"></div>
         <div class="sektor" id="me-sektor"></div>
-        <button class="bigbtn gold" id="btn-trade">🔁 BYT VALUTOR</button>
-        <div class="linklike" id="btn-log">📖 Din årsberättelse</div>
+        <button class="bigbtn gold" id="btn-trade"><span data-ico="byt" data-sz="22"></span> BYT VALUTOR</button>
+        <div class="linklike" id="btn-log"><span data-ico="bok" data-sz="18"></span> Din årsberättelse</div>
       </div>
     </aside>
 
@@ -531,7 +540,7 @@
   <!-- Mål-skärm (tutorial-intro ruta 1): bli borgmästare -->
   <div class="overlay" id="ov-mission" style="background:rgba(8,7,5,.95);z-index:16;flex-direction:column;gap:16px;text-align:center">
     <img src="assets/intro/borgmastare.png" alt="" style="width:min(680px,72vw);height:auto;border-radius:16px;border:3px solid var(--edge2);box-shadow:0 10px 40px #000">
-    <div style="font-size:34px;font-weight:800;color:#EFE8D6">🏛️ Ön behöver en ny borgmästare!</div>
+    <div style="font-size:34px;font-weight:800;color:#EFE8D6"><span data-ico="orad" data-sz="30"></span> Ön behöver en ny borgmästare!</div>
     <div style="font-size:23px;color:var(--text);max-width:720px;line-height:1.5">Fyra företag tävlar om makten. Det <b>rikaste</b> företaget när spelet är slut får <b>styra ön</b>!</div>
     <div style="font-size:15px;color:var(--dim)">tryck för att fortsätta</div>
   </div>
@@ -545,7 +554,7 @@
 
   <!-- Boten tog över en inaktiv plats → tryck för att ta tillbaka laget -->
   <div class="overlay" id="ov-bot" style="background:rgba(8,7,5,.95);z-index:18;flex-direction:column;gap:24px;text-align:center">
-    <div style="font-size:72px">🤖</div>
+    <div style="font-size:72px"><span data-ico="bot" data-sz="72"></span></div>
     <div style="font-size:34px;font-weight:800;letter-spacing:1px;color:#EFE8D6">En bot styr detta lag</div>
     <div style="font-size:22px;color:var(--dim);max-width:640px;line-height:1.5">Vill du spela? Klicka för att ta över laget.</div>
     <button class="btn" id="btn-bot-tillbaka" style="font-size:24px;padding:18px 40px;background:var(--gold);color:#241E0F;border:0;border-radius:14px;font-weight:800;letter-spacing:1px;cursor:pointer">KLICKA FÖR ATT TA ÖVER</button>
@@ -553,19 +562,19 @@
 
   <!-- Startskärm / lobby -->
   <div class="overlay open" id="ov-start"><div class="modal">
-    <h1>🏝 MAKTSPELET</h1>
+    <h1><span data-ico="on" data-sz="34"></span> MAKTSPELET</h1>
     <div class="tag" id="lobbytag">Bli rikast — utan att sänka ön ni delar.</div>
     <div id="connstatus" style="display:none"></div>
     <div class="pdots" id="pdots"></div>
     <div id="lobby" style="display:none"></div>
     <div class="howto" id="howto">
       <div><span class="n">🃏</span><b>Bygg</b><br>Välj 1 kort per år.<br>Smutsigt är billigt — men skadar ön.</div>
-      <div><span class="n">🔁</span><b>Byt</b><br>Du tjänar bara en valuta.<br>Den andra får du byta till dig.</div>
+      <div><span class="n" data-ico="byt" data-sz="26"></span><b>Byt</b><br>Du tjänar bara en valuta.<br>Den andra får du byta till dig.</div>
       <div><span class="n">🗳</span><b>Rösta</b><br>Ett förslag per år.<br>3 av 4 JA krävs.</div>
     </div>
     <div class="sub" style="font-size:18px">Håller ön <b style="color:var(--led-green)">över 60</b> efter 8 rundor vinner det rikaste laget. Faller den under — <b style="color:var(--led-red)">förlorar alla.</b></div>
     <button class="bigbtn gold" id="btn-start" style="font-size:26px">STARTA SPELET</button>
-    <div class="startnote" id="startnote">Lag utan spelare styrs av datorn 🤖</div>
+    <div class="startnote" id="startnote">Lag utan spelare styrs av datorn <span data-ico="bot" data-sz="16"></span></div>
   </div></div>
 
   <!-- Paus (spelledare): fryser bara spelmotorn, ambiencen fortsätter -->
@@ -577,7 +586,7 @@
 
   <!-- Byteshandel -->
   <div class="overlay" id="ov-trade"><div class="modal" style="width:820px">
-    <h2>🔁 BYT VALUTOR</h2>
+    <h2><span data-ico="byt" data-sz="22"></span> BYT VALUTOR</h2>
     <div class="sub">Du ger <span id="trade-give-lbl"></span> och får <span id="trade-get-lbl"></span> — välj lag och mängd</div>
     <div class="partnerrow" id="partners"></div>
     <div class="tradegrid">
@@ -625,8 +634,8 @@
 
   <!-- Inkommande bytesförfrågan (online) -->
   <div class="overlay" id="ov-tradein"><div class="modal" style="width:680px">
-    <h2>🔁 BYTESFÖRFRÅGAN</h2>
-    <div class="propcard"><div class="pic">🤝</div><div class="tx" id="tradein-tx"></div></div>
+    <h2><span data-ico="byt" data-sz="22"></span> BYTESFÖRFRÅGAN</h2>
+    <div class="propcard"><div class="pic" data-ico="byt" data-sz="56"></div><div class="tx" id="tradein-tx"></div></div>
     <div class="votebtns"><button class="ja" id="btn-tradein-ja">ACCEPTERA</button><button class="nej" id="btn-tradein-nej">TACKA NEJ</button></div>
   </div></div>
 

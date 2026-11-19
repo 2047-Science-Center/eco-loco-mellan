@@ -17,10 +17,14 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { EcoLoco, AREAS, timerSecFor, EVENTS } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
+import { botPickProposal } from '../spec/bot-policy.js';
 import { attachMqtt, setPublisher as setBenchPublisher, clearBenchResults } from '../src/mqtt.js';
 import { attachRigg } from '../src/rigg.js';
 import { newSession } from './persist.js';
 import { buildSlutdel } from '../spec/slutdel.js';
+import { buildEngineConfig, isValidVariant, VARIANT_IDS, phaseTimers } from './variant-config.js';
+import { DILEMMAS } from '../spec/content/dilemmas.js';
+import { GM_EVENTS } from '../spec/content/gm-events.js';
 import { execFile, spawn } from 'node:child_process';
 
 const PORT = parseInt(process.env.PORT) || 8765;
@@ -53,7 +57,6 @@ const riggPublish = (t, m) => { if (riggSilent && !AMBIENT_TOPICS.has(t)) return
 // Samma semantiska cues som spelledarpultens RIGG-knappar, men avfyrade från servern så en
 // händelse kan trigga ljus+ljud innan den visas på skärmarna. Ungated (riggSend) = som pultens
 // egna knappar, spelar även "med spelledare". Lägg till fler namn här vid behov.
-const RIGG_EVENT_DELAY_MS = 3000;   // rigg-cue körs → 3 s senare dyker händelsen upp på skärmarna
 const R_ = 'ecoloco/rigg/';
 function fireRiggCue(cue) {
   switch (cue) {
@@ -65,10 +68,18 @@ function fireRiggCue(cue) {
     default:              riggSend(R_ + 'ljud', 'happening'); riggSend(R_ + 'wave', '1'); setTimeout(() => riggSend(R_ + 'wave', '0'), 3000); break;
   }
 }
-// Vilken rigg-cue varje händelse (event-id) får när spelledaren kör den. Default = 'happening'.
-// Tilldela specialcues här efter hand (t.ex. uppror = "folket har fått nog" → kris/larm).
+// Rigg-cue per händelse-id. Det gamla fullt slumpade systemets cues är OMPEKADE till de nya
+// händelserna (company-crises/-events, ohalsa-events, gm-events) 2026-11-19 — t.ex. gamla
+// skogsbrand → company-crisis `skog_major`, torka → `aker_major`. Fyras av companyEvent-handlern när
+// händelsen visas. Default (ej i listan) = 'happening' (självslocknande wave + ljud). Specialcues
+// 'kris'/'fanfar' latchar sina topics (ecoloco/rigg/kris, .../gm/alla_grona) → companyEvent-handlern
+// återställer dem till sanningen efter pausen. Tilldela fler här efter hand.
 const EVENT_RIGG_CUE = {
-  uppror: 'kris',
+  // Stora katastrofer (de gamla auto-katastrofernas arvtagare) → larm/kris-puls.
+  aker_major: 'kris', skog_major: 'kris', tundra_major: 'kris', stad_major: 'kris',
+  uppror: 'kris',                                         // "folket har fått nog" (oförändrad specialcue)
+  // Stora positiva vändningar → fanfar.
+  naturenblomstrar: 'fanfar', miljolyft: 'fanfar', gronafonden: 'fanfar',
 };
 // Bänkarnas kontrollbord: src/mqtt.js (attachMqtt) bygger topics/innehåll per bänk
 // (ecoloco/<benchId>/money|resources|winner|looser). Här kopplar vi den mot SAMMA broker,
@@ -130,7 +141,10 @@ let gmMode = false;
 const claims = { aker: null, skog: null, tundra: null, stad: null };  // teamId → ws | 'bot' | null
 let klar = new Set();          // mänskliga lag som tryckt AVSLUTA
 let timerLeft = 0, timerInt = null;
-let paused = false;       // paus → frys BARA spelmotorn (timer + bokslut). Riggen/ambiencen rörs ej.
+let paused = false;       // MANUELL paus (spelledare/knapp) → frys spelmotorn. Riggen/ambiencen rörs ej.
+let autoPaused = false;   // AUTO-paus: ett spelledarstyrt dilemma pågår under byggfasen → frys timer + blockera
+                          // bygge/handel. Skild från manuell paus: när dilemmat avgörs återupptas spelet BARA
+                          // om spelledaren inte också pausat manuellt.
 let tutBeats = {};             // tutorial-barriären: beat → Set av lag som är klara
 let awardsVantar = new Set();  // mänskliga lag som inte klickat klart prisutdelningen än
 let awardsFailsafe = null;     // timeout som startar timern även om någon klient tappas
@@ -139,12 +153,23 @@ let cer = null;                // prisutdelning som SERVERN dirigerar (båda lä
 let cerTimer = null;           // selfplay: auto-stegarens timer (server-dirigerad lockstep skärm+rigg)
 const CEREMONY_STEP_MS = 5000; // selfplay: tid per pris (skärm + rigg kliver i exakt denna takt)
 let resolvingNow = false;
-let eventFiring = false;        // en spelledar-händelse körs (rigg-cue + 3 s fördröjning innan den visas)
 const PROPOSAL_COOLDOWN_MS = 2500;   // kort paus efter att ett förslag avgjorts innan nästa får läggas (hinner visa resultatet)
 // ÖRÅD-politik: efter prisutdelningen varje år får ordföranden (powerTeam, roterar) en stund att
 // lägga ETT av 5 förslag — eller 'inget förslag'. Läggs ett → röstning → konsekvenser → nästa år.
 let politics = null;                 // { stage:'propose'|'vote'|'done', left, power } eller null (ingen politikfas)
 let politicsTimer = null, botOrdforandeTimer = null;
+// DILEMMA-Ö-råd (Slice 4): när versionens decisionSystem='dilemma' (Flash) körs ett auto-draget
+// dilemma i stället för politik. { stage:'vote'|'done', left } eller null.
+let dilemma = null;
+let dilemmaTimer = null, botDilemmaTimer = null;
+let crisisTimer = null;        // företagshändelse: kort visnings-/frystimer (EVENT_PAUSE_MS) → resume
+let eventCooldownTimer = null; // cooldown av NORMALT spel mellan köade händelser (EVENT_COOLDOWN_MS) → lös nästa
+let crisisDueRound = 0;        // ÅRSGATADE lokala kriser: senaste runda vi redan köat väntande kriser för (en gång/runda)
+// Händelse-pacing (presentation, beslut Klara 2026-11-19): en företagshändelse fryser spelet bara en KORT
+// stund (skärmen oklickbar), sen rullar spelet vidare — INTE hela kön på en gång. Ligger flera händelser i
+// kö får de en COOLDOWN av normalt spel emellan så popups inte staplas. Rör inga regler/effekter/trösklar.
+const EVENT_PAUSE_MS = 3000;     // hur länge varje händelse fryser spelet (skärmen oklickbar)
+const EVENT_COOLDOWN_MS = 4000;  // normalt (ofryst) spel mellan två köade händelser
 const PROPOSE_SECS = 30, VOTE_SECS = 30;
 const BOT_POWER_WAIT_S = 60;         // en bot med makten väntar så här många sek IN I rundan innan den lägger sitt förslag (människor hinner ringa & påverka)
 const EVENT_DELAY_S = 30;            // årets slumphändelse dyker upp så här många sek IN I året (inte i örådet)
@@ -172,6 +197,12 @@ const offers = new Map();      // offerId → { from, to, give, giveCur, get, ge
 //   En start FRÅN SPELLEDARPULTEN (startGame direkt) hoppar över fönstret.
 // ─────────────────────────────────────────────────────────────────────────────
 let phase = 'lobby';                 // 'lobby' | 'intro' | 'tutorial' | 'spel' | 'slutdel'
+// Spelversion (Slice 1 + 6B): spelledaren väljer Flash/Mellan/Skola för NÄSTA parti. MELLAN är förvald
+// standardversion vid serverstart (Slice 6B: legacy/Standard borttaget — alla tre är jämbördiga).
+// Appliceras i newEngine() → gäller nästa beginGame(), aldrig ett pågående parti. runningVariant = vad
+// det pågående/senaste partiet faktiskt byggdes med.
+let selectedVariant = 'mellan';
+let runningVariant = null;
 const START_WINDOW_SEC = 15;
 let startWindowInt = null, startWindowLeft = null;
 
@@ -194,9 +225,16 @@ const liveHumanIds = () => humanIds().filter(id => claims[id].readyState === 1);
 // claims (lag → 'human'|'bot'|null) rider med i VARJE meddelande så spelledarpanelens stations-lista
 // alltid är färsk (ett lag som tappar sin skärm blir 'bot' → syns direkt på pulten).
 function claimKinds() { return Object.fromEntries(TEAMS.map(id => [id, claims[id] === 'bot' ? 'bot' : claims[id] ? 'human' : null])); }
-// Händelsekatalogen (id + rubrik + typ) — statisk, följer med i state så spelledarpanelen kan erbjuda VÄLJ HÄNDELSE.
-const EVENT_KATALOG = EVENTS.map(e => ({ id: e.id, rubrik: e.rubrik, typ: e.typ }));
-function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), state: engine ? { ...engine.getState(), gmMode, riggSilent, started, eventKatalog: EVENT_KATALOG } : null })); }
+// Dilemma-katalog (id + namn) → spelledarpanelen kan erbjuda AKTIVERA DILEMMA under byggfasen (Slice 5).
+// GM-katalog (spelledarpult, Mellan/Skola): ENDAST bank-gemensamma dilemman. Flash-only-dilemman
+// (flashOnly, 2026-11-19) hålls ute så Mellan/Skola-pulten är oförändrad.
+const DILEMMA_KATALOG = DILEMMAS.filter(d => !d.flashOnly).map(d => ({ id: d.id, namn: d.namn }));
+const GM_KATALOG = GM_EVENTS.map(e => ({ id: e.id, namn: e.namn }));                              // 4 direkta GM-händelser
+const ROST_KATALOG = EVENTS.filter(e => e.typ === 'rost').map(e => ({ id: e.id, namn: e.rubrik })); // ja/nej-omröstningar (sponsrat)
+// variant: valet för nästa parti (selected) + vad pågående parti faktiskt kör (running) + alternativen.
+// Följer med i VARJE meddelande så spelledarpanelen alltid kan visa aktuell version (Slice 1).
+function variantInfo() { return { selected: selectedVariant, running: runningVariant, options: VARIANT_IDS }; }
+function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), variant: variantInfo(), config: engine ? engine.cfg : undefined, state: engine ? { ...engine.getState(), gmMode, riggSilent, started, dilemmaKatalog: DILEMMA_KATALOG, gmKatalog: GM_KATALOG, rostKatalog: ROST_KATALOG } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, spelledare: riggSilent,   // spelledare på → klienterna gömmer STARTA (spelledaren styr starten)
@@ -366,9 +404,9 @@ function resetToLobby() {
   broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
   stopTimer();
   clearTimeout(cerTimer);
-  slutdel = null; cer = null; lastAwards = null; resolvingNow = false; eventFiring = false;
-  clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;   // ÖRÅD-politik avbryts vid omstart
-  started = false; paused = false;
+  slutdel = null; cer = null; lastAwards = null; resolvingNow = false;
+  clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null; clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;   // ÖRÅD-politik avbryts vid omstart
+  started = false; paused = false; autoPaused = false; clearTimeout(crisisTimer); crisisTimer = null; clearTimeout(eventCooldownTimer); eventCooldownTimer = null; crisisDueRound = 0;
   klar = new Set(); tutBeats = {}; awardsVantar = new Set(); trailerPlayedAuto = false;
   for (const id of TEAMS) if (claims[id] === 'bot') claims[id] = null;   // släpp botarna, behåll människornas platser
   engine = null; rigg = null; session = null;
@@ -380,24 +418,46 @@ function resetToLobby() {
 }
 
 function newEngine() {
-  engine = new EcoLoco(manifest.config || {});
+  runningVariant = selectedVariant;   // lås partiets version NU → senare variantbyte rör inte detta parti
+  engine = new EcoLoco(buildEngineConfig(manifest.config || {}, selectedVariant));
   engine.setGm(gmMode);   // spegla serverns GM-läge in i den nya motorn
   engine.cfg.autoEventAtStart = false;   // händelsen körs INTE vid årsstart (i örådet) → servern kör den ~30 s in i året
-  lastAwards = null; cer = null; slutdel = null; lastGameEnd = null; finaleSent = false;
+  lastAwards = null; cer = null; slutdel = null; lastGameEnd = null; finaleSent = false; autoPaused = false; clearTimeout(crisisTimer); crisisTimer = null; clearTimeout(eventCooldownTimer); eventCooldownTimer = null; crisisDueRound = 0;
   clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;
+  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;
   // Persistens: ny session (sessionId = tidsstämpel) med metadata-startrad. Fire-and-forget, data/ gitignorerad.
   session = newSession(ROOT, { config: engine.cfg, gmMode, version, claims });
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
   rigg = attachRigg(engine, { publish: riggPublish, gm: gmMode, isPaused: () => paused });  // förstärkningsriggen: semantiska cues (paus fryser award-takten)
   const relay = ev => payload => broadcast({ type: 'event', event: ev, payload });
-  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd'])
+  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'dilemmaOpened', 'dilemmaResolved', 'income', 'ohalsa', 'event', 'companyEvent', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd'])
     engine.on(ev, relay(ev));
   // KRIS → riggen via EN semantisk cue. Dirigenten (hjarna-stubb.py) översätter: blandare + röd puls + 15s-timer.
   // Gatas automatiskt av riggPublish i spelledarläge (ecoloco/rigg/kris är ej en AMBIENT_TOPIC) → spelledaren
   // äger då blandaren manuellt. 15s-timern och LED-looken ligger i DIRIGENTEN, inte här.
   engine.on('crisis', p => riggPublish('ecoloco/rigg/kris', p.on ? '1' : '0'));
+  // Företagshändelser (kriser + prestationer): pausa byggfasen ~10 s, visa händelsen, sedan resolve
+  // (motorns kö processar nästa om fler ligger och väntar).
+  // Företagshändelse (kris/prestation/öhälsohändelse): FRYS spelet kort (EVENT_PAUSE_MS), visa rutan, sen
+  // RESUME. Ligger fler i motorns kö LÖSES de inte direkt — en COOLDOWN av normalt spel (EVENT_COOLDOWN_MS)
+  // får passera innan nästa köade händelse löses och visas. Effekten tillämpas i motorn vid emit (oförändrat).
+  engine.on('companyEvent', p => {
+    autoPaused = true;
+    broadcastPause();   // auto=true → klienten fryser/blockerar men visar INGEN paus-overlay (bara händelserutan)
+    // RIGG-CUE: varje visad händelse ger en cue (ompekade från det gamla systemet, se EVENT_RIGG_CUE).
+    // Gatas av riggSilent (spelledarläge = operatören driver riggen själv). Latchande specialcues
+    // (kris/fanfar) återställs till sanningen efter pausen så en transient händelse inte låser riggen.
+    if (!riggSilent) {
+      const cue = EVENT_RIGG_CUE[p.id] || 'happening';
+      fireRiggCue(cue);
+      if (cue === 'kris') setTimeout(() => { if (engine) riggSend(R_ + 'kris', engine.getState()?.inCrisis ? '1' : '0'); }, EVENT_PAUSE_MS);
+      else if (cue === 'fanfar') setTimeout(() => riggSend(R_ + 'gm/alla_grona', '0'), EVENT_PAUSE_MS);
+    }
+    clearTimeout(crisisTimer);
+    crisisTimer = setTimeout(afterEventShow, EVENT_PAUSE_MS);
+  });
   // Persistens-tap: SAMMA eventström som relä-broadcastas → en JSONL-rad per motorhändelse (payloads oförändrade).
-  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'income', 'ohalsa', 'event', 'crisis', 'roundReplay', 'roundEnd', 'award', 'gameEnd'])
+  for (const ev of ['start', 'build', 'trade', 'proposalOpened', 'proposalResolved', 'dilemmaOpened', 'dilemmaResolved', 'income', 'ohalsa', 'event', 'companyEvent', 'crisis', 'roundReplay', 'roundEnd', 'award', 'gameEnd'])
     engine.on(ev, p => session?.logEvent(ev, p));
   // Härledda tal för summaryn: öhälsa per runda, händelser som slog, och summary vid gameEnd.
   engine.on('roundEnd', p => session?.noteOhRound(p.round, engine.getState().oh));
@@ -410,7 +470,19 @@ function newEngine() {
   engine.on('award', p => { lastAwards = p; });
   // ÖRÅD-politik: ordföranden lade → gå till röstning; förslag avgjort → visa resultat ~2,5 s, sedan nästa år.
   engine.on('proposalOpened', () => politicsToVote());
-  engine.on('proposalResolved', () => { if (politics) { politics.stage = 'done'; clearTimeout(politicsTimer); setTimeout(endPolitics, 2500); } });
+  engine.on('proposalResolved', () => {
+    if (politics) { politics.stage = 'done'; clearTimeout(politicsTimer); setTimeout(endPolitics, 2500); }
+    else if (dilemma) { dilemma.stage = 'done'; clearTimeout(dilemmaTimer); setTimeout(dilemma.buildPhase ? endBuildDilemma : endDilemma, 2500); }   // rost avgjord: GM byggfas → återuppta · Flash Ö-råd → året
+  });
+  // Dilemma avgjort → visa resultatet, sedan: Ö-råd (Flash) → året · byggfas (GM) → återuppta.
+  // Flash Ö-råd: håll resultatet längre så barn hinner läsa VILKET alternativ som genomfördes
+  // (7 s vid beslut, 4,5 s vid oavgjort) — matchar klientens popup-tid. GM-byggfas (Mellan/Skola) oförändrad 2,5 s.
+  engine.on('dilemmaResolved', p => {
+    if (!dilemma) return;
+    dilemma.stage = 'done'; clearTimeout(dilemmaTimer);
+    const hold = dilemma.buildPhase ? 2500 : (p && p.outcome ? 7000 : 4500);
+    setTimeout(dilemma.buildPhase ? endBuildDilemma : endDilemma, hold);
+  });
   engine.on('roundEnd', () => {
     if (!lastAwards) return;
     const steps = buildCeremonySteps(lastAwards);
@@ -426,11 +498,6 @@ function newEngine() {
   engine.on('roundStart', p => {
     resolvingNow = false; klar = new Set();
     broadcast({ type: 'event', event: 'roundStart', payload: p });
-    // GM-läge: motorn har dragit rundans förslag men inte applicerat det — visa det för spelledarpanelen.
-    if (gmMode) {
-      const pe = engine.getState().pendingEvent;
-      if (pe) riggPublish('ecoloco/rigg/eventforslag', JSON.stringify({ id: pe.id, namn: pe.rubrik, text: pe.text }));
-    }
     if (p.round > 1) pauseForAwards(); else startTimer();   // runda 2+: timern väntar tills prisutdelningen klickats igenom
     // (maybeBotProposal triggas numera av rundtimern, BOT_POWER_WAIT_S in i rundan — inte här)
   });
@@ -449,21 +516,55 @@ function newEngine() {
   engine.on('proposalResolved', () => { proposalCooldownUntil = Date.now() + PROPOSAL_COOLDOWN_MS; });   // kö-paus innan nästa förslag
 }
 
-function roundFull() { return timerSecFor(engine.cfg, engine.getState().round); }
+// Fas-timers (Slice 6A): variant → ur cfg.phases; legacy → nuvarande konstanter. Inga hårdkodade
+// tider åsidosätter en variants config.
+function phaseT() { return phaseTimers(engine.cfg, { propose: PROPOSE_SECS, vote: VOTE_SECS }); }
+function proposeSec() { return phaseT().propose; }
+function voteSec() { return phaseT().vote; }
+function ceremonyStepMs(steps) {
+  const tot = phaseT().prisutdelning;
+  return tot != null && steps > 0 ? Math.max(1500, Math.round(tot * 1000 / steps)) : CEREMONY_STEP_MS;
+}
+function roundFull() {
+  const b = phaseT().bygga;                 // variant: byggfasens längd ur config
+  return b != null ? b : timerSecFor(engine.cfg, engine.getState().round);   // legacy: timerSecFor (oförändrat)
+}
 
 function startTimer() {
   stopTimer();
   const full = roundFull();
   timerLeft = full;
   let countdownFired = false;                 // 10 s-nedräkningen fyras en gång per runda
-  let eventFired = false;                      // årets händelse körs en gång, EVENT_DELAY_S in i året (ej i örådet)
+  // FÖRDRÖJDA ÖHÄLSOHÄNDELSER: avfyra nästa VÄNTANDE händelse var N:e AKTIVA byggsekund (motorns
+  // ohalsaDelaySeconds, default 30). "Aktiv tid" = timerLeft minskar bara när vi INTE är pausade/auto-
+  // pausade (raden nedan returnerar då) → manuell paus, dilemma-paus OCH händelse-popupens egen 10 s-paus
+  // räknas alla bort automatiskt. Köade/väntande händelser som inte hinner visas bär vi över till nästa år
+  // (de ligger kvar i motorns S.pendingOhalsa). Timern körs bara under byggfasen → inga händelser i andra faser.
+  const delaySec = (engine?.cfg?.ohalsaDelaySeconds) || 30;
+  let ohalsaNextMark = delaySec;              // aktiv-tids-märke (sekunder förflutna) för nästa väntande händelse
   broadcast({ type: 'timer', left: timerLeft, full });
+  // ÅRSGATADE LOKALA KRISER: vid BÖRJAN av byggfasen (efter Ö-råd), köa kriser vars villkor (ackumulerad
+  // skada + årskrav) redan är uppfyllda men som väntat på sitt tillåtna spelår. En gång/runda (startTimer
+  // kallas även vid återupptagning efter paus/dilemma → guard mot upprepning; motorn är ändå idempotent).
+  // Köade kriser presenteras via companyEvent-kön (10 s-paus), aldrig under bokslut/Ö-råd.
+  if (engine && engine.getState()?.round !== crisisDueRound) {
+    crisisDueRound = engine.getState().round;
+    engine.fireDueCrises?.();
+  }
   timerInt = setInterval(() => {
-    if (paused) return;   // pausad → frys nedräkningen. Inget rigg-cue skickas, så ambiencen loopar vidare.
+    if (paused || autoPaused) return;   // manuell ELLER dilemma-auto-paus → frys nedräkningen (ambiencen loopar vidare).
     timerLeft--;
     broadcast({ type: 'timer', left: timerLeft, full });
-    // ~30 s in i året → årets händelse dyker upp (inte i örådet). Selfplay: servern kör den.
-    if (!eventFired && timerLeft <= full - EVENT_DELAY_S) { eventFired = true; maybeFireEvent(); }
+    // aktiv byggtid som förflutit = full − timerLeft. Vid varje N-sekundersmärke: visa nästa väntande
+    // öhälsohändelse (om någon finns och ingen annan händelse visas just nu). Motorn applicerar effekten då.
+    const elapsedActive = full - timerLeft;
+    if (engine?.cfg?.ohalsaDelayed && elapsedActive >= ohalsaNextMark
+        && !engine.getState().activeCompanyEvent && engine.getState().pendingOhalsa?.length) {
+      const r = engine.fireNextPendingOhalsa();   // emit 'companyEvent' → companyEvent-handlern sätter autoPaused + 10 s
+      if (r.ok) ohalsaNextMark += delaySec;       // nästa väntande efter ytterligare N aktiva sekunder
+    }
+    // Händelser kommer bara ur foretag/ohalsa (automatiskt via motorn) + gm (manuellt) — det gamla
+    // fullt slumpade systemet är borttaget 2026-11-19.
     // 10 s kvar → NEDRÄKNING i riggen (ljus + ljud), samma cue som spelledarens NEDRÄKNING-knapp.
     // SYSTEMCEREMONI (ungated via riggSend) så den spelar i BÅDA lägena — även "med spelledare".
     if (timerLeft <= 10 && timerLeft > 0 && !countdownFired) { countdownFired = true; riggSend('ecoloco/rigg/countdown', 1); }
@@ -479,11 +580,37 @@ function stopTimer() {
 // Utlöses av skärmknapp (WS), GM-kommando eller fysisk knapp/Blocks (ecoloco/spel/pause).
 // Skickar ecoloco/rigg/paus (1/0) som SYSTEMSIGNAL (riggSend, ej gatad) → riggen visar paus-
 // wave även i spelledarläge, tills paus släpps. Gäller i både auto- och spelledarläge.
+// Sänd pausstatus till klienterna. `paused` = MANUELL spelledarpaus (klienten visar "Spelet är pausat"-
+// overlayen). `auto` = händelse-/dilemma-paus (byggtimern fryses + bygge/handel blockeras, MEN ingen
+// paus-overlay — händelse-/dilemmarutan är det som ska synas). Klienten skiljer på de två via dessa fält.
+function broadcastPause() { broadcast({ type: 'paused', paused, auto: autoPaused, left: timerLeft }); }
+
+// Varför bygge/handel är blockerat vid auto-paus — RÄTT text beroende på orsak. En företagshändelse
+// (kris ELLER prestation som EXPANSION) visas i popup-kön → "en händelse visas"; annars ett Ö-råds-/
+// dilemmabeslut → "ett beslut pågår". (Tidigare visades alltid "dilemma pågår", även för händelser.)
+function autoPauseReason() { return engine?.getState()?.activeCompanyEvent ? 'en händelse visas' : 'ett beslut pågår'; }
+
+// Händelsens korta frystid är slut → RESUME spelet (skärmen klickbar, timern tickar igen). Ligger fler
+// händelser i motorns kö: LÖS dem INTE direkt — vänta EVENT_COOLDOWN_MS av normalt spel, lös sedan den
+// nuvarande (vilket får motorn att emit:a nästa → ny kort visning). Är kön tom: lös direkt (nollar aktiv).
+// activeCompanyEvent står kvar under cooldownen → nya byggen köar bakom i stället för att fyra direkt.
+function afterEventShow() {
+  if (!engine) return;
+  autoPaused = false;
+  broadcastPause();   // auto=false; manuell paus (paused=true) består om spelledaren pausat
+  clearTimeout(eventCooldownTimer);
+  if (engine.getState().companyEventQueue.length > 0) {
+    eventCooldownTimer = setTimeout(() => { if (engine) engine.companyEventResolved(); }, EVENT_COOLDOWN_MS);
+  } else {
+    engine.companyEventResolved();   // inget mer i kön → lös nuvarande (nollar activeCompanyEvent)
+  }
+}
+
 function setPaused(on) {
   on = !!on;
   if (on === paused || !started) return;
   paused = on;
-  broadcast({ type: 'paused', paused, left: timerLeft });
+  broadcastPause();
   riggSend('ecoloco/rigg/paus', paused ? 1 : 0);
   console.log(`[spel] paus = ${paused}`);
 }
@@ -509,7 +636,7 @@ function pauseForAwards() {
   timerLeft = full;
   if (!cer || !cer.steps.length) {                 // ingen prisutdelning denna runda (ingen vinnare) → hoppa INTE över örådet
     broadcast({ type: 'timer', left: timerLeft, full, paused: true });
-    return startPolitics();                         // kör örådet direkt (det startar sedan årets timer via endPolitics)
+    return startOrad();                             // kör örådet direkt (det startar sedan årets timer via endPolitics/endDilemma)
   }
   broadcast({ type: 'timer', left: timerLeft, full, paused: true });
   // Rundtimern står stilla tills ceremonin når awardDone. GM: spelledarens award_next startar den.
@@ -531,7 +658,7 @@ function advanceCeremony() {
   rigg?.endAwards(over);
   broadcast({ type: 'event', event: 'awardDone', payload: { over } });
   cer = null;
-  if (!over) { clearBenchResults(); startPolitics(); }                 // prisceremonin klar → ÖRÅD-politik (ordförande lägger beslut), sedan startar året
+  if (!over) { clearBenchResults(); startOrad(); }                     // prisceremonin klar → ÖRÅD (politik ELLER dilemma enl. version), sedan startar året
   else fireFinale();                                                   // KRÖNING: efter prisutdelningen → tänd vinnaren + final
   return true;
 }
@@ -562,7 +689,7 @@ function startAutoCeremony() {
   function step() {
     if (!cer) return;
     if (paused) { cerTimer = setTimeout(step, 400); return; }          // paus → vänta in fortsätt
-    if (!advanceCeremony()) cerTimer = setTimeout(step, CEREMONY_STEP_MS);
+    if (!advanceCeremony()) cerTimer = setTimeout(step, ceremonyStepMs(cer.steps.length));
   }
 }
 function awardsKlar(lag) {
@@ -601,16 +728,6 @@ function maybeResolve() {
   if (liveHumanIds().every(id => klar.has(id))) { stopTimer(); forceResolve(); }
 }
 
-// Kör årets dragna händelse NU (~EVENT_DELAY_S in i året, via rundtimern) — inte vid årsstart/örådet.
-// Selfplay (utan spelledare): servern kör den automatiskt. Med spelledare kör spelledaren den själv (ja/nej).
-function maybeFireEvent() {
-  if (gmMode) return;                                           // med spelledare → spelledaren kör händelsen
-  const S = engine?.getState();
-  if (!S || S.over || !S.pendingEvent) return;
-  if (S.proposal && !S.proposal.resolved) return;              // vänta om en omröstning pågår
-  engine.resolveEventDecision('ja');                           // kör den dragna händelsen → 'event'/'proposalOpened' broadcastas
-}
-
 // Lägg maktbotens (eller en fri-runda-bots) förslag NU. Triggas av rundtimern BOT_POWER_WAIT_S in i
 // rundan (se startTimer) — inte vid rundstart — så en bot med makten väntar ~1 min och människorna
 // hinner ringa och påverka innan boten bestämmer.
@@ -631,29 +748,102 @@ function maybeBotProposal() {
     if (!bots.length) return;
     by = bots[Math.floor(Math.random() * bots.length)];
   }
-  // Grund-3 öhälso-viktat (som förr). Fr.o.m. runda 4: boten kan även välja ur rundans
-  // extra-pool (S.extraProposals); i kris prioriteras Krispaket. Samma logik som src/ui.js pickBotProposal.
-  const base = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud')
-             : Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud');
-  const extra = (S.round >= 4 && Array.isArray(S.extraProposals)) ? S.extraProposals : [];
-  let type = base;
-  if (extra.length && Math.random() < 0.4) {
-    type = (S.oh < 45 && extra.includes('krispaket')) ? 'krispaket' : extra[Math.floor(Math.random() * extra.length)];
-  }
-  engine.openProposal(type, by);
+  // Bot väljer ur de FAKTISKT tillåtna förslagen (motorn är enda källan) — inga hårdkodade id:n.
+  const type = botPickProposal(engine.allowedProposals(), S.oh);
+  if (type) engine.openProposal(type, by);
 }
 
 // ═══════════ ÖRÅD-politik (server-auktoritativ fas efter prisutdelningen) ═══════════
 // Motorn står på det NYA året (roundStart har redan fyrat under ceremonin), så powerTeam +
 // S.extraProposals (5 förslag) är satta. Ordföranden får PROPOSE_SECS att lägga ETT förslag
 // eller 'inget förslag'; läggs ett → VOTE_SECS röstning → konsekvenser → året startar.
+// Ö-råds-dispatcher: versionens beslutssystem avgör. Inga versions-specialfall utanför detta val.
+function startOrad() {
+  if (engine && engine._decisionSystem === 'dilemma') startDilemma();
+  else startPolitics();
+}
+
+// ── ÖRÅD-BESLUT (Flash): auto-presentera rundans beslut → röstning → verkställ → året ──
+// Beslutet kan vara ett A/B-dilemma (dilemmas.js) ELLER en individuell 'rost'-händelse (events.js).
+// Motorn presenterar med rätt mekanik via openOradDecision; serverns röst-/timer-flöde delas.
+function startDilemma() {
+  const S = engine?.getState();
+  if (!S || S.over) { startTimer(); return; }
+  const choice = (S.decisionChoices || [])[0];       // { id, kind:'dilemma'|'event' }
+  if (!choice) { startTimer(); return; }             // inget beslut i år → gå direkt till året
+  dilemma = { stage: 'vote', left: voteSec(), kind: choice.kind };
+  const res = engine.openOradDecision(choice);       // dilemma → 'dilemmaOpened' (A/B) · event → 'proposalOpened' type:event (ja/nej)
+  if (!res || !res.ok) { dilemma = null; startTimer(); return; }
+  // Botar röstar efter en kort delay (skärmarna hinner visa dilemmat); människor röstar via UI (A/B).
+  clearTimeout(botDilemmaTimer);
+  botDilemmaTimer = setTimeout(() => { if (dilemma) { checkBotVotes(); broadcast({ type: 'voteUpdate' }); } }, 8000);
+  tickDilemma();
+}
+function tickDilemma() {
+  clearTimeout(dilemmaTimer);
+  dilemmaTimer = setTimeout(() => {
+    if (!dilemma) return;
+    if (paused) { tickDilemma(); return; }           // paus fryser nedräkningen
+    dilemma.left--;
+    broadcast({ type: 'politicsTimer', stage: 'vote', left: dilemma.left });   // återanvänder vote-timern i UI
+    if (dilemma.left <= 0) { forceDilemmaVotes(); return; }
+    tickDilemma();
+  }, 1000);
+}
+function forceDilemmaVotes() {                        // röst-tiden ute → tvinga kvarvarande + botar
+  const p = engine.getState().proposal;
+  if (!p || p.resolved) return;
+  const strict = !!engine.cfg.dilemmaStrict;          // Flash: uteblivna röster räknas INTE (ingen default-A)
+  if (p.kind === 'dilemma') {
+    // Flash-strict: fyll INTE i uteblivna (de räknas inte). Legacy (Mellan/Skola GM): utebliven → A.
+    if (!strict) humanIds().forEach(id => { if (p.votes[id] === undefined) engine.vote(id, 'A'); });
+  } else {
+    humanIds().forEach(id => { if (p.votes[id] === undefined) engine.vote(id, false); });   // 'rost' (sponsrat): utebliven → NEJ (oförändrat)
+  }
+  mockOpponentsVote(engine, humanIds());              // botar röstar (botar = företag som röstar, ej "uteblivna")
+  if (strict) engine.resolveOpenDecision();           // strict kan vara olöst (ej alla 4 röstade) → avgör med faktiska röster
+}
+function endDilemma() {                               // dilemmat avgjort → året börjar (återanvänder politicsDone-flödet)
+  if (!dilemma) return;
+  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;
+  broadcast({ type: 'event', event: 'politicsDone', payload: {} });   // klienten stänger Ö-råd + stegar årssiffran
+  if (engine && !engine.getState().over) startTimer();
+}
+
+// ── SPELLEDARSTYRT BESLUT under byggfasen (Slice 5 + GM-banken) ──
+// GM aktiverar ett A/B-dilemma ELLER en ja/nej-omröstning (sponsrat) MITT i bygg-/bytesfasen. Auto-paus
+// (frys timer + blockera bygge/handel), omröstning (delat flöde), verkställ, återuppta — men INTE om
+// spelledaren också pausat manuellt (paus-distinktion). Använder motorns gmOpenDecision → en-gång/spel-
+// gating (gmDecisionsUsed). choice = { id, kind:'dilemma'|'event' }.
+function startGmDecision(choice) {
+  if (!engine || phase !== 'spel' || resolvingNow || engine.getState().over) return false;
+  const cur = engine.getState().proposal;
+  if (cur && !cur.resolved) return false;            // ett beslut i taget
+  const res = engine.gmOpenDecision(choice);         // dilemma → 'dilemmaOpened' (A/B) · event → 'proposalOpened' (ja/nej)
+  if (!res || !res.ok) return false;
+  dilemma = { stage: 'vote', left: voteSec(), kind: res.kind || choice.kind || 'dilemma', buildPhase: true };
+  autoPaused = true;                                 // frys byggtimern + blockera bygge/handel
+  broadcastPause();                                  // auto=true → dilemmarutan syns, ingen paus-overlay
+  clearTimeout(botDilemmaTimer);
+  botDilemmaTimer = setTimeout(() => { if (dilemma) { checkBotVotes(); broadcast({ type: 'voteUpdate' }); } }, 8000);
+  tickDilemma();                                     // röst-nedräkning (VOTE_SECS) → forceDilemmaVotes vid 0
+  return true;
+}
+function endBuildDilemma() {                          // dilemmat avgjort → återuppta byggfasen
+  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;
+  autoPaused = false;
+  // Återuppta BARA om spelledaren inte också pausat manuellt — annars stannar spelet pausat.
+  broadcastPause();
+  // Byggtimern (timerInt) tickar vidare av sig själv när autoPaused släppts (den stoppades aldrig).
+}
+
 function startPolitics() {
   const S = engine?.getState();
   if (!S || S.over) { startTimer(); return; }
   const power = S.powerTeam || TEAMS[0];
-  politics = { stage: 'propose', left: PROPOSE_SECS, power };
-  broadcast({ type: 'event', event: 'politicsStart', payload: { power, stage: 'propose', left: PROPOSE_SECS } });
-  if (claims[power] === 'bot') { clearTimeout(botOrdforandeTimer); botOrdforandeTimer = setTimeout(() => botOrdforandeLay(power), 6000); }
+  politics = { stage: 'propose', left: proposeSec(), power };
+  broadcast({ type: 'event', event: 'politicsStart', payload: { power, stage: 'propose', left: proposeSec() } });
+  if (claims[power] === 'bot') { clearTimeout(botOrdforandeTimer); botOrdforandeTimer = setTimeout(() => botOrdforandeLay(power), 12000); }
   tickPolitics();
 }
 function tickPolitics() {
@@ -674,8 +864,8 @@ function tickPolitics() {
 function politicsToVote() {                                   // ordföranden lade ett förslag (proposalOpened)
   if (!politics || politics.stage !== 'propose') return;
   clearTimeout(botOrdforandeTimer);
-  politics.stage = 'vote'; politics.left = VOTE_SECS;
-  broadcast({ type: 'politicsTimer', stage: 'vote', left: VOTE_SECS });
+  politics.stage = 'vote'; politics.left = voteSec();
+  broadcast({ type: 'politicsTimer', stage: 'vote', left: voteSec() });
 }
 function endPolitics() {                                      // inget förslag / skip / förslag avgjort → året börjar
   if (!politics) return;
@@ -686,9 +876,8 @@ function endPolitics() {                                      // inget förslag 
 function botOrdforandeLay(power) {                            // bot-ordförande lägger (eller avstår) så självspel har politik
   if (!politics || politics.stage !== 'propose' || claims[power] !== 'bot') return;
   const S = engine.getState();
-  const extra = Array.isArray(S.extraProposals) ? S.extraProposals : [];
-  let type = S.oh < 45 ? (Math.random() < 0.6 ? 'gron' : 'forbud') : (Math.random() < 0.5 ? 'skatt' : (Math.random() < 0.5 ? 'gron' : 'forbud'));
-  if (extra.length && Math.random() < 0.5) type = (S.oh < 45 && extra.includes('krispaket')) ? 'krispaket' : extra[Math.floor(Math.random() * extra.length)];
+  const type = botPickProposal(engine.allowedProposals(), S.oh);   // ur de faktiskt tillåtna — inga hårdkodade id:n
+  if (!type) { endPolitics(); return; }                            // inget att lägga → inget förslag i år
   const before = engine.getState().proposal;
   engine.openProposal(type, power);
   if (engine.getState().proposal === before) { endPolitics(); return; }   // nekades → inget förslag
@@ -746,7 +935,7 @@ setInterval(() => {
 // "somnat". idleMs räknar BARA upp medan rundtimern tickar (inte lobby/tutorial/prisutdelning/paus) →
 // den ackumulerade tiden är ren aktiv speltid, persistar över rundor, och nollställs av varje handling.
 setInterval(() => {
-  if (!started || !engine || !timerInt || paused || resolvingNow || engine.getState().over) return;
+  if (!started || !engine || !timerInt || paused || autoPaused || resolvingNow || engine.getState().over) return;
   let togNagon = false;
   for (const id of TEAMS) {
     const ws = claims[id];
@@ -845,6 +1034,7 @@ wss.on('connection', ws => {
       }
       case 'selectCard': {
         if (!engine || !lag || resolvingNow) break;   // ingen motor (lobby/omstart) → ignorera vilsen klient i stället för att krascha
+        if (autoPaused) { send(ws, { type: 'actionResult', reqId: m.reqId, res: { ok: false, reason: autoPauseReason() } }); break; }   // auto-paus (händelse/beslut) → bygge fryst
         const res = engine.selectCard(lag, m.tier);
         send(ws, { type: 'actionResult', reqId: m.reqId, res });
         break;
@@ -881,14 +1071,17 @@ wss.on('connection', ws => {
       }
       case 'vote': {
         if (!engine || !lag) break;
-        engine.vote(lag, !!m.yes);
+        const pv = engine.getState().proposal;
+        const isDil = pv && pv.kind === 'dilemma';
+        engine.vote(lag, isDil ? (m.choice === 'B' ? 'B' : 'A') : !!m.yes);   // dilemma: A/B · politik/event: ja/nej
         broadcast({ type: 'voteUpdate' });
         checkBotVotes();
-        if (!engine.getState().proposal || engine.getState().proposal.resolved) maybeResolve();
+        if (!isDil && (!engine.getState().proposal || engine.getState().proposal.resolved)) maybeResolve();
         break;
       }
       case 'tradeOffer': {
         if (!engine || !lag) break;
+        if (autoPaused) { send(ws, { type: 'tradeResult', reqId: m.reqId, res: { ok: false, why: autoPauseReason() } }); break; }   // auto-paus (händelse/beslut) → handel fryst
         const target = claims[m.to];
         const t = engine.team(lag);
         if (t[m.giveCur] < m.give) { send(ws, { type: 'tradeResult', reqId: m.reqId, res: { ok: false, why: 'du saknar täckning' } }); break; }
@@ -957,12 +1150,6 @@ wss.on('connection', ws => {
 // ——— Retur-kanal: spelledarpanel → server (ecoloco/spel/gm, ICKE-retained) ———
 // Samma mosquitto_sub-spawn-mönster som tools/hjarna-stubb.py — ingen ny npm-dep.
 // Payload = {cmd:...}. ENDAST spelledar-initierade kommandon; allt är fas-gardat & idempotent.
-// Push nytt pending-händelseförslag till spelledarpanelen (state bär pendingEvent) + riggen (eventforslag-topic).
-function broadcastEventforslag() {
-  const pe = engine?.getState().pendingEvent;
-  if (pe) riggPublish('ecoloco/rigg/eventforslag', JSON.stringify({ id: pe.id, namn: pe.rubrik, text: pe.text }));
-  broadcast({ type: 'event', event: 'eventforslag', payload: pe ? { id: pe.id, rubrik: pe.rubrik, text: pe.text } : null });
-}
 function handleGmCmd(m) {
   if (!m || typeof m.cmd !== 'string') return;
   switch (m.cmd) {
@@ -973,6 +1160,14 @@ function handleGmCmd(m) {
       console.log(`[gm] GM-läge = ${gmMode}`);
       broadcast(lobbyMsg());   // spegla läget till klienterna (STARTA-knappens synlighet)
       break;
+    case 'variant': {    // {val:'flash'|'mellan'|'skola'|null} → välj version för NÄSTA parti.
+      const v = m.val == null ? null : String(m.val);          // null = legacy/standard
+      if (!isValidVariant(v)) { console.warn(`[variant] ogiltig variant: ${v} (giltiga: ${VARIANT_IDS.join(', ')})`); break; }
+      selectedVariant = v;                                     // appliceras vid nästa newEngine() → pågående parti orört
+      console.log(`[variant] nästa parti: ${v || 'legacy (standard)'}${started ? ` (pågående parti kör ${runningVariant || 'legacy'} vidare)` : ''}`);
+      broadcast(lobbyMsg());                                   // spegla valet till spelledarpanelen
+      break;
+    }
     case 'pause':        // {on?:bool} eller toggla — frys bara spelmotorn (paus-knapp / arkadknapp / Blocks)
       setPaused(m.on !== undefined ? !!m.on : !paused);
       break;
@@ -1024,39 +1219,31 @@ function handleGmCmd(m) {
       if (!started || !engine || engine.getState().over || resolvingNow) break;
       engine.pengaslapp();
       break;
-    case 'event': {   // {beslut:'ja'|'nej'} → kör/hoppa rundans händelseförslag (en gång/runda, idempotent via pendingEvent)
+    case 'dilemma':      // {id} → bakåtkompat: aktivera ett A/B-dilemma i byggfasen
+      if (startGmDecision({ id: m.id, kind: 'dilemma' })) console.log(`[spel] spelledaren aktiverade dilemma '${m.id}' (byggfas-paus)`);
+      else console.warn(`[spel] dilemma '${m.id}' kunde inte aktiveras (fas/beslut pågår/redan använt?)`);
+      break;
+    case 'gmEvent': {    // {id} → DIREKT GM-händelse (gm-events.js). Verkställs utan omröstning via companyEvent-kön.
       if (!gmMode || !started || !engine || engine.getState().over) break;
-      if (eventFiring) break;                                      // en händelse körs redan (rigg-cue + 3 s) → ignorera dubbeltryck
-      const pe = engine.getState().pendingEvent;
-      if (!pe) break;
-      const beslut = m.beslut === 'ja' ? 'ja' : 'nej';
-      session?.noteGmDecision(engine.getState().round, pe.id, beslut);   // logga GM-beslutet till summaryn
-      if (beslut === 'nej') { engine.resolveEventDecision('nej'); break; }   // hoppa: ingen cue, ingen fördröjning
-      // KÖR: rigg-cue (per händelse, default happening) nu → 3 s senare visas händelsen på skärmarna.
-      fireRiggCue(EVENT_RIGG_CUE[pe.id] || 'happening');
-      eventFiring = true;
-      setTimeout(() => {
-        eventFiring = false;
-        if (!started || !engine || engine.getState().over) return;
-        if (engine.getState().pendingEvent?.id !== pe.id) return;   // omstart/omspel hann ändra läget
-        engine.resolveEventDecision('ja');                          // visar händelsen (+ event-ljud via rigg.js)
-      }, RIGG_EVENT_DELAY_MS);
+      const res = engine.fireGmEvent(m.id);
+      if (res.ok) console.log(`[spel] spelledaren körde GM-händelse '${m.id}'`);
+      else console.warn(`[spel] GM-händelse '${m.id}' avvisad: ${res.reason}`);
       break;
     }
-    case 'valjEvent': {   // {id} → spelledaren väljer SJÄLV rundans händelse (byter pending; går att byta tills den körts)
-      if (!gmMode || !started || !engine || engine.getState().over) break;
-      if (eventFiring) break;                                      // en händelse körs redan (cue + 3 s) → ignorera
-      engine.chooseEvent(m.id);
-      broadcastEventforslag();
+    case 'gmDecision':   // {id, kind:'dilemma'|'event'} → aktivera ett BEFINTLIGT dilemma/omröstning i byggfasen
+      if (!gmMode) break;
+      if (startGmDecision({ id: m.id, kind: m.kind })) console.log(`[spel] spelledaren aktiverade beslut '${m.id}' (${m.kind})`);
+      else console.warn(`[spel] beslut '${m.id}' kunde inte aktiveras (fas/pågår/redan använt?)`);
+      break;
+    case 'gmRandomDecision': {   // slumpa fram ett ej-använt dilemma/omröstning — BARA på GM:s aktiva handling
+      if (!gmMode) break;
+      const pick = engine.gmPickRandomDecision();
+      if (pick && startGmDecision(pick)) console.log(`[spel] spelledaren slumpade beslut '${pick.id}' (${pick.kind})`);
+      else console.warn('[spel] slumpat beslut kunde inte aktiveras (fas/pågår/alla använda?)');
       break;
     }
-    case 'slumpaEvent': {   // spelledaren lämnar tillbaka till slumpen → dra en ny händelse
-      if (!gmMode || !started || !engine || engine.getState().over) break;
-      if (eventFiring) break;
-      engine.drawRandomEvent();
-      broadcastEventforslag();
-      break;
-    }
+    // (Det gamla fullt slumpade händelse-flödet 'event'/'valjEvent'/'slumpaEvent' togs bort 2026-11-19.
+    //  Spelledaren styr nu händelser via DIREKTA GM-HÄNDELSER (gmEvent) + DILEMMAN/OMRÖSTNINGAR (gmDecision).)
     case 'award_next': {   // GM: stega prisutdelningen ett pris — skärm + rigg i exakt takt (delad med selfplay)
       if (!gmMode || !cer) break;
       advanceCeremony();
