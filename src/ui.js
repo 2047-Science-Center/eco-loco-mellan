@@ -521,7 +521,7 @@ function renderAwardCard(typ, w, footer = '') {
   // PRISUTDELNING (P3, Klara 2026-11-23): prisbilden fyller HELA skärmen + en centrerad grå popup med
   // text/ikoner (ingen liten prisbild-popup). Bilden byts per pris → "rummet byter färg". 'prize'
   // gör kortet fullskärm. Ingen bov → ingen bild (mörk skärm + popup).
-  $('awardcard').className = 'awardcard prize' + (typ === 'sab' ? ' sab' : '');
+  $('awardcard').className = 'awardcard prize' + (typ === 'sab' ? ' sab' : '') + (w ? '' : ' ingen');
   const bild = w ? (AWARD_BILD[typ] || '') : '';
   $('awardcard').innerHTML =
     (bild ? `<img class="aw-img" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +

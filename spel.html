@@ -269,12 +269,14 @@
      popup med text/ikoner. .prize gör kortet fullskärm (öråd-popupen ovan opåverkad).
      FINJUSTERING: aw-pop top/min-width/max-width/padding nedan är reglagen för storlek+placering. */
   #ov-award .awardcard.prize { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; border: none; border-radius: 0; box-shadow: none; overflow: hidden; display: block; }
+  #ov-award .awardcard.prize.ingen { background: transparent; }   /* ingen bov → svart ersätts av kontrollrummet (overlay-bakgrunden) bakom popupen */
   /* Prisbilden fyller skärmen (byts per pris → "rummet byter färg"). Centrerad grå text-popup ovanpå.
      FINJUSTERING: .aw-pop top/min-width/max-width är reglagen för storlek+placering. */
   /* Nativ storlek (max 1672×941) centrerad → ingen uppskalning = skarpt; mörk ram runt (variant 2). */
   #ov-award .awardcard.prize .aw-img { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); max-width: min(100%, 1672px); max-height: min(100%, 941px); width: auto; height: auto; display: block; }
   #ov-award .awardcard.prize .aw-scrim { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,.18), rgba(0,0,0,.62)); }
-  #ov-award .awardcard.prize .aw-pop { position: absolute; top: 52%; left: 50%; transform: translate(-50%,-50%); background: rgba(33,30,23,.94); border: 3px solid var(--gold); border-radius: 18px; padding: 40px 56px 44px; text-align: center; min-width: 440px; max-width: 72vw; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
+  /* Avlång form (Klara 2026-11-23): bred + flack. min-width = längden; mindre lodrät padding. */
+  #ov-award .awardcard.prize .aw-pop { position: absolute; top: 52%; left: 50%; transform: translate(-50%,-50%); background: rgba(33,30,23,.94); border: 3px solid var(--gold); border-radius: 18px; padding: 28px 80px 32px; text-align: center; min-width: 680px; max-width: 80vw; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
   #ov-award .awardcard.prize.sab .aw-pop { border-color: var(--led-red); }
   #ov-award .awardcard.prize .em { font-size: 66px; line-height: 1; }
   #ov-award .awardcard.prize h4 { margin: 6px 0 10px; font-size: 28px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
@@ -284,8 +286,10 @@
   @keyframes fortsattpuls { 50% { opacity: .4; } }
 
   /* Event-popup (bild + rubrik + text) */
+  /* Mörkare backdrop vid händelser (Klara 2026-11-23) → sändningen syns tydligare, spelet bakom släcks. */
+  #ov-event { background: rgba(5,4,3,.94); }
   /* Ingen grå ytterruta → undvik "ruta i ruta". Sändnings-ramen (bilden) är enda "rutan"; rubrik +
-     text ligger fritt på den mörka overlay-tonen (.overlay = rgba(10,9,7,.78)). */
+     text ligger fritt på den mörka overlay-tonen. */
   #ov-event .eventcard { width: min(1200px, 92vw); background: transparent; border: none; box-shadow: none; display: flex; flex-direction: column; padding: 0; }
   /* "Live"-rubrik: inkommande sändning från ön (pulserande prick). Kontrast mot prisutdelning (sker i rummet). */
   #ov-event .event-head { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0 12px; font-family: var(--font-disp); font-size: 16px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); }
