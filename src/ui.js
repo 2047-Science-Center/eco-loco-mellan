@@ -727,7 +727,7 @@ game.on('proposalResolved', p => run(async () => {
     }
     $('dz-foot').innerHTML = `<div class="dz-tally"><span class="jav">${p.yesCount} JA</span> · <span class="nejv">${noCount} NEJ</span></div>`;
     sponsratVote = null; sponsratPicked = null;
-    setTimeout(() => { $('ov-dilemma').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, 5000);
+    setTimeout(() => { $('ov-dilemma').classList.remove('open'); rivRummet(); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, 5000);
     return;
   }
   renderVoteState();
@@ -769,7 +769,7 @@ game.on('dilemmaResolved', p => run(async () => {
   dilemmaVote = null; dilemmaPicked = null;
   // Håll resultatet (matchar serverns fördröjning): 7 s vid beslut, 4,5 s vid "inget beslut".
   const holdMs = p.outcome ? 7000 : 4500;
-  setTimeout(() => { $('ov-dilemma').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, holdMs);
+  setTimeout(() => { $('ov-dilemma').classList.remove('open'); rivRummet(); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, holdMs);
 }));
 
 game.on('voteUpdate', () => { renderVoteState(); if ($('ov-dilemma')?.classList.contains('open')) (sponsratVote ? renderSponsratVotes() : renderDilemmaVotes()); });   // röst-tally live (politik + dilemma/sponsrat-pluttar)
