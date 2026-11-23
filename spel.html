@@ -254,7 +254,9 @@
   /* KONTROLLRUMMET som ihållande bakgrund genom öråd → prisutdelning → omröstning (Klara 2026-11-23).
      #ov-award (öråd-skylt + prisutdelning) + #ov-vote/#ov-choose (omröstning/förslag) får rummet som
      bakgrund. Prisutdelningens .prize-kort är fullskärm → täcker rummet → "bilden byts till resp pris". */
-  #ov-award, #ov-vote, #ov-choose, #ov-power { background-color: #0b0a07; background-image: linear-gradient(rgba(8,7,5,.45), rgba(8,7,5,.58)), url('assets/kontrollrum.png'); background-size: cover, min(100%, 1672px) auto; background-position: center, center; background-repeat: no-repeat, no-repeat; }
+  /* Kontrollrummet bara på CEREMONIELLA moment (öråd-skylt + prisutdelning + "har ordet"), INTE under
+     själva omröstningen/förslags-väljaren — där blev rummet rörigt bakom det täta röst-UI:t (Klara 2026-11-23). */
+  #ov-award, #ov-power { background-color: #0b0a07; background-image: linear-gradient(rgba(8,7,5,.45), rgba(8,7,5,.58)), url('assets/kontrollrum.png'); background-size: cover, cover; background-position: center, center; background-repeat: no-repeat, no-repeat; }
 
   /* ÖRÅD-popupen återanvänder #ov-award (plain .awardcard) → behåll som panel-kort. */
   #ov-award .awardcard { width: min(880px, 90vw); background: var(--panel); border: 4px solid var(--gold); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,.7); }
