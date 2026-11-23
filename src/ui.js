@@ -1666,10 +1666,16 @@ function rebuildFromState(S) {
 }
 
 // ——— Init ———
-$('roundmax').textContent = E().cfg.rounds;
-$('ohgoal').style.left = `${E().cfg.threshold}%`;
-$('ohgoal-lbl').textContent = `MÅL ${E().cfg.threshold}`;
-$('ohzones').innerHTML = `<i class="z1" style="width:${E().cfg.redZone}%"></i><i class="z2" style="width:${E().cfg.greenZone - E().cfg.redZone}%"></i><i class="z3" style="width:${100 - E().cfg.greenZone}%"></i>`;
+// Null-säkert: om cfg ännu saknas (t.ex. lobby innan parti) används manifestets standard, så att
+// EN saknad siffra aldrig kan kasta och avbryta resten av modulen (→ döda knappar). Uppdateras
+// sedan av rebuildFromState när partiets riktiga variant-config kommit in.
+const initCfg = (E()?.cfg) || manifest.config || {};
+const CFG_RUNDOR = initCfg.rounds ?? 8, CFG_MAL = initCfg.threshold ?? 60;
+const CFG_RED = initCfg.redZone ?? 20, CFG_GREEN = initCfg.greenZone ?? 70;
+$('roundmax').textContent = CFG_RUNDOR;
+$('ohgoal').style.left = `${CFG_MAL}%`;
+$('ohgoal-lbl').textContent = `MÅL ${CFG_MAL}`;
+$('ohzones').innerHTML = `<i class="z1" style="width:${CFG_RED}%"></i><i class="z2" style="width:${CFG_GREEN - CFG_RED}%"></i><i class="z3" style="width:${100 - CFG_GREEN}%"></i>`;
 
 if (ONLINE) {
   $('lobby').style.display = 'grid';

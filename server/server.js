@@ -239,7 +239,10 @@ const ROST_KATALOG = EVENTS.filter(e => e.typ === 'rost').map(e => ({ id: e.id, 
 // mode = valda variantens onboarding-läge (flash=selfplay/mellan=tutorial) → klienten vet redan i lobbyn
 // om STARTA ska köra tutorial eller starta direkt (innan motorn/config finns).
 function variantInfo() { return { selected: selectedVariant, running: runningVariant, options: VARIANT_IDS, mode: buildEngineConfig(manifest.config || {}, selectedVariant).mode }; }
-function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), variant: variantInfo(), config: engine ? engine.cfg : undefined, state: engine ? { ...engine.getState(), gmMode, riggSilent, started, dilemmaKatalog: DILEMMA_KATALOG, gmKatalog: GM_KATALOG, rostKatalog: ROST_KATALOG } : null })); }
+// Lobby-config: även utan igångsatt parti ska varje send() bära en GILTIG config (vald variants),
+// annars blir reader.cfg = undefined i klienten och init-koden (E().cfg.rounds) kastar → döda knappar.
+function lobbyCfg() { return buildEngineConfig(manifest.config || {}, selectedVariant); }
+function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), variant: variantInfo(), config: engine ? engine.cfg : lobbyCfg(), state: engine ? { ...engine.getState(), gmMode, riggSilent, started, dilemmaKatalog: DILEMMA_KATALOG, gmKatalog: GM_KATALOG, rostKatalog: ROST_KATALOG } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {
   return { type: 'lobby', started, spelledare: riggSilent,   // spelledare på → klienterna gömmer STARTA (spelledaren styr starten)
