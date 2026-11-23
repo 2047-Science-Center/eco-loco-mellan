@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popup-stilar — prototyp</title>
+<link rel="stylesheet" href="/assets/fonts/fonts.css">
+<style>
+  :root {
+    --bg:#121009; --panel:#211E17; --panel2:#2A261D; --panel3:#0C0B07;
+    --edge:#4A443A; --edge2:#5C5547; --gold:#C9A94F; --text:#F2ECDD; --dim:#B8AF9A;
+    --led:#F0B33C; --led-red:#F0564B; --led-green:#3DD68C; --material:#8FB3C4;
+    --font-disp:"Oxanium","Avenir Next",system-ui,sans-serif;
+    --font-num:"Chakra Petch",ui-monospace,"Menlo",monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#0E0D0A; color:var(--text); font-family:var(--font-disp); padding:0 0 80px; }
+  header { padding:22px 24px; border-bottom:2px solid var(--edge); position:sticky; top:0; background:#0E0D0A; z-index:5; }
+  header h1 { margin:0 0 6px; font-size:24px; letter-spacing:1px; }
+  header p { margin:0; color:var(--dim); font-size:15px; line-height:1.5; max-width:900px; }
+  header .edit { color:var(--gold); }
+  h2.sec { margin:40px 24px 6px; font-size:16px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; border-top:1px solid var(--edge); padding-top:26px; }
+  p.seclead { margin:0 24px 18px; color:var(--dim); font-size:14px; max-width:900px; }
+  .row { display:flex; flex-wrap:wrap; gap:26px; padding:0 24px; align-items:flex-start; }
+  .variant { background:rgba(10,9,7,.78); border-radius:16px; padding:18px; width:460px; }
+  .vlabel { font-size:13px; letter-spacing:2px; color:var(--gold); text-transform:uppercase; margin-bottom:12px; font-weight:800; }
+  .vnote { font-size:12px; color:var(--dim); margin-top:10px; line-height:1.4; }
+  [contenteditable]:focus { outline:2px dashed var(--gold); outline-offset:3px; border-radius:4px; }
+
+  /* ───────── HÄNDELSE = RAPPORT FRÅN ÖN (sändning) ───────── */
+  .ev-head { display:flex; align-items:center; justify-content:center; gap:10px; padding:2px 0 12px; font-family:var(--font-disp); font-size:15px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); }
+  .ev-head::before { content:''; width:9px; height:9px; border-radius:50%; background:var(--led-red); box-shadow:0 0 8px var(--led-red); animation:livedot 1.4s ease-in-out infinite; }
+  @keyframes livedot { 0%,100%{opacity:1} 50%{opacity:.25} }
+  .ev-frame { position:relative; border:2px solid var(--edge2); border-radius:10px; overflow:hidden; background:#000; box-shadow:0 6px 24px rgba(0,0,0,.5); }
+  .ev-frame img { width:100%; height:240px; object-fit:cover; display:block; filter:contrast(1.05) saturate(.88) brightness(1.05); }
+  .ev-frame .warm { position:absolute; inset:0; background:linear-gradient(135deg,rgba(240,179,60,.08),rgba(10,8,5,.15)); mix-blend-mode:soft-light; pointer-events:none; }
+  .ev-frame .glow { position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 50px rgba(201,169,79,.20),inset 0 0 14px rgba(201,169,79,.10); animation:signalvar 5s ease-in-out infinite; }
+  @keyframes signalvar { 0%,100%{opacity:1} 48%{opacity:.94} 50%{opacity:.88} 52%{opacity:.94} }
+  .ev-tx { text-align:center; padding:18px 10px 4px; }
+  .ev-tx h3 { margin:0 0 10px; font-size:30px; letter-spacing:1px; }
+  .ev-tx p { margin:0 auto; max-width:380px; font-size:19px; line-height:1.5; color:var(--text); }
+  .ev-kons { display:flex; flex-wrap:wrap; justify-content:center; gap:14px; margin-top:14px; font-weight:800; font-size:18px; }
+  .ev-kons .minus { color:var(--led-red); } .ev-kons .oh { color:var(--gold); }
+  /* H1: fri text, ingen bakgrund */
+  .h1 .ev-tx { text-shadow:0 2px 10px rgba(0,0,0,.7); }
+  /* H2: text på ljusgrå tonplatta */
+  .h2 .ev-tx { background:rgba(230,225,210,.10); border:1px solid rgba(230,225,210,.18); border-radius:12px; margin-top:14px; padding:18px 16px; }
+  /* H3: text på mörk tonplatta */
+  .h3 .ev-tx { background:rgba(12,11,7,.55); border-radius:12px; margin-top:14px; padding:18px 16px; }
+
+  /* ───────── PRISUTDELNING = sker i rummet ───────── */
+  .aw { width:460px; border-radius:16px; overflow:hidden; border:4px solid var(--gold); background:var(--panel); }
+  .aw.sab { border-color:var(--led-red); }
+  .aw-head { text-align:center; font-family:var(--font-disp); font-size:15px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); padding:14px 0 2px; }
+  .aw-tx { text-align:center; padding:12px 24px 22px; }
+  .aw-tx .em { font-size:38px; line-height:1; }
+  .aw-tx h4 { margin:4px 0 10px; font-size:24px; letter-spacing:1px; color:var(--dim); text-transform:uppercase; }
+  .aw-tx .who { font-size:24px; font-weight:800; }
+  .aw-tx .val { font-family:var(--font-num); font-size:22px; color:var(--led-green); display:block; margin-top:4px; }
+  /* P1: bild-kort (bild + text under) */
+  .p1 .aw-img { width:100%; height:240px; object-fit:cover; display:block; background:#14120E; }
+  /* P2: scen + spotlight + hjälte */
+  .p2 .aw-stage { position:relative; height:240px; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse 70% 90% at 50% 0%,#2a2213 0%,#15130d 60%,var(--panel) 100%); }
+  .p2 .aw-spot { position:absolute; top:-20px; left:50%; transform:translateX(-50%); width:320px; height:280px; pointer-events:none; background:radial-gradient(ellipse 50% 60% at 50% 0%,rgba(201,169,79,.40),rgba(201,169,79,.07) 55%,transparent 72%); }
+  .p2.sab .aw-spot { background:radial-gradient(ellipse 50% 60% at 50% 0%,rgba(240,86,75,.34),rgba(240,86,75,.06) 55%,transparent 72%); }
+  .p2 .aw-hero { position:relative; width:150px; height:150px; border-radius:50%; object-fit:cover; filter:drop-shadow(0 8px 26px rgba(0,0,0,.6)); border:3px solid var(--gold); }
+  .p2.sab .aw-hero { border-color:var(--led-red); }
+  /* P3: fullskärmsbild + centrerad grå popup */
+  .p3 { width:640px; aspect-ratio:16/9; position:relative; border-radius:16px; overflow:hidden; border:3px solid var(--edge2); background:#000; }
+  .p3 img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .p3 .scrim { position:absolute; inset:0; background:radial-gradient(ellipse at center,rgba(0,0,0,.25),rgba(0,0,0,.6)); }
+  .p3 .pop { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(33,30,23,.94); border:3px solid var(--gold); border-radius:16px; padding:22px 30px; text-align:center; min-width:300px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .p3.sab .pop { border-color:var(--led-red); }
+  .p3 .pop .em { font-size:34px; } .p3 .pop h4 { margin:4px 0 8px; font-size:22px; letter-spacing:1px; color:var(--dim); text-transform:uppercase; }
+  .p3 .pop .who { font-size:22px; font-weight:800; } .p3 .pop .val { font-family:var(--font-num); font-size:20px; color:var(--led-green); display:block; margin-top:4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Popup-stilar — jämför & bestäm</h1>
+  <p>Fristående prototyp (rör inte spelet). Öppnas via servern så bilder/typsnitt laddas:
+  <b>http://localhost:8765/design/popup-stilar-prototyp.html</b>. <span class="edit">All rubrik/text går att klicka i och skriva i direkt</span> (sparas inte — det är för att känna på formuleringar). Badge i P2 är en lag-bild som platshållare; i spelet är det den fasetterade djur-badgen.</p>
+</header>
+
+<h2 class="sec">A · Händelse = “Rapport från ön” — text-bakgrund</h2>
+<p class="seclead">Bilden ligger i sändningsramen (beslutad C v3). Frågan: ska texten ligga fri, eller på en tonplatta? Jämför:</p>
+<div class="row">
+  <div class="variant h1">
+    <div class="vlabel">H1 · Fri text (ingen bakgrund) — nuvarande i spelet</div>
+    <div class="ev-head">Rapport från ön</div>
+    <div class="ev-frame"><img src="/assets/event_skog_major.png" alt=""><div class="warm"></div><div class="glow"></div></div>
+    <div class="ev-tx"><h3 contenteditable>SKOGSBRAND</h3><p contenteditable>Skogen står i lågor. Röken lägger sig över hela ön.</p><div class="ev-kons"><span class="oh">öns hälsa</span><span class="minus">−8</span></div></div>
+    <div class="vnote">Renast, inga rutor. Text-skugga för läsbarhet mot overlay-tonen.</div>
+  </div>
+  <div class="variant h2">
+    <div class="vlabel">H2 · Text på ljusgrå tonplatta</div>
+    <div class="ev-head">Rapport från ön</div>
+    <div class="ev-frame"><img src="/assets/event_skog_major.png" alt=""><div class="warm"></div><div class="glow"></div></div>
+    <div class="ev-tx"><h3 contenteditable>SKOGSBRAND</h3><p contenteditable>Skogen står i lågor. Röken lägger sig över hela ön.</p><div class="ev-kons"><span class="oh">öns hälsa</span><span class="minus">−8</span></div></div>
+    <div class="vnote">Egen ljus platta under bilden — risk för “ruta i ruta”.</div>
+  </div>
+  <div class="variant h3">
+    <div class="vlabel">H3 · Text på mörk tonplatta</div>
+    <div class="ev-head">Rapport från ön</div>
+    <div class="ev-frame"><img src="/assets/event_skog_major.png" alt=""><div class="warm"></div><div class="glow"></div></div>
+    <div class="ev-tx"><h3 contenteditable>SKOGSBRAND</h3><p contenteditable>Skogen står i lågor. Röken lägger sig över hela ön.</p><div class="ev-kons"><span class="oh">öns hälsa</span><span class="minus">−8</span></div></div>
+    <div class="vnote">Diskret mörk platta — håller ihop men mjukare än H2.</div>
+  </div>
+</div>
+
+<h2 class="sec">B · Prisutdelning (varje år) — stil</h2>
+<p class="seclead">Ska kännas som att det sker <b>i rummet</b> (inte en sändning från ön). Jämför tre upplägg — vi behåller det du gillar, inget tas bort förrän du bestämt:</p>
+<div class="row">
+  <div class="variant">
+    <div class="vlabel">P1 · Bild-kort (bild + text under)</div>
+    <div class="aw p1">
+      <div class="aw-head">Prisutdelning</div>
+      <img class="aw-img" src="/assets/framgangsrik_foretag01.png" alt="">
+      <div class="aw-tx"><div class="em">🏆</div><h4 contenteditable>Årets ledande företag</h4><div class="who" contenteditable>Björnen<span class="val">mest förmögenhet</span></div></div>
+    </div>
+    <div class="vnote">Ungefär som det var först — men liknar händelserna (risk: ingen kontrast).</div>
+  </div>
+  <div class="variant">
+    <div class="vlabel">P2 · Spotlight + hjälte — nuvarande i spelet</div>
+    <div class="aw p2">
+      <div class="aw-head">Prisutdelning</div>
+      <div class="aw-stage"><div class="aw-spot"></div><img class="aw-hero" src="/assets/makt/skog.png" alt=""></div>
+      <div class="aw-tx"><div class="em">🏆</div><h4 contenteditable>Årets ledande företag</h4><div class="who" contenteditable>Björnen<span class="val">mest förmögenhet</span></div></div>
+    </div>
+    <div class="vnote">Varm ljuskägla + lagets badge. Tydligast “i rummet”-känsla, ingen bild.</div>
+  </div>
+  <div class="variant sab">
+    <div class="vlabel">P2 · sabotör (röd spotlight)</div>
+    <div class="aw p2 sab">
+      <div class="aw-head">Prisutdelning</div>
+      <div class="aw-stage"><div class="aw-spot"></div><img class="aw-hero" src="/assets/makt/stad.png" alt=""></div>
+      <div class="aw-tx"><div class="em">💀</div><h4 contenteditable>Årets sabotör</h4><div class="who" contenteditable>Örnen<span class="val" style="color:var(--led-red)">−24 öhälsa</span></div></div>
+    </div>
+    <div class="vnote">Samma upplägg, röd kägla för boven.</div>
+  </div>
+</div>
+<div class="row" style="margin-top:26px">
+  <div class="variant" style="width:auto">
+    <div class="vlabel">P3 · Fullskärmsbild + centrerad grå popup (din idé att testa)</div>
+    <div class="aw p3">
+      <img src="/assets/eldsjal01.png" alt="">
+      <div class="scrim"></div>
+      <div class="pop"><div class="em">🌱</div><h4 contenteditable>Årets eldsjäl</h4><div class="who" contenteditable>Oxen<span class="val">+18 öhälsa</span></div></div>
+    </div>
+    <div class="vnote">Prisbilden fyller hela skärmen; texten + ikoner i en grå popup mitt på. Stor “det syns på skärmen”-känsla, men mindre “i rummet” än P2.</div>
+  </div>
+</div>
+</body>
+</html>
