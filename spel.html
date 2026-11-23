@@ -23,7 +23,7 @@
   .ohval, .resbox .v, .team .tr, .endtime, .stepper .amt, .ranktable .n, #me-pengar, #me-material, .chip span { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
   #stagewrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
-  #stage { width: 1920px; height: 1080px; transform-origin: center center; position: relative; background: var(--bg); display: flex; flex-direction: column; }
+  #stage { flex: none; width: 1920px; height: 1080px; transform-origin: center center; position: relative; background: var(--bg); display: flex; flex-direction: column; }
 
   /* ——— Toppbar ——— */
   .topbar { min-height: 92px; display: flex; flex-direction: column; gap: 10px; padding: 12px 24px; background: var(--panel3); border-bottom: 3px solid var(--edge); }
@@ -319,7 +319,7 @@
      bakgrund. Prisutdelningens .prize-kort är fullskärm → täcker rummet → "bilden byts till resp pris". */
   /* Kontrollrummet bara på CEREMONIELLA moment (öråd-skylt + prisutdelning + "har ordet"), INTE under
      själva omröstningen/förslags-väljaren — där blev rummet rörigt bakom det täta röst-UI:t (Klara 2026-11-23). */
-  #ov-award, #ov-power { background: transparent; }   /* ingen egen toning → rummet har EXAKT samma ljusstyrka före/under/efter prisbilderna (inget "tonar om") */   /* rummet kommer från #room-bg (ihållande) → inga blinkningar mellan skärmarna */
+  #ov-award, #ov-power { background: rgba(6,5,4,.38); }   /* DIM: rummet ligger mer "i bakgrunden" bakom text-popupen (samma nivå som prisbildens .aw-scrim → ingen ljusstyrke-skillnad mellan ÖRÅD-skylt och prisbild). Höj/sänk .38 för mörkare/ljusare. */   /* rummet kommer från #room-bg (ihållande) → inga blinkningar mellan skärmarna */
   /* #room-bg = kontrollrummet som ligger KVAR under hela örådet (prisutdelning → "har ordet" → förslag → omröstning).
      ui.js tänder det så fort någon av de fyra overlayerna öppnas och släcker det först en stund efter att den
      sista stängts (ingen glipa där spelplanen blinkar fram). */
@@ -353,7 +353,8 @@
   /* Prisbilder tonas in över föregående bild (eller neutrala rummet) → skärmen slocknar aldrig mellan priserna. */
   #ov-award .awardcard.prize .aw-img.aw-new { animation: awfade .7s ease both; }
   @keyframes awfade { from { opacity: 0; } to { opacity: 1; } }
-  #ov-award .awardcard.prize .aw-scrim { display: none; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,.18), rgba(0,0,0,.62)); }
+  #ov-award .awardcard.prize.ingen .aw-scrim { display: none; }   /* ingen prisbild → overlay-bakgrunden dimmar redan (ingen dubbel dimning) */
+  #ov-award .awardcard.prize .aw-scrim { position: absolute; inset: 0; pointer-events: none; background: rgba(6,5,4,.38); animation: awfade .7s ease both; }   /* platt dimning (ingen vinjett) – samma .38 som overlay-bakgrunden */
   /* Avlång form (Klara 2026-11-23): bred + flack. min-width = längden; mindre lodrät padding. */
   #ov-award .awardcard.prize .aw-pop { position: absolute; top: 52%; left: 50%; transform: translate(-50%,-50%); background: rgba(33,30,23,.94); border: 3px solid var(--gold); border-radius: 18px; padding: 28px 80px 32px; text-align: center; min-width: 680px; max-width: 80vw; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
   #ov-award .awardcard.prize.sab .aw-pop { border-color: var(--led-red); }
