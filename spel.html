@@ -263,9 +263,15 @@
   @keyframes fortsattpuls { 50% { opacity: .4; } }
 
   /* Event-popup (bild + rubrik + text) */
-  #ov-event .eventcard { width: min(840px, 86vw); background: var(--panel); border: 4px solid var(--edge2); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,.7); }
+  #ov-event .eventcard { width: min(960px, 92vw); background: var(--panel); border: 4px solid var(--edge2); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,.7); padding: 16px 16px 0; }
   #ov-event.warn .eventcard { border-color: var(--led-red); }
-  #ov-event img { width: 100%; height: 430px; object-fit: cover; display: block; background: #14120E; }
+  /* Sändnings-ram (Analog Control Room Transmission, C v3): bilden ensam i ramen → känns som "det som syns på skärmen". */
+  #ov-event .event-frame { position: relative; border: 2px solid var(--edge2); border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  #ov-event.warn .event-frame { border-color: var(--led-red); }
+  #ov-event .event-frame img { width: 100%; height: 480px; object-fit: cover; display: block; background: #14120E; filter: contrast(1.05) saturate(.88) brightness(1.05); }
+  #ov-event .event-frame .warm { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(240,179,60,.08), rgba(10,8,5,.15)); mix-blend-mode: soft-light; pointer-events: none; }
+  #ov-event .event-frame .glow { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 50px rgba(201,169,79,.20), inset 0 0 14px rgba(201,169,79,.10); animation: signalvar 5s ease-in-out infinite; }
+  @keyframes signalvar { 0%, 100% { opacity: 1; } 48% { opacity: .94; } 50% { opacity: .88; } 52% { opacity: .94; } }
   #ov-event .event-tx { padding: 22px 32px 26px; text-align: center; }
   #ov-event .event-tx h3 { margin: 0 0 10px; font-size: 34px; letter-spacing: 1px; }
   #ov-event .event-tx p { margin: 0; font-size: 21px; line-height: 1.5; color: var(--text); }
@@ -623,7 +629,13 @@
 
   <!-- Event-popup (bild + rubrik + text) -->
   <div class="overlay" id="ov-event"><div class="eventcard">
-    <img id="event-img" alt="">
+    <!-- Bilden ensam i en "sändnings-ram" (Analog Control Room Transmission, variant C v3):
+         ram + varmt soft-light-lager + animerad inre glöd. Text/konsekvenser ligger UNDER ramen. -->
+    <div class="event-frame">
+      <img id="event-img" alt="">
+      <div class="warm"></div>
+      <div class="glow"></div>
+    </div>
     <div class="event-tx">
       <h3 id="event-rubrik"></h3>
       <p id="event-text"></p>
