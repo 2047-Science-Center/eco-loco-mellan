@@ -20,7 +20,7 @@ import { renderMap } from './map.js';
 import { logoSVG } from './logos.js';
 import { GameAudio } from './audio.js';
 import { ServerNet } from './net.js';
-import { ico, moodIco, curIco } from './icons.js';
+import { ico, moodIco, curIco, ICON_IDS } from './icons.js';
 
 const $ = id => document.getElementById(id);
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -244,6 +244,11 @@ initIcons();
 function fit() {
   const s = Math.min(innerWidth / 1920, innerHeight / 1080);
   $('stage').style.transform = `scale(${s})`;
+  // Extra yta (i stage-px) som skärmen har utöver 16:9-rutan → kontrollrums-bakgrunden/prisbilderna får bleeda ut hit
+  // (negativ inset i CSS) och fylla HELA skärmen utan svarta kanter, oavsett skärmformat.
+  const st = $('stage').style;
+  st.setProperty('--ex', Math.max(0, (innerWidth / s - 1920) / 2) + 'px');
+  st.setProperty('--ey', Math.max(0, (innerHeight / s - 1080) / 2) + 'px');
 }
 addEventListener('resize', fit); fit();
 
@@ -383,18 +388,26 @@ game.on('ohalsa', p => run(async () => {
 }));
 
 // Konsekvens-chips under event-bilden: vilka lag drabbas och hur + öns hälsa.
+// Konsekvenser i händelse-popupen: lag (logga + namn + ±siffra + symbol) + ÖNS HÄLSA som egen ruta med ö-ikonen.
+// rader: [{ teamId, delar: [{ v, sym }] }], oh: { v } | null.  (Samma markup för alla händelsekällor.)
+function eventKonsMarkup(rader, oh) {
+  const sg = v => v > 0 ? '+' : '−';
+  const del = d => `<span class="${d.v > 0 ? 'plus' : 'minus'}"><span class="cv">${sg(d.v)}${Math.abs(d.v)}</span><span class="sy">${ico(d.sym, 52)}</span></span>`;
+  const teams = rader.filter(r => r.teamId && r.delar.length)
+    .map(r => `<div class="ek-chip">${logoSVG(r.teamId, 64)}<span class="cn">${teamName(r.teamId)}</span>${r.delar.map(del).join('')}</div>`).join('');
+  const ohb = oh && oh.v
+    ? `<div class="ek-oh"><span class="isl">${ico('on', 84)}</span><div><div class="ohl">ÖNS HÄLSA</div><div class="ohv ${oh.v > 0 ? 'plus' : 'minus'}"><span class="cv">${sg(oh.v)}${Math.abs(oh.v)}</span><span class="sy">${ico(oh.v > 0 ? 'tillvaxt' : 'industri', 64)}</span></div></div></div>` : '';
+  return (teams ? `<div class="ek-teams">${teams}</div>` : '') + ohb;
+}
 function eventKonsHTML(p) {
-  const chip = (v, ic) => `<span class="${v > 0 ? 'plus' : 'minus'}">${v > 0 ? '+' : ''}${v} ${ic}</span>`;
-  const chips = [];
-  (p.effekter || []).forEach(e => {
-    const parts = [];
-    if (e.egen)     parts.push(chip(e.egen, e.sektor === 'pengar' ? ico('pengar', 14) : ico('material', 14)));
-    if (e.pengar)   parts.push(chip(e.pengar, ico('pengar', 14)));
-    if (e.material) parts.push(chip(e.material, ico('material', 14)));
-    if (parts.length) chips.push(`<div class="kons">${logoSVG(e.teamId, 26)} ${teamName(e.teamId)} ${parts.join(' ')}</div>`);
+  const rader = (p.effekter || []).map(e => {
+    const delar = [];
+    if (e.egen)     delar.push({ v: e.egen, sym: e.sektor === 'pengar' ? 'pengar' : 'material' });
+    if (e.pengar)   delar.push({ v: e.pengar, sym: 'pengar' });
+    if (e.material) delar.push({ v: e.material, sym: 'material' });
+    return { teamId: e.teamId, delar };
   });
-  if (p.oh) chips.push(`<div class="kons oh">${ico('on', 16)} öns hälsa ${chip(p.oh, p.oh > 0 ? ico('tillvaxt', 14) : ico('industri', 14))}</div>`);
-  return chips.join('');
+  return eventKonsMarkup(rader, p.oh ? { v: p.oh } : null);
 }
 
 // Händelse (EVENT-systemet). Ljudet spelas centralt (rigg); skärmen visar bild + rubrik + text + konsekvenser.
@@ -478,18 +491,11 @@ game.on('companyEvent', p => run(async () => {
   evImg.src = p.id ? `assets/event_${p.id}.png` : evFallback;
   $('event-rubrik').textContent = p.namn || '';
   $('event-text').textContent = p.text || '';
-  const chip = (v, ic) => `<span class="${v > 0 ? 'plus' : 'minus'}">${v > 0 ? '+' : ''}${v} ${ic}</span>`;
   // teams tom (t.ex. RESURSBRIST som verkar via produktionsminskning) → inga resurs-rader, bara text.
-  const rader = Array.isArray(p.teams) ? p.teams
-    : [{ teamId: p.teamId, dPengar: p.dPengar, dMaterial: p.dMaterial }];
-  const rows = rader.filter(r => r.teamId).map(r => {
-    const parts = [];
-    if (r.dPengar)   parts.push(chip(r.dPengar, ico('pengar', 14)));
-    if (r.dMaterial) parts.push(chip(r.dMaterial, ico('material', 14)));
-    return `<div class="kons">${logoSVG(r.teamId, 26)} ${teamName(r.teamId)} ${parts.join(' ')}</div>`;
-  });
-  if (p.ohalsa) rows.push(`<div class="kons oh">${ico('on', 16)} öns hälsa ${chip(p.ohalsa, p.ohalsa > 0 ? ico('tillvaxt', 14) : ico('industri', 14))}</div>`);
-  $('event-kons').innerHTML = rows.join('');
+  const rader = (Array.isArray(p.teams) ? p.teams
+    : [{ teamId: p.teamId, dPengar: p.dPengar, dMaterial: p.dMaterial }])
+    .map(r => ({ teamId: r.teamId, delar: [r.dPengar && { v: r.dPengar, sym: 'pengar' }, r.dMaterial && { v: r.dMaterial, sym: 'material' }].filter(Boolean) }));
+  $('event-kons').innerHTML = eventKonsMarkup(rader, p.ohalsa ? { v: p.ohalsa } : null);
   $('ov-event').classList.toggle('warn', !!p.warn);
   $('ov-event').classList.add('open');
   await delay(300);
@@ -525,29 +531,30 @@ function clickOrTimeout(el, ms, lockMs = 0, ignorePause = false) {
 
 // Pris-typ → kort-innehåll (samma för selfplay-popupen och GM-stegningen). Ljud spelas centralt (rigg/hjärna).
 const awardMeta = (typ, w) => ({
-  led: { em: ico('trofe', 58),   rubrik: 'Årets ledande företag', val: w ? `+${w.varde} kapital` : '', cls: 'ohplus' },
-  eld: { em: ico('tillvaxt', 58), rubrik: 'Årets eldsjäl',         val: w ? `+${w.varde} öhälsa` : '',  cls: 'ohplus' },
-  sab: { em: ico('sabotor', 58), rubrik: 'Årets sabotör',          val: w ? `${w.varde} öhälsa` : '',   cls: 'ohminus' },
+  led: { em: ico('trofe', 58),   rubrik: 'Årets ledande företag', icon: 'trofe',    sym: null,       plus: true,  cls: 'ohplus' },   // totalt kapital (pengar + material): INGEN symbol, bara siffran (Klara 2026-11-23)
+  eld: { em: ico('tillvaxt', 58), rubrik: 'Årets eldsjäl',         icon: 'tillvaxt', sym: 'tillvaxt', plus: true,  cls: 'ohplus' },
+  sab: { em: ico('sabotor', 58), rubrik: 'Årets sabotör',          icon: 'sabotor',  sym: 'industri', plus: false, cls: 'ohminus' },
 }[typ]);
 // Lag-agnostiska prisbilder (kontrollrummets skärmar) — samma bild oavsett vinnarlag.
 const AWARD_BILD = {
-  led: 'assets/kontrollrum_guld.png',
-  eld: 'assets/kontrollrum_gron.png',
-  sab: 'assets/kontrollrum_rod.png',
+  led: 'assets/kontrollrum_guld.jpg',
+  eld: 'assets/kontrollrum_gron.jpg',
+  sab: 'assets/kontrollrum_rod.jpg',
 };
 // Kontrollrummet (#room-bg) ligger kvar bakom hela örådet: tänds direkt när prisutdelning/"har ordet"/förslag/
 // omröstning öppnas, släcks först RUM_HALL ms efter att den sista stängts → ingen blink av spelplanen mellan dem.
 const RUM_HALL = 2500;
 let rumT = null;
 // Örådet helt klart (politicsDone) → riv kontrollrummet DIREKT (snabb tonad ut) så spelaren landar på ön och ser "ÅR N".
-function rivRummet() {
+function rivRummet(mjukt = false) {
   const el = $('room-bg'); if (!el) return;
   clearTimeout(rumT); rumT = null;
-  el.classList.add('snabb'); el.classList.remove('on');
-  setTimeout(() => el.classList.remove('snabb'), 500);
+  if (!mjukt) el.classList.add('snabb');   // mjukt (politik → ö-vyn): standardtonen 0,6 s i stället för snabb 0,25 s
+  el.classList.remove('on');
+  setTimeout(() => el.classList.remove('snabb'), 700);
 }
 if (typeof MutationObserver !== 'undefined' && $('room-bg')) {
-  const ids = ['ov-award', 'ov-power', 'ov-choose', 'ov-vote', 'ov-dilemma'];
+  const ids = ['ov-award', 'ov-power', 'ov-choose', 'ov-vote', 'ov-dilemma', 'ov-result', 'ov-year'];
   const syncRum = () => {
     if (ids.some(i => $(i)?.classList.contains('open'))) { clearTimeout(rumT); rumT = null; $('room-bg').classList.add('on'); }
     else if (!rumT) rumT = setTimeout(() => { rumT = null; if (!ids.some(i => $(i)?.classList.contains('open'))) $('room-bg').classList.remove('on'); }, RUM_HALL);
@@ -556,7 +563,16 @@ if (typeof MutationObserver !== 'undefined' && $('room-bg')) {
   ids.forEach(i => $(i) && mo.observe($(i), { attributes: true, attributeFilter: ['class'] }));
 }
 let prevAwardBild = '';   // senast visade prisbild under pågående ceremoni (nollas när prisutdelningen stängs)
-if (typeof Image !== 'undefined') [...Object.values(AWARD_BILD), 'assets/kontrollrum_neutral.png'].forEach(src => { new Image().src = src; });   // förladda → inget hack vid första visningen
+// Förladda + DEKODA alla stora rumsbilder vid start och håll referenserna (annars kan första bilden dekodas under tonade övergången → ingen synlig tonad inkomst).
+const _rumsBilder = [];
+if (typeof Image !== 'undefined') [...Object.values(AWARD_BILD), 'assets/kontrollrum_neutral.jpg', 'assets/vagg_mork.jpg', 'assets/vagg_aker.jpg', 'assets/vagg_skog.jpg', 'assets/vagg_tundra.jpg', 'assets/vagg_stad.jpg'].forEach(src => { const im = new Image(); im.src = src; im.decode?.().catch(() => {}); _rumsBilder.push(im); });
+// ÖRÅD-banderollen (mitt på skärmen) tonas mjukt ut INNAN första priset ritas → ingen hård byte (Klara 2026-11-23).
+async function tonaUtOrad() {
+  const b = $('awardcard')?.querySelector('.aw-ban.mid');
+  if (!b) return;
+  b.classList.add('out');
+  await delay(450);
+}
 function renderAwardCard(typ, w, footer = '') {
   const m = awardMeta(typ, w);
   // PRISUTDELNING (P3, Klara 2026-11-23): prisbilden fyller HELA skärmen + en centrerad grå popup med
@@ -571,10 +587,25 @@ function renderAwardCard(typ, w, footer = '') {
     (prev ? `<img class="aw-img" src="${prev}" alt="">` : '') +
     (bild ? `<img class="aw-img aw-new" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +
     `<div class="aw-scrim"></div>` +
-    `<div class="aw-pop"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
-    (w ? `<div class="who">${logoSVG(w.teamId, 84)}<span class="nm">${w.namn}</span><span class="val ${m.cls}">${m.val}</span></div>`
-       : `<div class="who" style="font-size:22px;color:var(--dim)">${typ === 'sab' ? 'Alla skötte klimatet i år — ingen bov' : 'Ön andas ut'}</div>`) +
-    footer + `</div>`;
+    (w ? `<div class="aw-ban" style="--acc:${typ === 'sab' ? 'var(--led-red)' : typ === 'eld' ? 'var(--led-green)' : 'var(--gold)'}">`
+        + `<div class="bar"></div>`
+        + `<div class="lg"><span class="halo"></span>${logoSVG(w.teamId, 200)}</div>`
+        + `<div class="info"><div class="tt"><span class="ic">${ico(m.icon, 48)}</span><span class="t">${m.rubrik}</span></div><div class="nm">${w.namn}</div></div>`
+        + `<div class="vl"><span class="sign">${m.plus ? '+' : '−'}</span><span class="num" data-n="${Math.abs(w.varde)}" style="min-width:${String(Math.abs(w.varde)).length}ch">0</span>${m.sym ? `<span class="sy">${ico(m.sym, 124)}</span>` : ''}</div>`
+        + `</div>` + (footer ? `<div class="aw-foot">${footer}</div>` : '')
+     : (typ === 'sab'
+        ? `<div class="aw-ban" style="--acc:var(--led-green)"><div class="bar"></div>`
+          + `<div class="lg dimmed">${ico('sabotor', 120)}<span class="slash"></span></div>`
+          + `<div class="info"><div class="tt"><span class="ic">${ico(m.icon, 48)}</span><span class="t">${m.rubrik}</span></div><div class="nm">INGEN BOV</div></div>`
+          + `<div class="vl okmark">${ico('ja', 112)}</div></div>` + (footer ? `<div class="aw-foot">${footer}</div>` : '')
+        : ''));   // ingen eldsjäl → inget visas alls (priset hoppas över)
+  // Siffran räknar upp efter att banderollen glidit in (matchar animationen i CSS).
+  const num = $('awardcard').querySelector('.aw-ban .num');
+  if (num && typeof requestAnimationFrame !== 'undefined') {
+    const to = +num.dataset.n, t0 = performance.now() + 850;
+    const tick = t => { if (!num.isConnected) return; const x = Math.max(0, Math.min(1, (t - t0) / 700)); num.textContent = Math.round(to * (1 - Math.pow(1 - x, 3))); if (x < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  } else if (num) num.textContent = num.dataset.n;
 }
 
 // Slutskärmen (win/lose) ska visas FÖRST när prisceremonin för sista rundan spelats klart.
@@ -616,13 +647,13 @@ function showPendingSlut() {
   const s = pendingSlut; pendingSlut = null; showSlut(s);
 }
 
-// SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
+// SELFPLAY: skärmen stegar själv genom priserna på timer (5 s per pris).
 game.on('award', p => run(async () => {
   const show = async (typ, w, sista) => {
-    renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
+    await tonaUtOrad();
+    renderAwardCard(typ, w);                // ingen "tryck för att fortsätta": priset går alltid på timer (spelledarläge: styrs av spelledaren via awardStep)
     $('ov-award').classList.add('open');
-    await delay(500);                       // hinner läsas innan tryck registreras
-    await clickOrTimeout($('ov-award'), 8000);
+    await delay(5000);                      // samma takt som online (awardStep): varje pris hålls kvar 5 s
     if (!sista) return;                     // overlayn hålls ÖPPEN mellan priserna → ingen släckt skärm
     $('ov-award').classList.remove('open');
     prevAwardBild = '';
@@ -641,10 +672,15 @@ game.on('award', p => run(async () => {
 // skärm). Servern väntar in skylten (2 s) innan första awardStep så första priset får full tid.
 game.on('awardCeremony', () => run(async () => {
   prevAwardBild = '';
-  $('awardcard').className = 'awardcard';   // nollställ ev. 'sab'-klass (röd ram) från förra årets sabotör-pris → ÖRÅD får vanlig grå/silvrig ram
-  $('awardcard').innerHTML = `<div class="aw-tx" style="text-align:center;padding:24px 8px">`
-    + `<div style="font-family:var(--font-disp);font-size:72px;font-weight:800;letter-spacing:6px;color:var(--gold)">${ico('orad', 60)} ÖRÅD</div>`
-    + `<div class="who" style="font-size:19px;color:var(--dim);margin-top:8px">Året är slut — rådet samlas</div></div>`;
+  // ÖRÅD: banderoll i prisernas stil, MITT på skärmen (Klara 2026-11-23). Rådsikon + RÅDET SAMLAS + ÖRÅD + årets nummer.
+  $('awardcard').className = 'awardcard prize ingen';
+  const yr = parseInt($('roundnum')?.textContent, 10);
+  $('awardcard').innerHTML =
+    `<div class="aw-ban mid" style="--acc:var(--gold)"><div class="bar"></div>`
+    + `<div class="lg"><span class="halo"></span>${ico('orad', 150)}</div>`
+    + `<div class="info row"><div class="nm">ÖRÅD</div><div class="sub">– RÅDET SAMLAS</div></div>`
+    + (yr ? `<div class="vl"><span class="lab">ÅR</span><span class="num2">${yr}</span></div>` : '')
+    + `</div>`;
   $('ov-award').classList.add('open');   // .overlay-bakgrunden släcker ner skärmen → kvar tänd genom hela prisutdelningen.
   // SELFPLAY: håll ÖRÅD-skylten kvar KLIENTSTYRT. Serverns paus räcker inte — bokslutet (byggen/öhälsa)
   // kan dra över den, och då racar skylten mot första priset och blinkar förbi. Här står den garanterat
@@ -652,6 +688,8 @@ game.on('awardCeremony', () => run(async () => {
   if (!E()?.getState()?.gmMode) await delay(3000);
 }));
 game.on('awardStep', p => run(async () => {
+  if (p.typ === 'eld' && !p.w) return;   // ingen eldsjäl → visas inte alls (föregående pris ligger kvar tills nästa)
+  await tonaUtOrad();
   renderAwardCard(p.typ, p.w);
   $('ov-award').classList.add('open');
   if (!E()?.getState()?.gmMode) await delay(5000);   // SELFPLAY: varje pris hålls kvar 5 s klientstyrt (lika med serverns takt → låser sig när ikapp, pacar själv om bokslutet drog över)
@@ -723,6 +761,10 @@ game.on('gameEnd', p => run(async () => {
 
 game.on('proposalOpened', p => run(async () => {
   // proposal_open-ljud spelas centralt (rigg); 'vote' stannar som torr feedback när DU trycker JA/NEJ.
+  if ($('ov-choose').classList.contains('open') && p.type) {   // valt kort markeras (guldkant), de andra tonas ner → sedan omröstning
+    document.querySelectorAll('#proplist .propchoice').forEach(el => el.classList.add(el.dataset.type === p.type ? 'pick' : 'fade'));
+    await delay(1000);
+  }
   $('ov-choose').classList.remove('open');   // ÖRÅD: stäng förslagsväljaren → röstningen öppnas
   if (p.type === 'event') openSponsratModal(p);   // sponsrat (rost) → v3-vyn (JA/NEJ, grön/röd)
   else openVoteModal(p);                           // politik-förslag → #ov-vote
@@ -749,18 +791,21 @@ game.on('proposalResolved', p => run(async () => {
     setTimeout(() => { $('ov-dilemma').classList.remove('open'); rivRummet(); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, 5000);
     return;
   }
+  // POLITIK: de sista rösterna visas en kort stund, sedan resultat-popup (GICK IGENOM / FÖLL) på timer.
   renderVoteState();
   $('vote-btns').style.display = 'none';
-  if (p.type === 'event') {
-    $('vote-sub').innerHTML = p.passed
-      ? `<b style="color:var(--led-green)">${p.yesCount} av 4 lag tog erbjudandet — ön tar smällen</b>`
-      : `<b style="color:var(--dim)">Inget lag nappade — ön slapp undan</b>`;
-  } else {
-    $('vote-sub').innerHTML = p.passed
-      ? `<b style="color:var(--led-green)">${ico('ja', 16)} Förslaget gick igenom (${p.yesCount} av 4 röstade ja)</b>`
-      : `<b style="color:var(--led-red)">${ico('nej', 16)} Förslaget föll (${p.yesCount} av 4 röstade ja)</b>`;
-  }
-  setTimeout(() => { $('ov-vote').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, 1900);
+  await delay(900);
+  const def = propDefs().find(d => d.type === p.type);
+  const teams = E().getState().teams;
+  const ic = ICON_IDS.includes(p.type) ? ico(p.type, 120) : (def?.pic || '');
+  $('ov-result').innerHTML = `<div class="rp ${p.passed ? 'ok' : 'no'}"><div class="rtop"><span class="ri">${ic}</span>`
+    + `<div class="rm"><div class="rl">${def?.rubrik || p.event?.rubrik || 'Förslag'}</div><div class="rs">${ico(p.passed ? 'ja' : 'nej', 64)} ${p.passed ? 'GICK IGENOM' : 'FÖLL'}</div></div>`
+    + `<div class="rn">${p.yesCount}<span>/ ${teams.length}</span></div></div>`
+    + `<div class="rv">${teams.map((t, i) => { const ja = p.votes?.[t.id] === true; return `<span class="vtm" style="animation-delay:${(1 + i * .18).toFixed(2)}s"><i class="c ${ja ? 'ja' : 'nej'}">${ico(ja ? 'ja' : 'nej', 52)}</i><em>${t.namn}${t.id === game.me ? ' (du)' : ''}</em></span>`; }).join('')}</div></div>`;
+  $('ov-result').classList.add('open');
+  $('ov-vote').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs();
+  await delay(4200);
+  $('ov-result').classList.remove('open'); $('ov-result').innerHTML = '';
 }));
 
 // DILEMMA (Flash Ö-råd): auto-presenterat → A/B-röstning → resultat. politicsDone stänger + stegar året.
@@ -770,25 +815,35 @@ game.on('dilemmaOpened', p => run(async () => {
 }));
 game.on('dilemmaResolved', p => run(async () => {
   const d = dilemmaById(p.id);
-  const tallyHtml = `<span class="av">${p.aCount} A</span> · <span class="bv">${p.bCount} B</span>`;
-  $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = '';   // nedräkning → KLART
-  if (!p.outcome) {   // OAVGJORT (dilemmaStrict): inget beslut → inga effekter. Grå ruta över båda.
+  $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = '';
+  if (!p.outcome) {   // OAVGJORT (dilemmaStrict): inget beslut → inga effekter.
     audio.play('ui_close');
     logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — INGET BESLUT (${p.aCount} A – ${p.bCount} B)`, 'lg-politik');
-    $('dz-choices').innerHTML = `<div class="resultcard none">Inget beslut · ni kunde inte bestämma er</div>`;
-    $('dz-foot').innerHTML = `<div class="dz-tally">${tallyHtml} · inga förändringar</div>`;
-  } else {   // vinnarkortet täcker båda knapparnas bredd, i sin färg + konsekvenser
-    const a = (d && d.alternativ[p.outcome]) || {};
-    const side = p.outcome === 'A' ? 'a' : 'b';
+  } else {
+    const a0 = (d && d.alternativ[p.outcome]) || {};
     audio.play('proposal_pass');
-    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — alternativ <b>${p.outcome}</b> genomförs: ${a.namn || ''}`, 'lg-politik');
-    $('dz-choices').innerHTML = `<div class="resultcard win ${side}"><div class="rtop"><span class="ab">${p.outcome}</span><span class="won">VANN</span><span class="nm">${(a.namn || '').toUpperCase()}</span></div><div class="kons">${dilemmaKons(a.effects)}</div></div>`;
-    $('dz-foot').innerHTML = `<div class="dz-tally">${tallyHtml}</div>`;
+    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — alternativ <b>${p.outcome}</b> genomförs: ${a0.namn || ''}`, 'lg-politik');
   }
   dilemmaVote = null; dilemmaPicked = null; dzResolved = true;
-  // Håll resultatet (matchar serverns fördröjning): 7 s vid beslut, 4,5 s vid "inget beslut".
-  const holdMs = p.outcome ? 7000 : 4500;
-  setTimeout(() => { $('ov-dilemma').classList.remove('open'); rivRummet(); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, holdMs);
+  // Som i politiken: de sista rösterna syns en kort stund, sedan resultat-popup där svaren visas ETT I TAGET (cirklar med A/B + lagnamn).
+  renderDilemmaVotes();
+  await delay(900);
+  const teams = E().getState().teams;
+  const win = p.outcome, a = (d && win && d.alternativ[win]) || {};
+  const cls = win === 'A' ? 'a' : win === 'B' ? 'b' : 'none';
+  $('ov-result').innerHTML = `<div class="rwrap"><div class="rp ${cls}"><div class="rtop"><span class="rab">${win || '–'}</span>`
+    + `<div class="rm"><div class="rl">${win ? `ALTERNATIV ${win} VANN` : 'Ö-RÅDET'}</div><div class="rs">${win ? (a.namn || '').toUpperCase() : 'INGET BESLUT'}</div></div></div>`
+    + (win ? `<div class="kons">${dilemmaKons(a.effects)}</div>` : `<div class="rl" style="text-align:center">Ni kunde inte bestämma er — inga förändringar</div>`)
+    + `<div class="rv">${teams.map((t, i) => { const v = p.votes?.[t.id]; const c = v === 'A' ? 'a' : v === 'B' ? 'b' : 'x';
+        return `<span class="vtm" style="animation-delay:${(0.9 + i * .55).toFixed(2)}s"><i class="c ${c}">${v === 'A' || v === 'B' ? v : '–'}</i><em>${t.namn}${t.id === game.me ? ' (du)' : ''}</em></span>`; }).join('')}</div></div>`
+    + `<div class="rtally${win ? '' : ' none'}"><span class="av">${p.aCount} A</span><span class="sep"> – </span><span class="bv">${p.bCount} B</span></div></div>`;   // tallyn UNDER rutan
+  $('ov-result').classList.add('open');
+  $('ov-dilemma').querySelector('.dz')?.classList.add('out');
+  await delay(400);
+  $('ov-dilemma').classList.remove('open'); $('ov-dilemma').querySelector('.dz')?.classList.remove('out');
+  voteOpenFor = null; renderMe(); renderTeams(); renderRegs();
+  await delay(win ? 5200 : 2700);   // totalt ≈ serverns hållning (7 s / 4,5 s) → politicsDone (ÅR-banderoll i kontrollrummet) köas efteråt
+  $('ov-result').classList.remove('open'); $('ov-result').innerHTML = '';
 }));
 
 game.on('voteUpdate', () => { renderVoteState(); if ($('ov-dilemma')?.classList.contains('open') && !dzResolved) (sponsratVote ? renderSponsratVotes() : renderDilemmaVotes()); });   // röst-tally live (ej efter avgörandet)
@@ -1244,16 +1299,21 @@ game.on('politicsStart', p => run(async () => {
 function showOrdforande(power) {
   return new Promise(res => {
     const namn = teamName(power), farg = AREAS.find(a => a.id === power)?.farg || 'var(--gold)';
-    const img = $('power-img');
-    img.onerror = () => { img.onerror = null; img.style.display = 'none'; };
-    img.style.display = ''; img.src = `assets/makt/${power}.png`;
-    $('power-rubrik').innerHTML = `<span style="color:${farg}">${namn.toUpperCase()}</span> HAR ORDET`;
-    $('power-tx').innerHTML = power === game.me ? 'Du lägger årets beslut — välj ett förslag!' : `<b style="color:${farg}">${namn}</b> lägger årets beslut. Ring och påverka!`;
-    $('ov-power').classList.add('open');
+    const ov = $('ov-power');
+    // Kontrollrummet (#room-bg) ligger bakom → mörk emblemvägg tonas in över det → lagets emblem lyser upp → banderoll glider in.
+    ov.innerHTML =
+      `<div class="pw-wall pw-room" style="background-image:url(assets/kontrollrum_neutral.jpg)"></div>`
+      + `<div class="pw-wall pw-mork" style="background-image:url(assets/vagg_mork.jpg)"></div>`
+      + `<div class="pw-wall pw-lit" style="background-image:url(assets/vagg_${power}.jpg)"></div><div class="pw-dim"></div>`
+      + `<div class="pw-ban" style="--acc:${farg}"><div class="bar"></div>`
+      + `<div class="lg"><span class="halo"></span>${logoSVG(power, 200)}</div>`
+      + `<div class="info"><div class="tt"><span class="ic">${ico('orad', 48)}</span><span class="t">HAR ORDET</span></div><div class="nm">${namn.toUpperCase()}</div>`
+      + (power === game.me ? `<div class="you">${ico('rosta', 34)} DIN TUR</div>` : `<div class="ring">Ring och påverka!</div>`) + `</div>`
+      + `<div class="vl">${ico('rosta', 112)}</div></div>`;
+    ov.classList.remove('out'); ov.classList.add('open');
     let done = false;
-    const finish = () => { if (done) return; done = true; $('ov-power').onclick = null; clearTimeout(tmo); $('ov-power').classList.remove('open'); res(); };
-    $('ov-power').onclick = finish;
-    const tmo = setTimeout(finish, 3000);
+    const finish = () => { if (done) return; done = true; clearTimeout(tmo); ov.classList.add('out'); setTimeout(() => { ov.classList.remove('open', 'out'); ov.innerHTML = ''; }, 500); res(); };
+    const tmo = setTimeout(finish, 4800);   // timer (ingen klick-stängning): animationen tar ~2,6 s
   });
 }
 game.on('politicsTimer', p => {
@@ -1267,11 +1327,29 @@ game.on('politicsTimer', p => {
 });
 game.on('politicsDone', () => run(async () => {
   $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null; dilemmaVote = null;
-  rivRummet();
+  const rumPa = $('room-bg')?.classList.contains('on');   // politik: kontrollrummet ligger kvar → ÅR-banderoll där, sedan mjuk övergång till ön
+  if (!rumPa) rivRummet();
   $('choose-timer').textContent = ''; $('vote-timer').textContent = '';
   // Örådet klart → NU byter årssiffran, loggens ÅR-avdelare sätts (så örådsbeslutet ligger kvar
   // under året vars öråd det var) och "ÅR N"-bannern visas, sedan spelas det nya året.
-  if (cerNastaRunda) { const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; loggRunda(r); await banner(`ÅR ${r}`, false, 1600); }
+  if (cerNastaRunda) {
+    const r = cerNastaRunda; cerNastaRunda = null; $('roundnum').textContent = r; loggRunda(r);
+    if (rumPa) {
+      $('ov-year').innerHTML = `<div class="yr">${ico('on', 130)}<div class="yt"><div class="yn">ÅR <b>${r}</b></div><div class="ys">TILLBAKA TILL ÖN <span class="ya">›</span></div></div></div>`;
+      $('ov-year').classList.add('open');
+      // Går av sig självt efter ~5 s, men ett tryck tar en direkt tillbaka till ön (liten pil = klickbar). Klicklås 600 ms mot misstag.
+      await new Promise(resolve => {
+        const t = setTimeout(done, 4600);
+        let lock = true; setTimeout(() => { lock = false; }, 600);
+        function done() { clearTimeout(t); $('ov-year').removeEventListener('pointerdown', onDown); resolve(); }
+        function onDown() { if (!lock) done(); }
+        $('ov-year').addEventListener('pointerdown', onDown);
+      });
+      $('ov-year').querySelector('.yr')?.classList.add('out'); await delay(400);
+      $('ov-year').classList.remove('open'); $('ov-year').innerHTML = '';
+      rivRummet(true); await delay(700);                       // mjuk tonad övergång till ö-vyn
+    } else await banner(`ÅR ${r}`, false, 1600);
+  } else if (rumPa) rivRummet(true);
   // Örådet kan ha ändrat vad som får byggas DETTA år (förbud → smutsigt kort förbjudet, naturreservat,
   // sektorblockad, byggboom). roundStart ritade handen FÖRE örådet, så rita om den NU när besluten gäller.
   renderHand(); renderMe(); renderTeams(); renderRegs();
@@ -1296,6 +1374,37 @@ function openPolitikval(power) {
   $('ov-choose').classList.add('open');
 }
 
+// Omröstningsrutan: förslaget uppdelat i rader (Klara 2026-11-23). Rad(er) för företagen, därunder en rad för ön (bara om den påverkas).
+// Siffror ur cfg; lagnamn (värsta bov / rikaste / grönaste) ur motorn. Ingen löptext.
+function propKons(type) {
+  const c = E().cfg, bov = E().worstPolluter(), rik = E().richest(), gron = E()._greenest();
+  const sg = n => (n > 0 ? '+' : '−') + Math.abs(n);
+  const num = (n, sym) => `<b class="${n > 0 ? 'up' : 'down'}">${sg(n)}</b><span class="sy">${ico(sym, 34)}</span>`;
+  const pg = n => num(n, 'pengar'), mt = n => num(n, 'material');
+  const W = t => `<span class="who">${t}</span>`;
+  const R = (...x) => `<div class="r">${x.join('')}</div>`;
+  const ARR = '<span class="arr">→</span>';
+  const warn = t => `<span class="who">${ico('varning', 34)} ${t}</span>`;
+  const oh = n => `<div class="r ke"><span class="isl">${ico('on', 44)}</span>${W('Öns hälsa')}${num(n, n > 0 ? 'tillvaxt' : 'industri')}</div>`;
+  switch (type) {
+    case 'forbud': return R(warn('Ingen får bygga smutsigt nästa år'));
+    case 'naturreservat': return R(warn('Ingen får bygga nästa år')) + oh(c.naturreservatOh);
+    case 'gron': return R(W('Alla som röstar JA'), pg(-c.gronCost)) + oh(c.gronGain);
+    case 'krispaket': return R(W('Alla som röstar JA'), pg(-c.krispaketCost)) + oh(c.krispaketGain);
+    case 'marknadsavtal': return R(W('Alla företag'), pg(c.marknadsavtalBonus), '<span class="sep">–</span>', '<span class="cond">bara om exakt 3 av 4 röstar JA</span>') + oh(c.marknadsavtalOh);
+    case 'gronstod': return R(W('Alla som röstar JA'), pg(-c.gronCost)) + R(ARR, W(`Grönaste laget (${gron.namn})`), W('får allt'));
+    case 'allians': return R(W('Varje JA-lag'), pg(c.alliansBonus)) + R(W('Varje NEJ-lag'), pg(-c.alliansBoter));
+    case 'skatt': return R(W(`Värsta boven (${bov.namn})`), pg(-c.taxAmount)) + R(ARR, W('De andra'), pg(Math.floor(c.taxAmount / 3)));
+    case 'utslappshandel': return R(W(`Värsta boven (${bov.namn})`), pg(-c.utslappAmount)) + R(ARR, W(`${gron.namn} (grönaste)`), pg(c.utslappAmount)) + oh(c.utslappOh);
+    case 'solidaritet': return R(W(`Rikaste (${rik.namn})`), pg(-c.solidaritetPengar), mt(-c.solidaritetMaterial)) + R(ARR, W('De andra'), pg(Math.floor(c.solidaritetPengar / 3)), mt(Math.floor(c.solidaritetMaterial / 3)));
+    case 'grannskatt': return R(W('De två rikaste'), pg(-c.grannskattAmount)) + R(ARR, W('De två fattigaste'), pg(c.grannskattAmount));
+    case 'sektorskatt': return R(W('Räven + Örnen'), pg(-c.sektorskattAmount)) + R(ARR, W('Oxen + Björnen'), pg(c.sektorskattAmount));
+    case 'naturbruksskatt': return R(W('Oxen + Björnen'), pg(-c.naturbruksskattAmount)) + R(ARR, W('Räven + Örnen'), pg(c.naturbruksskattAmount));
+    case 'kustvakt': return R(W('Räven + Örnen'), pg(-c.kustvaktAmount)) + oh(c.kustvaktOh);
+    case 'skogsvard': return R(W('Oxen + Björnen'), pg(-c.skogsvardAmount)) + oh(c.skogsvardOh);
+  }
+  return '';
+}
 function openVoteModal(p) {
   voteOpenFor = p;
   armVoteLock();   // 3 s innan rösten går att trycka
@@ -1305,6 +1414,7 @@ function openVoteModal(p) {
   if (p.type === 'event') {
     const ev = p.event || E().getState().proposal?.event || {};
     const bild = ev.bild || (ev.id ? `assets/event_${ev.id}.png` : null);
+    $('ov-vote').classList.remove('pk');
     $('vote-sub').textContent = 'Centralmakten erbjuder — varje lag väljer själv';
     if (bild) $('vote-pic').innerHTML = `<img src="${bild}" alt="" style="width:200px;height:120px;object-fit:cover;border-radius:12px;display:block">`;
     else $('vote-pic').innerHTML = ico('byt', 64);
@@ -1317,8 +1427,9 @@ function openVoteModal(p) {
   }
   const def = propDefs().find(d => d.type === p.type);
   $('vote-sub').textContent = `${teamName(p.by)} föreslår — det krävs 3 av 4 JA`;
-  $('vote-pic').innerHTML = def.pic;   // fasett-ikon (SVG-sträng) — innerHTML, inte textContent
-  $('vote-tx').innerHTML = `<b style="color:var(--text)">${def.rubrik}</b><br>${def.tx}`;
+  $('vote-pic').innerHTML = ICON_IDS.includes(def.type) ? ico(def.type, 150) : def.pic;   // stor ikon för förslaget
+  $('vote-tx').innerHTML = `<div class="pt">${def.rubrik}</div><div class="kons">${propKons(def.type)}</div>`;
+  $('ov-vote').classList.add('pk');
   $('btn-ja').innerHTML = def.ja;
   $('vote-btns').style.display = p.by === game.me ? 'none' : 'flex';
   renderVoteState();
@@ -1343,7 +1454,7 @@ function dilemmaKons(effects) {   // effekt-lista → konsekvens-rader med spele
   if (!effects || !effects.length) return `<div class="r none">Ingen direkt effekt</div>`;
   return effects.map(e => {
     if (e.type === 'resource') { const sign = e.op === 'sub' ? '−' : '+';
-      return `<div class="r">${ico(e.currency === 'material' ? 'material' : 'pengar', 34)}<span class="who">${_DTL[e.target] || e.target}</span><b>${sign}${e.amount}</b></div>`; }
+      return `<div class="r">${ico(e.currency === 'material' ? 'material' : 'pengar', 34)}<span class="who">${_DTL[e.target] || e.target}</span><b class="${e.op === 'sub' ? 'down' : 'up'}">${sign}${e.amount}</b></div>`; }
     if (e.type === 'ohalsa') { const up = e.value >= 0;
       return `<div class="r">${ico(up ? 'tillvaxt' : 'industri', 34)}<span class="who">Öns hälsa</span><b class="${up ? 'up' : 'down'}">${up ? '+' : '−'}${Math.abs(e.value)}</b></div>`; }
     if (e.type === 'buildRestriction') return `<div class="r">${ico('varning', 34)}<span class="who">Inga smutsiga byggen nästa år</span></div>`;
@@ -1361,12 +1472,14 @@ function renderDilemmaChoices() {
   $('dz-choices').innerHTML = card('A') + card('B');
   if (!dilemmaPicked) $('dz-choices').querySelectorAll('.dchoice').forEach(el => el.onclick = () => dilemmaVoteClick(el.dataset.vote));
 }
+const dzVotedSet = new Set();   // lag vars röst redan visats i det öppna dilemmat
 function renderDilemmaVotes() {   // lag-pluttar: blå=A / guld=B / grå=ej röstat (som spelets votestat)
   const S = E()?.getState(); if (!S?.teams) return;
   const votes = S.proposal?.votes || {};
   const dots = S.teams.map(t => {
     const v = votes[t.id]; const c = v === 'A' ? 'a' : v === 'B' ? 'b' : '';
-    return `<div class="v"><div class="d ${c}"></div>${t.namn}${t.id === game.me ? ' (du)' : ''}</div>`;
+    const ny = c && !dzVotedSet.has(t.id); if (c) dzVotedSet.add(t.id);   // bara NYA röster poppar (renderingen körs om vid varje röst)
+    return `<div class="v"><div class="d ${c}${ny ? ' pop' : ''}"></div>${t.namn}${t.id === game.me ? ' (du)' : ''}</div>`;
   }).join('');
   $('dz-foot').innerHTML = `<div class="dz-votes">${dots}</div>${dilemmaPicked ? '' : `<div class="dz-hint">Flest röster vinner</div>`}`;
 }
@@ -1379,6 +1492,7 @@ function dilemmaVoteClick(choice) {
 }
 function openDilemmaModal(p) {
   dilemmaVote = p; dilemmaPicked = null; dzResolved = false;
+  dzVotedSet.clear();
   armVoteLock();   // 3 s innan valen går att trycka
   voteOpenFor = { type: 'dilemma' };
   const img = $('dz-img'), fallback = 'assets/event_tundra_major.png';
@@ -1860,7 +1974,7 @@ function resetToLobbyUI() {
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
   doljTrailer();
   ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-roll', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
-   'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus', 'ov-bot', 'ov-mission', 'ov-power'].forEach(id => $(id)?.classList.remove('open'));
+   'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus', 'ov-bot', 'ov-mission', 'ov-power', 'ov-result', 'ov-year'].forEach(id => $(id)?.classList.remove('open'));
   tutIdleSent = false;
   $('tutveil').style.display = 'none';
   $('tutbox').style.display = 'none';
@@ -1949,7 +2063,7 @@ if (ONLINE) {
     // fastnat i slut-/finalsekvensen, vilket var varför "spela igen" inte gjorde något).
     if (game.backend === realGame) {
       fireTutAbort();
-      ['ov-slut', 'ov-award', 'ov-choose', 'ov-vote', 'ov-power', 'ov-bot', 'ov-event', 'ov-register'].forEach(id => $(id)?.classList.remove('open'));
+      ['ov-slut', 'ov-award', 'ov-choose', 'ov-vote', 'ov-power', 'ov-result', 'ov-year', 'ov-bot', 'ov-event', 'ov-register'].forEach(id => $(id)?.classList.remove('open'));
       pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null; cerNastaRunda = null;
       map.clearBuildings(); loggClear();
       const S = realGame.E()?.getState();

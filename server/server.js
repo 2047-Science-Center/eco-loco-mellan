@@ -164,7 +164,8 @@ let politicsTimer = null, botOrdforandeTimer = null;
 // DILEMMA-Ö-råd (Slice 4): när versionens decisionSystem='dilemma' (Flash) körs ett auto-draget
 // dilemma i stället för politik. { stage:'vote'|'done', left } eller null.
 let dilemma = null;
-let dilemmaTimer = null, botDilemmaTimer = null;
+let dilemmaTimer = null, botDilemmaTimer = null, yearT = null;
+const DILEMMA_YEAR_MS = 5800;   // ÅR-banderoll i kontrollrummet (src/ui.js politicsDone ≈ 4,6 s + utglidning + tonad övergång)
 let crisisTimer = null;        // företagshändelse: kort visnings-/frystimer (EVENT_PAUSE_MS) → resume
 let eventCooldownTimer = null; // cooldown av NORMALT spel mellan köade händelser (EVENT_COOLDOWN_MS) → lös nästa
 let crisisDueRound = 0;        // ÅRSGATADE lokala kriser: senaste runda vi redan köat väntande kriser för (en gång/runda)
@@ -174,6 +175,8 @@ let crisisDueRound = 0;        // ÅRSGATADE lokala kriser: senaste runda vi red
 const EVENT_PAUSE_MS = 15000;    // händelse-popupen ligger kvar (och spelet fryst) UPP TILL 15 s — ett klick (eventDismiss) löser den tidigare (Klara 2026-11-23)
 const EVENT_COOLDOWN_MS = 4000;  // normalt (ofryst) spel mellan två köade händelser
 const PROPOSE_SECS = 30, VOTE_SECS = 30;
+const POLITICS_OUTRO_MS = 10000;  // resultat-popup + ÅR-banderoll på skärmen (src/ui.js: ~4 s + ~5,6 s)
+const POLITICS_INTRO_MS = 5000;   // längd på klientens 'X HAR ORDET'-intro (src/ui.js showOrdforande ≈ 4,8 s)
 const BOT_POWER_WAIT_S = 60;         // en bot med makten väntar så här många sek IN I rundan innan den lägger sitt förslag (människor hinner ringa & påverka)
 const EVENT_DELAY_S = 30;            // årets slumphändelse dyker upp så här många sek IN I året (inte i örådet)
 let proposalCooldownUntil = 0;
@@ -413,7 +416,7 @@ function resetToLobby() {
   stopTimer();
   clearTimeout(cerTimer);
   slutdel = null; cer = null; lastAwards = null; resolvingNow = false;
-  clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null; clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;   // ÖRÅD-politik avbryts vid omstart
+  clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null; clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); clearTimeout(yearT); dilemma = null;   // ÖRÅD-politik avbryts vid omstart
   started = false; paused = false; autoPaused = false; clearTimeout(crisisTimer); crisisTimer = null; clearTimeout(eventCooldownTimer); eventCooldownTimer = null; crisisDueRound = 0;
   klar = new Set(); tutBeats = {}; awardsVantar = new Set(); trailerPlayedAuto = false;
   for (const id of TEAMS) if (claims[id] === 'bot') claims[id] = null;   // släpp botarna, behåll människornas platser
@@ -432,7 +435,7 @@ function newEngine() {
   engine.cfg.autoEventAtStart = false;   // händelsen körs INTE vid årsstart (i örådet) → servern kör den ~30 s in i året
   lastAwards = null; cer = null; slutdel = null; lastGameEnd = null; finaleSent = false; autoPaused = false; clearTimeout(crisisTimer); crisisTimer = null; clearTimeout(eventCooldownTimer); eventCooldownTimer = null; crisisDueRound = 0;
   clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;
-  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;
+  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); clearTimeout(yearT); dilemma = null;
   // Persistens: ny session (sessionId = tidsstämpel) med metadata-startrad. Fire-and-forget, data/ gitignorerad.
   session = newSession(ROOT, { config: engine.cfg, gmMode, version, claims });
   attachMqtt(engine);  // MQTT-sömmen: console-mock tills broker kopplas (byt publish i src/mqtt.js)
@@ -488,7 +491,7 @@ function newEngine() {
   // ÖRÅD-politik: ordföranden lade → gå till röstning; förslag avgjort → visa resultat ~2,5 s, sedan nästa år.
   engine.on('proposalOpened', () => politicsToVote());
   engine.on('proposalResolved', () => {
-    if (politics) { politics.stage = 'done'; clearTimeout(politicsTimer); setTimeout(endPolitics, 2500); }
+    if (politics) { politics.stage = 'done'; clearTimeout(politicsTimer); setTimeout(endPolitics, POLITICS_OUTRO_MS); }   // resultat-popup (~4 s) + ÅR-banderoll (~5 s) hinner spelas innan byggtimern startar
     else if (dilemma) { dilemma.stage = 'done'; clearTimeout(dilemmaTimer); setTimeout(dilemma.buildPhase ? endBuildDilemma : endDilemma, 2500); }   // rost avgjord: GM byggfas → återuppta · Flash Ö-råd → året
   });
   // Dilemma avgjort → visa resultatet, sedan: Ö-råd (Flash) → året · byggfas (GM) → återuppta.
@@ -849,9 +852,10 @@ function forceDilemmaVotes() {                        // röst-tiden ute → tvi
 }
 function endDilemma() {                               // dilemmat avgjort → året börjar (återanvänder politicsDone-flödet)
   if (!dilemma) return;
-  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;
+  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); clearTimeout(yearT); dilemma = null;
   broadcast({ type: 'event', event: 'politicsDone', payload: {} });   // klienten stänger Ö-råd + stegar årssiffran
-  if (engine && !engine.getState().over) startTimer();
+  // Skärmarna visar "ÅR N"-banderollen i kontrollrummet (~5 s) före ö-vyn → byggtimern startar efter den (Klara 2026-11-23).
+  if (engine && !engine.getState().over) { clearTimeout(yearT); yearT = setTimeout(() => { if (engine && !engine.getState().over) startTimer(); }, DILEMMA_YEAR_MS); }
 }
 
 // ── SPELLEDARSTYRT BESLUT under byggfasen (Slice 5 + GM-banken) ──
@@ -874,7 +878,7 @@ function startGmDecision(choice) {
   return true;
 }
 function endBuildDilemma() {                          // dilemmat avgjort → återuppta byggfasen
-  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); dilemma = null;
+  clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); clearTimeout(yearT); dilemma = null;
   autoPaused = false;
   // Återuppta BARA om spelledaren inte också pausat manuellt — annars stannar spelet pausat.
   broadcastPause();
@@ -888,7 +892,10 @@ function startPolitics() {
   politics = { stage: 'propose', left: proposeSec(), power };
   broadcast({ type: 'event', event: 'politicsStart', payload: { power, stage: 'propose', left: proposeSec() } });
   if (claims[power] === 'bot') { clearTimeout(botOrdforandeTimer); botOrdforandeTimer = setTimeout(() => botOrdforandeLay(power), 12000); }
-  tickPolitics();
+  // Skärmarna spelar "X HAR ORDET"-intron (~5 s) innan förslagsväljaren öppnas → nedräkningen (PROPOSE_SECS) startar FÖRST
+  // efter introt, så ordföranden får hela tiden. (Klara 2026-11-23). politicsTimer rensas av endPolitics/reset som vanligt.
+  clearTimeout(politicsTimer);
+  politicsTimer = setTimeout(tickPolitics, POLITICS_INTRO_MS);
 }
 function tickPolitics() {
   clearTimeout(politicsTimer);

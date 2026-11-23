@@ -89,6 +89,19 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
   "BYGGT ✓" (`spel.html` `.card.picked::after`), samt enstaka prosa-emoji i tutorial. Spelledarpanelen
   (`spelledare.html`, internt) rör vi separat.
 
+### Kontrollrum + popup-visuellt (2026-11-23)
+- **Kontrollrummet** = FYRA exakt matchande bilder (`assets/kontrollrum_{neutral,guld,gron,rod}.png`, 3840×2160,
+  samma rum/lampor/perspektiv, bara karta/paneler/skärmar/ljus skiljer). Prisbilderna (`AWARD_BILD` i `src/ui.js`)
+  = guld (ledande) / grön (eldsjäl) / röd (sabotör). `#room-bg` (neutral) ligger kvar bakom hela örådet
+  (prisutdelning → "har ordet" → förslag → omröstning/dilemma) och rivs direkt när örådet är klart (`rivRummet()`).
+  Overlay-bakgrunder fyller hela skärmen via `--ex/--ey` (satt av `fit()`), så inga svarta kanter oavsett skärmformat.
+- **Prisbanderollen** (`.aw-ban`, A2+ 65 %): logga + pristitel + lagnamn + värde som siffra + symbol (pengar/tillvaxt/industri).
+  Ingen "tryck för att fortsätta": priset går på timer (5 s) eller styrs av spelledaren (`awardStep`).
+- **Animationsprincip (ska hållas nere):** full animation bara på topparna (prisutdelning, kris, slut); övriga popups
+  får EN mjuk inglidning, allt innehåll samtidigt, inga effekter på själva texten. `prefers-reduced-motion` ska stänga av
+  animationer (slutläget syns ändå). Bilder i originalproportion (16:9) — beskär inte.
+- Händelse-/dilemma-bilder: `assets/event_<id>.png` (16:9) + `assets/dilemma/<id>.png`; stilguide `design/HANDELSE-VISUELL-STILGUIDE.md`.
+
 ### Karta/seating
 - Koordinatsystem = kartbildens pixlar `0–1536 × 0–1024` (samma som `assets.json → slots`).
   Byggnader droppar i slot-index-ordning; `clampToIsland` håller foten innanför ön. Byt inte bild utan
