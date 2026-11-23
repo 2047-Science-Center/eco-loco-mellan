@@ -234,7 +234,9 @@ const GM_KATALOG = GM_EVENTS.map(e => ({ id: e.id, namn: e.namn }));            
 const ROST_KATALOG = EVENTS.filter(e => e.typ === 'rost').map(e => ({ id: e.id, namn: e.rubrik })); // ja/nej-omröstningar (sponsrat)
 // variant: valet för nästa parti (selected) + vad pågående parti faktiskt kör (running) + alternativen.
 // Följer med i VARJE meddelande så spelledarpanelen alltid kan visa aktuell version (Slice 1).
-function variantInfo() { return { selected: selectedVariant, running: runningVariant, options: VARIANT_IDS }; }
+// mode = valda variantens onboarding-läge (flash=selfplay/mellan=tutorial) → klienten vet redan i lobbyn
+// om STARTA ska köra tutorial eller starta direkt (innan motorn/config finns).
+function variantInfo() { return { selected: selectedVariant, running: runningVariant, options: VARIANT_IDS, mode: buildEngineConfig(manifest.config || {}, selectedVariant).mode }; }
 function send(ws, obj) { if (ws && ws !== 'bot' && ws.readyState === 1) ws.send(JSON.stringify({ ...obj, phase, claims: claimKinds(), variant: variantInfo(), config: engine ? engine.cfg : undefined, state: engine ? { ...engine.getState(), gmMode, riggSilent, started, dilemmaKatalog: DILEMMA_KATALOG, gmKatalog: GM_KATALOG, rostKatalog: ROST_KATALOG } : null })); }
 function broadcast(obj) { for (const ws of wss.clients) send(ws, obj); }
 function lobbyMsg() {

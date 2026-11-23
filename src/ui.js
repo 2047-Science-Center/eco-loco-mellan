@@ -1787,8 +1787,12 @@ game.on('gameEnd', () => { trailerVisad = false; tutRunning = false; });
 // late-join/omstart hoppar in i / river ner rätt fas. Allt gardat av ONLINE (lokalt läge opåverkat).
 
 // Vad som händer EFTER trailern (tutorial eller riktiga spelet). I tutorial-läge krävs ett lag.
+// Effektivt onboarding-läge: VARIANTENS mode (flash=selfplay/mellan=tutorial) styr, inte manifestet.
+// URL ?mode= vinner; sen partiets config (E().cfg.mode); sen manifestet; sen selfplay. Fixar att Flash
+// (mode:selfplay) annars körde Mellans manifest-tutorial och fastnade vid STARTA.
+function effMode() { return params.get('mode') || realGame?.variant?.mode || E()?.cfg?.mode || manifest.config?.mode || 'selfplay'; }
 function computeFortsatt() {
-  if (MODE === 'tutorial' && gamePhase() === 'lobby') {
+  if (effMode() === 'tutorial' && gamePhase() === 'lobby') {
     if (!game.me) return null;                 // utan lag i tutorial → den här skärmen tittar bara på
     return () => runTutorial();
   }
@@ -2318,7 +2322,7 @@ $('btn-start').addEventListener('click', async () => {
   if (ONLINE) {
     if (gamePhase() !== 'lobby') return;          // pågår/slut → STARTA gör inget
     if (startWindowLeft != null) { toast('Spelet startar strax…'); return; }   // fönstret redan öppet
-    if (MODE === 'tutorial') {
+    if (effMode() === 'tutorial') {
       if (!game.me) await delay(1500);            // kiosk-claim (?lag=) kan vara på väg in
       if (!game.me) { toast('Tryck på ett lag först!', true); return; }   // i tutorial-läge startar man inte utan lag
     }
@@ -2327,7 +2331,7 @@ $('btn-start').addEventListener('click', async () => {
     game.startWindow();
   } else {
     $('ov-start').classList.remove('open');
-    if (MODE === 'tutorial') { runTutorial(); return; }
+    if (effMode() === 'tutorial') { runTutorial(); return; }
     game.startGame({ spelledare: false });
   }
 });
