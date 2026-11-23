@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dilemma v3 — kompakt + cinematic</title>
+<link rel="stylesheet" href="/assets/fonts/fonts.css">
+<style>
+  :root {
+    --bg:#121009; --panel:#211E17; --panel3:#0C0B07;
+    --edge:#4A443A; --edge2:#5C5547; --gold:#C9A94F; --text:#F2ECDD; --dim:#B8AF9A;
+    --led-red:#F0564B; --led-green:#3DD68C; --pengar:#F0B33C; --material:#8FB3C4;
+    --a:#6FA8C7; --b:#E0A64C;
+    --font-disp:"Oxanium","Avenir Next",system-ui,sans-serif;
+    --font-num:"Chakra Petch",ui-monospace,monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#070604; color:var(--text); font-family:var(--font-disp); padding-bottom:60px; }
+  header.doc { padding:18px 24px; border-bottom:2px solid var(--edge); position:sticky; top:0; background:#070604; z-index:30; }
+  header.doc h1 { margin:0 0 6px; font-size:21px; }
+  header.doc p { margin:0; color:var(--dim); font-size:13.5px; max-width:1040px; line-height:1.5; }
+  .framelbl { color:var(--gold); font-size:14px; letter-spacing:2px; text-transform:uppercase; font-weight:800; margin:26px 24px 8px; }
+  .wrap { position:relative; width:100%; max-width:1600px; margin:0 auto; overflow:hidden; border:1px solid var(--edge); }
+  .stage { width:1920px; height:1080px; transform-origin:top left; position:relative; background:#0b0a07;
+           display:flex; align-items:center; justify-content:center; }
+  svg { vertical-align:middle; }
+
+  /* ───────── Dilemma-vy (1920×1080) ───────── */
+  .dz { width:1560px; }
+  .dz .head { display:flex; align-items:center; gap:16px; border-bottom:2px solid var(--edge); padding-bottom:16px; margin-bottom:22px; }
+  .dz .head .lbl { display:flex; align-items:center; gap:14px; font-size:30px; letter-spacing:5px; text-transform:uppercase; color:var(--gold); font-weight:800; }
+  .dz .head .lbl .dot { width:16px; height:16px; border-radius:50%; background:var(--gold); }
+  /* Nedräkning = spelets .politimer-stil (guld Chakra Petch, röd när bråttom) — allt matchar. */
+  .dz .head .t { margin-left:auto; font-family:var(--font-num); font-size:50px; font-weight:800; color:var(--gold); letter-spacing:1px; }
+  .dz .head .t.hot { color:var(--led-red); }
+
+  .dz .situ { display:flex; gap:30px; align-items:stretch; }
+  .dz .situ .imgwrap { width:57%; height:420px; border:3px solid var(--edge2); border-radius:16px; overflow:hidden; background:#000; }
+  .dz .situ .imgwrap img { width:100%; height:100%; object-fit:cover; display:block; }
+  .dz .situ .q { width:43%; display:flex; flex-direction:column; justify-content:center; padding:4px 10px; }
+  .dz .situ .q .big { font-size:62px; font-weight:800; line-height:1.08; }
+  .dz .situ .q .lead { font-size:30px; color:var(--dim); line-height:1.45; margin-top:18px; }
+
+  .dz .choices { display:flex; gap:28px; margin-top:26px; }
+  .choice { flex:1; border:5px solid; border-radius:20px; padding:22px 30px 24px; position:relative; cursor:pointer; color:var(--text); }
+  .choice.a { border-color:var(--a); background:#213f4c; }
+  .choice.b { border-color:var(--b); background:#473417; }
+  .choice .toprow { display:flex; align-items:center; gap:18px; margin-bottom:14px; }
+  .choice .ab { font-size:72px; font-weight:800; line-height:.85; width:84px; text-align:center; }
+  .choice.a .ab { color:var(--a); } .choice.b .ab { color:var(--b); }
+  .choice .nm { font-size:38px; font-weight:800; }
+  .kons { display:flex; flex-direction:column; gap:12px; font-size:30px; font-weight:700; }
+  .kons .r { display:flex; align-items:center; gap:14px; }
+  .kons .r .who { color:var(--text); }
+  .kons .r b { font-family:var(--font-num); font-size:36px; margin-left:auto; }
+  .kons .r.none { color:var(--dim); font-style:italic; }
+  .up { color:var(--led-green); } .down { color:var(--led-red); }
+
+  /* Lag-röster = spelets .votestat-stil: grå (ej röstat), blå=A / guld=B (dilemma), grön=JA / röd=NEJ (sponsrat). */
+  .dz .votestat { display:flex; align-items:flex-start; justify-content:center; gap:30px; margin-top:26px; }
+  .dz .votestat .v { display:flex; flex-direction:column; align-items:center; gap:8px; font-size:22px; color:var(--dim); font-weight:700; }
+  .dz .votestat .d { width:42px; height:42px; border-radius:50%; border:4px solid var(--edge2); background:var(--panel3); }
+  .dz .votestat .d.ja { background:#35D97B; border-color:#1E4A2C; }
+  .dz .votestat .d.nej { background:#E04438; border-color:#6e2a24; }
+  .dz .votestat.dilemma .d.ja { background:#6FA8C7; border-color:#1b3a47; }
+  .dz .votestat.dilemma .d.nej { background:#E0A64C; border-color:#5c4518; }
+  .dz .hint { text-align:center; font-size:24px; color:var(--dim); letter-spacing:2px; margin-top:18px; text-transform:uppercase; }
+
+  /* röstat */
+  .choice.picked { box-shadow:0 0 0 5px #fff6 inset, 0 18px 46px rgba(0,0,0,.5); }
+  .choice.dim { opacity:.3; }
+
+  /* ───────── Resultat (behåll layouten; vinnarkortet täcker båda knapparnas bredd) ───────── */
+  .dz .head .t.done { color:var(--gold); font-size:40px; }
+  .resultcard { flex:1; border-radius:20px; }
+  .resultcard.win { border:5px solid; padding:24px 34px; }
+  .resultcard.win.a { border-color:var(--a); background:#213f4c; }
+  .resultcard.win.b { border-color:var(--b); background:#473417; }
+  .resultcard .rtop { display:flex; align-items:center; gap:24px; margin-bottom:14px; }
+  .resultcard .ab { font-size:88px; font-weight:800; line-height:.85; }
+  .resultcard.win.a .ab { color:var(--a); } .resultcard.win.b .ab { color:var(--b); }
+  .resultcard .won { font-size:50px; font-weight:800; letter-spacing:6px; color:var(--gold); }
+  .resultcard .nm { font-size:36px; font-weight:800; margin-left:auto; text-align:right; }
+  .resultcard.none { border:4px solid var(--edge2); background:var(--panel2); color:var(--dim); text-align:center; font-size:46px; font-weight:800; padding:60px 30px; letter-spacing:1px; text-transform:uppercase; }
+  .dz .tallyline { text-align:center; font-family:var(--font-num); font-size:34px; letter-spacing:3px; margin-top:24px; color:var(--dim); }
+  .dz .tallyline .av { color:var(--a); } .dz .tallyline .bv { color:var(--b); }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Dilemma v3 — kompakt + cinematic (förslag, omarbetad)</h1>
+  <p>Vid <b>verklig spelplats-skala 1920×1080</b> (spelets <code>#stage</code>). Ändringar vs förra v3: <b>helfärgade A/B-kort</b> · <b>fyra lag-pluttar</b> under korten (vem har röstat, ej fördelning) · <b>ingen redundant titel</b> — stor tydlig <b>timer</b> uppe · bild + fråga vid sidan · <b>resultatläget rivs</b> och visar bara beslutet · <b>spelets riktiga ikoner</b> (ico från icons.js). De två tidigare förslagen finns i <code>dilemma-stil-prototyp.html</code>. Ingen speländring.</p>
+</header>
+<div id="root"></div>
+
+<script type="module">
+import { DILEMMAS } from '/spec/content/dilemmas.js';
+import { ico } from '/src/icons.js';
+
+const IMG = { markkonflikt:'/assets/event_tundra_major.png', naturreservat_flash:'/assets/event_naturenblomstrar.png', sponsrat:'/assets/event_stad_major.png' };
+const TLABEL = { richest:'Rikaste laget', greenest:'Grönaste laget', all:'Alla företag', sectorMaterial:'Material-lagen', sectorPengar:'Pengar-lagen' };
+const TEAMS = [ {id:'aker',namn:'Oxen'},{id:'skog',namn:'Björnen'},{id:'tundra',namn:'Räven'},{id:'stad',namn:'Örnen'} ];
+
+function konsRows(effects) {
+  if (!effects || !effects.length) return `<div class="r none">Ingen direkt effekt</div>`;
+  return effects.map(e => {
+    if (e.type === 'resource') { const sign = e.op === 'sub' ? '−' : '+';
+      return `<div class="r">${ico(e.currency === 'material' ? 'material' : 'pengar', 34)}<span class="who">${TLABEL[e.target] || e.target}</span><b>${sign}${e.amount}</b></div>`; }
+    if (e.type === 'ohalsa') { const up = e.value >= 0;
+      return `<div class="r">${ico(up ? 'tillvaxt' : 'industri', 34)}<span class="who">Öns hälsa</span><b class="${up ? 'up' : 'down'}">${up ? '+' : '−'}${Math.abs(e.value)}</b></div>`; }
+    if (e.type === 'buildRestriction') return `<div class="r">${ico('varning', 34)}<span class="who">Inga smutsiga byggen nästa år</span></div>`;
+    return '';
+  }).join('');
+}
+
+// Dot färgas efter VAD laget röstat på (som spelet): A=blå / B=guld (dilemma), JA=grön / NEJ=röd (sponsrat), ej röstat=grå.
+function voters(votes, isDilemma) {
+  const cls = v => (v === 'A' || v === 'JA') ? 'ja' : (v === 'B' || v === 'NEJ') ? 'nej' : '';
+  const dots = TEAMS.map((t, i) => `<div class="v"><div class="d ${cls(votes[i])}"></div>${t.namn}${i === 0 ? ' (du)' : ''}</div>`).join('');
+  return `<div class="votestat${isDilemma ? ' dilemma' : ''}">${dots}</div>`;
+}
+
+// ── Röst-vy (A/B före/efter) ──
+function voteView(title, question, lead, alts, L, img, opts = {}) {
+  const cls = i => 'choice ' + (i === 0 ? 'a' : 'b') + (opts.picked === L[i] ? ' picked' : '') + (opts.picked && opts.picked !== L[i] ? ' dim' : '');
+  const card = i => `<div class="${cls(i)}"><div class="toprow"><div class="ab">${L[i]}</div><div class="nm">${alts[i].namn.toUpperCase()}</div></div><div class="kons">${konsRows(alts[i].effects)}</div></div>`;
+  const bottom = opts.picked ? '' : `<div class="hint">Flest röster vinner</div>`;
+  return `<div class="dz">
+    <div class="head"><div class="lbl"><span class="dot"></span> Ö-rådet beslutar</div><div class="t ${opts.hot?'hot':''}">⏱ ${opts.timer||'28'}s</div></div>
+    <div class="situ"><div class="imgwrap"><img src="${img}" alt=""></div><div class="q"><div class="big">${question}</div>${lead?`<div class="lead">${lead}</div>`:''}</div></div>
+    <div class="choices">${card(0)}${card(1)}</div>
+    ${voters(opts.votes || [null,null,null,null], L[0] === 'A')}
+    ${bottom}
+  </div>`;
+}
+
+// ── Resultat-vy (rivet, bara beslutet) ──
+function resultView(question, lead, img, L, winnerIdx, winnerAlt, tally) {
+  let area, tline;
+  if (winnerIdx === null) {
+    area = `<div class="choices"><div class="resultcard none">Inget beslut · ni kunde inte bestämma er</div></div>`;
+    tline = `<div class="tallyline"><span class="av">${tally[0]} ${L[0]}</span> · <span class="bv">${tally[1]} ${L[1]}</span> · inga förändringar</div>`;
+  } else {
+    const side = winnerIdx === 0 ? 'a' : 'b';
+    area = `<div class="choices"><div class="resultcard win ${side}"><div class="rtop"><span class="ab">${L[winnerIdx]}</span><span class="won">VANN</span><span class="nm">${winnerAlt.namn.toUpperCase()}</span></div><div class="kons">${konsRows(winnerAlt.effects)}</div></div></div>`;
+    tline = `<div class="tallyline"><span class="av">${tally[0]} ${L[0]}</span> · <span class="bv">${tally[1]} ${L[1]}</span></div>`;
+  }
+  return `<div class="dz">
+    <div class="head"><div class="lbl"><span class="dot"></span> Ö-rådet beslutar</div><div class="t done">Klart</div></div>
+    <div class="situ"><div class="imgwrap"><img src="${img}" alt=""></div><div class="q"><div class="big">${question}</div>${lead?`<div class="lead">${lead}</div>`:''}</div></div>
+    ${area}
+    ${tline}
+  </div>`;
+}
+
+const mk = DILEMMAS.find(d => d.id === 'markkonflikt');
+const nat = DILEMMAS.find(d => d.id === 'naturreservat_flash');
+const mkA = [mk.alternativ.A, mk.alternativ.B], natA = [nat.alternativ.A, nat.alternativ.B];
+const sponsA = [ { namn:'Ja — ta emot', effects:[ {type:'resource',target:'all',currency:'pengar',amount:15,op:'add'}, {type:'ohalsa',value:-6,when:'immediate'} ] }, { namn:'Nej — avstå', effects:[] } ];
+
+const frames = [
+  ['1 · A/B — före röstning (ett lag har röstat B)',
+    voteView('', 'Vem ska få marken?', 'Öns sista obebyggda mark står på spel.', mkA, ['A','B'], IMG.markkonflikt, { votes:[null,null,'B',null], timer:'28' })],
+  ['2 · A/B — efter att DU röstat (A), 3 av 4 har röstat',
+    voteView('', 'Vem ska få marken?', 'Öns sista obebyggda mark står på spel.', mkA, ['A','B'], IMG.markkonflikt, { picked:'A', votes:['A','B','A',null], timer:'11', hot:true })],
+  ['3 · Resultat — B vinner (vinnarkortet täcker båda)',
+    resultView('Vem ska få marken?', 'Öns sista obebyggda mark står på spel.', IMG.markkonflikt, ['A','B'], 1, mk.alternativ.B, [1,3])],
+  ['4 · Resultat — oavgjort (grå ruta)',
+    resultView('Vem ska få marken?', 'Öns sista obebyggda mark står på spel.', IMG.markkonflikt, ['A','B'], null, null, [2,2])],
+  ['5 · Generellt: annat dilemma (byggbegränsning + ingen effekt)',
+    voteView('', 'Ska vi skydda naturen?', 'Ett skydd ger ön hälsa — men begränsar byggen nästa år.', natA, ['A','B'], IMG.naturreservat_flash, { votes:[null,null,null,null], timer:'28' })],
+  ['6 · Sponsrat — JA/NEJ (individuellt; grön/röd pluttar)',
+    voteView('', 'Vill du ta emot pengar — även om det skadar ön?', 'Varje företag svarar själv. Ön tar skada om någon tackar ja.', sponsA, ['JA','NEJ'], IMG.sponsrat, { votes:['JA','NEJ',null,null], timer:'20' })],
+  ['7 · Sponsrat — resultat (3 tackade ja)',
+    resultView('Vill du ta emot pengar — även om det skadar ön?', 'Varje företag svarar själv. Ön tar skada om någon tackar ja.', IMG.sponsrat, ['JA','NEJ'], 0, sponsA[0], [3,1])],
+];
+
+document.getElementById('root').innerHTML = frames.map(([lbl, html], i) =>
+  `<div class="framelbl">${lbl}</div><div class="wrap" id="w${i}"><div class="stage">${html}</div></div>`).join('');
+
+function fit() {
+  document.querySelectorAll('.wrap').forEach(w => {
+    const s = w.clientWidth / 1920;
+    w.querySelector('.stage').style.transform = `scale(${s})`;
+    w.style.height = (1080 * s) + 'px';
+  });
+}
+window.addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

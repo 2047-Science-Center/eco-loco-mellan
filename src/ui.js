@@ -512,10 +512,25 @@ const awardMeta = (typ, w) => ({
 }[typ]);
 // Lag-agnostiska prisbilder (kontrollrummets skärmar) — samma bild oavsett vinnarlag.
 const AWARD_BILD = {
-  led: 'assets/framgangsrik_foretag01.png',
-  eld: 'assets/eldsjal01.png',
-  sab: 'assets/sabotor_01.png',
+  led: 'assets/kontrollrum_guld.png',
+  eld: 'assets/kontrollrum_gron.png',
+  sab: 'assets/kontrollrum_rod.png',
 };
+// Kontrollrummet (#room-bg) ligger kvar bakom hela örådet: tänds direkt när prisutdelning/"har ordet"/förslag/
+// omröstning öppnas, släcks först RUM_HALL ms efter att den sista stängts → ingen blink av spelplanen mellan dem.
+const RUM_HALL = 2500;
+if (typeof MutationObserver !== 'undefined' && $('room-bg')) {
+  const ids = ['ov-award', 'ov-power', 'ov-choose', 'ov-vote'];
+  let rumT = null;
+  const syncRum = () => {
+    if (ids.some(i => $(i)?.classList.contains('open'))) { clearTimeout(rumT); rumT = null; $('room-bg').classList.add('on'); }
+    else if (!rumT) rumT = setTimeout(() => { rumT = null; if (!ids.some(i => $(i)?.classList.contains('open'))) $('room-bg').classList.remove('on'); }, RUM_HALL);
+  };
+  const mo = new MutationObserver(syncRum);
+  ids.forEach(i => $(i) && mo.observe($(i), { attributes: true, attributeFilter: ['class'] }));
+}
+let prevAwardBild = '';   // senast visade prisbild under pågående ceremoni (nollas när prisutdelningen stängs)
+if (typeof Image !== 'undefined') [...Object.values(AWARD_BILD), 'assets/kontrollrum_neutral.png'].forEach(src => { new Image().src = src; });   // förladda → inget hack vid första visningen
 function renderAwardCard(typ, w, footer = '') {
   const m = awardMeta(typ, w);
   // PRISUTDELNING (P3, Klara 2026-11-23): prisbilden fyller HELA skärmen + en centrerad grå popup med
@@ -523,8 +538,12 @@ function renderAwardCard(typ, w, footer = '') {
   // gör kortet fullskärm. Ingen bov → ingen bild (mörk skärm + popup).
   $('awardcard').className = 'awardcard prize' + (typ === 'sab' ? ' sab' : '') + (w ? '' : ' ingen');
   const bild = w ? (AWARD_BILD[typ] || '') : '';
+  // Föregående prisbild ligger kvar under och den nya tonas in över den → ingen svart blink mellan priserna.
+  const prev = bild && prevAwardBild && prevAwardBild !== bild ? prevAwardBild : '';   // 'ingen vinnare' → neutrala rummet, inte förra färgen
+  prevAwardBild = bild;
   $('awardcard').innerHTML =
-    (bild ? `<img class="aw-img" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +
+    (prev ? `<img class="aw-img" src="${prev}" alt="">` : '') +
+    (bild ? `<img class="aw-img aw-new" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +
     `<div class="aw-scrim"></div>` +
     `<div class="aw-pop"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
     (w ? `<div class="who">${logoSVG(w.teamId, 84)}<span class="nm">${w.namn}</span><span class="val ${m.cls}">${m.val}</span></div>`
@@ -573,17 +592,19 @@ function showPendingSlut() {
 
 // SELFPLAY: skärmen stegar själv genom priserna (tryck eller auto efter 8 s).
 game.on('award', p => run(async () => {
-  const show = async (typ, w) => {
+  const show = async (typ, w, sista) => {
     renderAwardCard(typ, w, `<div class="fortsatt">tryck för att fortsätta ›</div>`);
     $('ov-award').classList.add('open');
     await delay(500);                       // hinner läsas innan tryck registreras
     await clickOrTimeout($('ov-award'), 8000);
+    if (!sista) return;                     // overlayn hålls ÖPPEN mellan priserna → ingen släckt skärm
     $('ov-award').classList.remove('open');
+    prevAwardBild = '';
     await delay(250);
   };
-  if (p.led) await show('led', p.led);
-  if (p.eld) await show('eld', p.eld);
-  await show('sab', p.sab);
+  if (p.led) await show('led', p.led, false);
+  if (p.eld) await show('eld', p.eld, false);
+  await show('sab', p.sab, true);
   game.awardsKlara?.();   // prisutdelningen genomklickad → rundtimern får börja ticka
   renderPropBtn();        // rundan återupptas → POLITIK tryckbar igen
   renderRegs();
@@ -593,6 +614,7 @@ game.on('award', p => run(async () => {
 // stor ÖRÅD-skylt visas, sedan direkt första priset (awardStep ersätter innehållet på samma mörka
 // skärm). Servern väntar in skylten (2 s) innan första awardStep så första priset får full tid.
 game.on('awardCeremony', () => run(async () => {
+  prevAwardBild = '';
   $('awardcard').className = 'awardcard';   // nollställ ev. 'sab'-klass (röd ram) från förra årets sabotör-pris → ÖRÅD får vanlig grå/silvrig ram
   $('awardcard').innerHTML = `<div class="aw-tx" style="text-align:center;padding:24px 8px">`
     + `<div style="font-family:var(--font-disp);font-size:72px;font-weight:800;letter-spacing:6px;color:var(--gold)">${ico('orad', 60)} ÖRÅD</div>`
@@ -610,6 +632,7 @@ game.on('awardStep', p => run(async () => {
 }));
 game.on('awardDone', p => run(async () => {
   $('ov-award').classList.remove('open');
+  prevAwardBild = '';
   renderRegs();
   if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
   // ÖRÅD: årssiffran + "ÅR N"-bannern byts INTE här. Örådet (ordförande → förslag → röstning) hör

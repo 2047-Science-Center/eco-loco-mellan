@@ -256,7 +256,17 @@
      bakgrund. Prisutdelningens .prize-kort är fullskärm → täcker rummet → "bilden byts till resp pris". */
   /* Kontrollrummet bara på CEREMONIELLA moment (öråd-skylt + prisutdelning + "har ordet"), INTE under
      själva omröstningen/förslags-väljaren — där blev rummet rörigt bakom det täta röst-UI:t (Klara 2026-11-23). */
-  #ov-award, #ov-power { background-color: #0b0a07; background-image: linear-gradient(rgba(8,7,5,.45), rgba(8,7,5,.58)), url('assets/kontrollrum.png'); background-size: cover, cover; background-position: center, center; background-repeat: no-repeat, no-repeat; }
+  #ov-award, #ov-power { background: transparent; }   /* ingen egen toning → rummet har EXAKT samma ljusstyrka före/under/efter prisbilderna (inget "tonar om") */   /* rummet kommer från #room-bg (ihållande) → inga blinkningar mellan skärmarna */
+  /* #room-bg = kontrollrummet som ligger KVAR under hela örådet (prisutdelning → "har ordet" → förslag → omröstning).
+     ui.js tänder det så fort någon av de fyra overlayerna öppnas och släcker det först en stund efter att den
+     sista stängts (ingen glipa där spelplanen blinkar fram). */
+  #room-bg { position: absolute; inset: 0; z-index: 9; pointer-events: none; background: #0b0a07 url('assets/kontrollrum_neutral.png') center / cover no-repeat; opacity: 0; visibility: hidden; transition: opacity .6s ease, visibility 0s .6s; }
+  #room-bg.on { opacity: 1; visibility: visible; transition: opacity .2s ease; }
+  /* Under omröstning (dilemma/politik) ligger kontrollrummet kvar men MYCKET mörkare/tonat (Klara 2026-11-23),
+     så röst-UI:t förblir läsbart. Justera de två alfa-värdena för mörkare/ljusare. */
+  #ov-vote, #ov-choose { background: linear-gradient(rgba(6,5,4,.80), rgba(6,5,4,.88)); }
+  #ov-vote.open, #ov-choose.open { animation: awfade .6s ease both; }   /* röst-skärmarna tonas in → rummet mörknar mjukt, inget hack */
+  #ov-award .awardcard.prize { animation: none; }   /* fullskärms-prisbilden får ALDRIG skala/poppa in (då "flyttar" rummet) */
 
   /* ÖRÅD-popupen återanvänder #ov-award (plain .awardcard) → behåll som panel-kort. */
   #ov-award .awardcard { width: min(880px, 90vw); background: var(--panel); border: 4px solid var(--gold); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,.7); }
@@ -270,13 +280,16 @@
   /* PRISUTDELNING (varje år) = P3 (Klara 2026-11-23): prisbilden fyller HELA skärmen + centrerad grå
      popup med text/ikoner. .prize gör kortet fullskärm (öråd-popupen ovan opåverkad).
      FINJUSTERING: aw-pop top/min-width/max-width/padding nedan är reglagen för storlek+placering. */
-  #ov-award .awardcard.prize { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; border: none; border-radius: 0; box-shadow: none; overflow: hidden; display: block; }
+  #ov-award .awardcard.prize { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: hidden; display: block; }
   #ov-award .awardcard.prize.ingen { background: transparent; }   /* ingen bov → svart ersätts av kontrollrummet (overlay-bakgrunden) bakom popupen */
   /* Prisbilden fyller skärmen (byts per pris → "rummet byter färg"). Centrerad grå text-popup ovanpå.
      FINJUSTERING: .aw-pop top/min-width/max-width är reglagen för storlek+placering. */
   /* COVER → prisbilden fyller HELA skärmen, exakt som kontrollrummet → alla fyra samma storlek (Klara 2026-11-23). */
   #ov-award .awardcard.prize .aw-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-  #ov-award .awardcard.prize .aw-scrim { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,.18), rgba(0,0,0,.62)); }
+  /* Prisbilder tonas in över föregående bild (eller neutrala rummet) → skärmen slocknar aldrig mellan priserna. */
+  #ov-award .awardcard.prize .aw-img.aw-new { animation: awfade .7s ease both; }
+  @keyframes awfade { from { opacity: 0; } to { opacity: 1; } }
+  #ov-award .awardcard.prize .aw-scrim { display: none; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,.18), rgba(0,0,0,.62)); }
   /* Avlång form (Klara 2026-11-23): bred + flack. min-width = längden; mindre lodrät padding. */
   #ov-award .awardcard.prize .aw-pop { position: absolute; top: 52%; left: 50%; transform: translate(-50%,-50%); background: rgba(33,30,23,.94); border: 3px solid var(--gold); border-radius: 18px; padding: 28px 80px 32px; text-align: center; min-width: 680px; max-width: 80vw; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
   #ov-award .awardcard.prize.sab .aw-pop { border-color: var(--led-red); }
@@ -643,6 +656,7 @@
   </div></div>
 
   <!-- Välj förslag -->
+  <div id="room-bg"></div>
   <div class="overlay" id="ov-choose"><div class="modal" style="width:840px">
     <h2 id="choose-title">🗳 LÄGG ETT FÖRSLAG</h2>
     <div class="sub" id="choose-sub">Ett förslag per år — alla lag röstar, 3 av 4 JA krävs</div>

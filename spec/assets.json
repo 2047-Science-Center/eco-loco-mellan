@@ -38,31 +38,31 @@
   ],
   "buildings": {
     "aker_smutsig": {
-      "namn": "Industrijordbruk",
+      "namn": "Storodling",
       "file": "assets/aker_smutsig.png"
     },
     "aker_standard": {
-      "namn": "Jordbruk",
+      "namn": "Växthus",
       "file": "assets/aker_standard.png"
     },
     "aker_gron": {
-      "namn": "Ekologiskt jordbruk",
+      "namn": "Ekogård",
       "file": "assets/aker_gron.png"
     },
     "skog_smutsig": {
-      "namn": "Sågverk",
+      "namn": "Skövling",
       "file": "assets/skog_smutsig.png"
     },
     "skog_standard": {
-      "namn": "Skogsbruk",
+      "namn": "Sågverk",
       "file": "assets/skog_standard.png"
     },
     "skog_gron": {
-      "namn": "Skogsjordbruk",
+      "namn": "Hållbart skogsbruk",
       "file": "assets/skog_gron.png"
     },
     "tundra_smutsig": {
-      "namn": "Oljeplattform",
+      "namn": "Oljefält",
       "file": "assets/tundra_smutsig.png"
     },
     "tundra_standard": {
@@ -74,15 +74,15 @@
       "file": "assets/tundra_gron.png"
     },
     "stad_smutsig": {
-      "namn": "Kolkraftverk",
+      "namn": "Betongstad",
       "file": "assets/stad_smutsig.png"
     },
     "stad_standard": {
-      "namn": "Kontor & hotell",
+      "namn": "Handelsområde",
       "file": "assets/stad_standard.png"
     },
     "stad_gron": {
-      "namn": "Solceller",
+      "namn": "Stadskvarter",
       "file": "assets/stad_gron.png"
     }
   },

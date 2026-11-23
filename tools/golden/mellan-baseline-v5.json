@@ -119,7 +119,7 @@
           "gp": 0,
           "km": 6,
           "kp": 8,
-          "namn": "Jordbruk",
+          "namn": "Växthus",
           "oh": -3,
           "tier": "standard"
         },
@@ -141,7 +141,7 @@
           "gp": 0,
           "km": 10,
           "kp": 14,
-          "namn": "Skogsjordbruk",
+          "namn": "Hållbart skogsbruk",
           "oh": 3,
           "tier": "gron"
         },
@@ -163,7 +163,7 @@
           "gp": 9,
           "km": 8,
           "kp": 0,
-          "namn": "Oljeplattform",
+          "namn": "Oljefält",
           "oh": -6,
           "tier": "smutsig"
         },
@@ -185,7 +185,7 @@
           "gp": 7,
           "km": 8,
           "kp": 6,
-          "namn": "Kontor & hotell",
+          "namn": "Handelsområde",
           "oh": -3,
           "tier": "standard"
         },
@@ -305,7 +305,7 @@
           "gp": 0,
           "km": 10,
           "kp": 14,
-          "namn": "Ekologiskt jordbruk",
+          "namn": "Ekogård",
           "oh": 3,
           "tier": "gron"
         },
@@ -327,7 +327,7 @@
           "gp": 0,
           "km": 0,
           "kp": 8,
-          "namn": "Sågverk",
+          "namn": "Skövling",
           "oh": -6,
           "tier": "smutsig"
         },
@@ -371,7 +371,7 @@
           "gp": 5,
           "km": 14,
           "kp": 10,
-          "namn": "Solceller",
+          "namn": "Stadskvarter",
           "oh": 3,
           "tier": "gron"
         },
@@ -491,7 +491,7 @@
           "gp": 0,
           "km": 0,
           "kp": 8,
-          "namn": "Industrijordbruk",
+          "namn": "Storodling",
           "oh": -6,
           "tier": "smutsig"
         },
@@ -513,7 +513,7 @@
           "gp": 0,
           "km": 6,
           "kp": 8,
-          "namn": "Skogsbruk",
+          "namn": "Sågverk",
           "oh": -3,
           "tier": "standard"
         },
@@ -557,7 +557,7 @@
           "gp": 9,
           "km": 8,
           "kp": 0,
-          "namn": "Kolkraftverk",
+          "namn": "Betongstad",
           "oh": -6,
           "tier": "smutsig"
         },
@@ -677,7 +677,7 @@
           "gp": 0,
           "km": 6,
           "kp": 8,
-          "namn": "Jordbruk",
+          "namn": "Växthus",
           "oh": -3,
           "tier": "standard"
         },
@@ -699,7 +699,7 @@
           "gp": 0,
           "km": 10,
           "kp": 14,
-          "namn": "Skogsjordbruk",
+          "namn": "Hållbart skogsbruk",
           "oh": 3,
           "tier": "gron"
         },
@@ -827,7 +827,7 @@
           "gp": 0,
           "km": 10,
           "kp": 14,
-          "namn": "Ekologiskt jordbruk",
+          "namn": "Ekogård",
           "oh": 3,
           "tier": "gron"
         },
@@ -849,7 +849,7 @@
           "gp": 0,
           "km": 0,
           "kp": 8,
-          "namn": "Sågverk",
+          "namn": "Skövling",
           "oh": -6,
           "tier": "smutsig"
         },
@@ -1321,27 +1321,27 @@
             "round": 6
           },
           {
-            "namn": "Ekologiskt jordbruk",
+            "namn": "Ekogård",
             "oh": 3,
             "round": 5
           },
           {
-            "namn": "Jordbruk",
+            "namn": "Växthus",
             "oh": -3,
             "round": 4
           },
           {
-            "namn": "Industrijordbruk",
+            "namn": "Storodling",
             "oh": -6,
             "round": 3
           },
           {
-            "namn": "Ekologiskt jordbruk",
+            "namn": "Ekogård",
             "oh": 3,
             "round": 2
           },
           {
-            "namn": "Jordbruk",
+            "namn": "Växthus",
             "oh": -3,
             "round": 1
           }
@@ -1409,27 +1409,27 @@
             "round": 6
           },
           {
-            "namn": "Sågverk",
+            "namn": "Skövling",
             "oh": -6,
             "round": 5
           },
           {
-            "namn": "Skogsjordbruk",
+            "namn": "Hållbart skogsbruk",
             "oh": 3,
             "round": 4
           },
           {
-            "namn": "Skogsbruk",
+            "namn": "Sågverk",
             "oh": -3,
             "round": 3
           },
           {
-            "namn": "Sågverk",
+            "namn": "Skövling",
             "oh": -6,
             "round": 2
           },
           {
-            "namn": "Skogsjordbruk",
+            "namn": "Hållbart skogsbruk",
             "oh": 3,
             "round": 1
           }
@@ -1517,7 +1517,7 @@
             "round": 2
           },
           {
-            "namn": "Oljeplattform",
+            "namn": "Oljefält",
             "oh": -6,
             "round": 1
           }
@@ -1587,17 +1587,17 @@
             "round": 4
           },
           {
-            "namn": "Kolkraftverk",
+            "namn": "Betongstad",
             "oh": -6,
             "round": 3
           },
           {
-            "namn": "Solceller",
+            "namn": "Stadskvarter",
             "oh": 3,
             "round": 2
           },
           {
-            "namn": "Kontor & hotell",
+            "namn": "Handelsområde",
             "oh": -3,
             "round": 1
           }

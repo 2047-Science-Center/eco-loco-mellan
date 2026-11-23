@@ -21,24 +21,24 @@
 
 export const BUILDINGS = [
   // ── Oxen (aker) — material-sektor ──
-  { id: 'aker_smutsig',  region: 'aker', tier: 'smutsig',  namn: 'Industrijordbruk',   cost: { pengar: 8,  material: 0  }, production: { pengar: 0, material: 9 }, impact: -6, asset: 'aker_smutsig',  variants: ['flash', 'mellan', 'skola'] },
-  { id: 'aker_standard', region: 'aker', tier: 'standard', namn: 'Jordbruk',           cost: { pengar: 8,  material: 6  }, production: { pengar: 0, material: 7 }, impact: -3, asset: 'aker_standard', variants: ['flash', 'mellan', 'skola'] },
-  { id: 'aker_gron',     region: 'aker', tier: 'gron',     namn: 'Ekologiskt jordbruk', cost: { pengar: 14, material: 10 }, production: { pengar: 0, material: 5 }, impact: 3,  asset: 'aker_gron',     variants: ['flash', 'mellan', 'skola'] },
+  { id: 'aker_smutsig',  region: 'aker', tier: 'smutsig',  namn: 'Storodling',   cost: { pengar: 8,  material: 0  }, production: { pengar: 0, material: 9 }, impact: -6, asset: 'aker_smutsig',  variants: ['flash', 'mellan', 'skola'] },
+  { id: 'aker_standard', region: 'aker', tier: 'standard', namn: 'Växthus',           cost: { pengar: 8,  material: 6  }, production: { pengar: 0, material: 7 }, impact: -3, asset: 'aker_standard', variants: ['flash', 'mellan', 'skola'] },
+  { id: 'aker_gron',     region: 'aker', tier: 'gron',     namn: 'Ekogård', cost: { pengar: 14, material: 10 }, production: { pengar: 0, material: 5 }, impact: 3,  asset: 'aker_gron',     variants: ['flash', 'mellan', 'skola'] },
 
   // ── Björnen (skog) — material-sektor ──
-  { id: 'skog_smutsig',  region: 'skog', tier: 'smutsig',  namn: 'Sågverk',            cost: { pengar: 8,  material: 0  }, production: { pengar: 0, material: 9 }, impact: -6, asset: 'skog_smutsig',  variants: ['flash', 'mellan', 'skola'] },
-  { id: 'skog_standard', region: 'skog', tier: 'standard', namn: 'Skogsbruk',          cost: { pengar: 8,  material: 6  }, production: { pengar: 0, material: 7 }, impact: -3, asset: 'skog_standard', variants: ['flash', 'mellan', 'skola'] },
-  { id: 'skog_gron',     region: 'skog', tier: 'gron',     namn: 'Skogsjordbruk',      cost: { pengar: 14, material: 10 }, production: { pengar: 0, material: 5 }, impact: 3,  asset: 'skog_gron',     variants: ['flash', 'mellan', 'skola'] },
+  { id: 'skog_smutsig',  region: 'skog', tier: 'smutsig',  namn: 'Skövling',           cost: { pengar: 8,  material: 0  }, production: { pengar: 0, material: 9 }, impact: -6, asset: 'skog_smutsig',  variants: ['flash', 'mellan', 'skola'] },
+  { id: 'skog_standard', region: 'skog', tier: 'standard', namn: 'Sågverk',          cost: { pengar: 8,  material: 6  }, production: { pengar: 0, material: 7 }, impact: -3, asset: 'skog_standard', variants: ['flash', 'mellan', 'skola'] },
+  { id: 'skog_gron',     region: 'skog', tier: 'gron',     namn: 'Hållbart skogsbruk',      cost: { pengar: 14, material: 10 }, production: { pengar: 0, material: 5 }, impact: 3,  asset: 'skog_gron',     variants: ['flash', 'mellan', 'skola'] },
 
   // ── Räven (tundra) — pengar-sektor ──
-  { id: 'tundra_smutsig',  region: 'tundra', tier: 'smutsig',  namn: 'Oljeplattform', cost: { pengar: 0,  material: 8  }, production: { pengar: 9, material: 0 }, impact: -6, asset: 'tundra_smutsig',  variants: ['flash', 'mellan', 'skola'] },
+  { id: 'tundra_smutsig',  region: 'tundra', tier: 'smutsig',  namn: 'Oljefält', cost: { pengar: 0,  material: 8  }, production: { pengar: 9, material: 0 }, impact: -6, asset: 'tundra_smutsig',  variants: ['flash', 'mellan', 'skola'] },
   { id: 'tundra_standard', region: 'tundra', tier: 'standard', namn: 'Fabrik',        cost: { pengar: 6,  material: 8  }, production: { pengar: 7, material: 0 }, impact: -3, asset: 'tundra_standard', variants: ['flash', 'mellan', 'skola'] },
   { id: 'tundra_gron',     region: 'tundra', tier: 'gron',     namn: 'Vindkraft',     cost: { pengar: 10, material: 14 }, production: { pengar: 5, material: 0 }, impact: 3,  asset: 'tundra_gron',     variants: ['flash', 'mellan', 'skola'] },
 
   // ── Örnen (stad) — pengar-sektor ──
-  { id: 'stad_smutsig',  region: 'stad', tier: 'smutsig',  namn: 'Kolkraftverk',     cost: { pengar: 0,  material: 8  }, production: { pengar: 9, material: 0 }, impact: -6, asset: 'stad_smutsig',  variants: ['flash', 'mellan', 'skola'] },
-  { id: 'stad_standard', region: 'stad', tier: 'standard', namn: 'Kontor & hotell',  cost: { pengar: 6,  material: 8  }, production: { pengar: 7, material: 0 }, impact: -3, asset: 'stad_standard', variants: ['flash', 'mellan', 'skola'] },
-  { id: 'stad_gron',     region: 'stad', tier: 'gron',     namn: 'Solceller',        cost: { pengar: 10, material: 14 }, production: { pengar: 5, material: 0 }, impact: 3,  asset: 'stad_gron',     variants: ['flash', 'mellan', 'skola'] },
+  { id: 'stad_smutsig',  region: 'stad', tier: 'smutsig',  namn: 'Betongstad',     cost: { pengar: 0,  material: 8  }, production: { pengar: 9, material: 0 }, impact: -6, asset: 'stad_smutsig',  variants: ['flash', 'mellan', 'skola'] },
+  { id: 'stad_standard', region: 'stad', tier: 'standard', namn: 'Handelsområde',  cost: { pengar: 6,  material: 8  }, production: { pengar: 7, material: 0 }, impact: -3, asset: 'stad_standard', variants: ['flash', 'mellan', 'skola'] },
+  { id: 'stad_gron',     region: 'stad', tier: 'gron',     namn: 'Stadskvarter',        cost: { pengar: 10, material: 14 }, production: { pengar: 5, material: 0 }, impact: 3,  asset: 'stad_gron',     variants: ['flash', 'mellan', 'skola'] },
 ];
 
 // Hand för ett område i spelarens kort-form (= tidigare handFor-utdata). Tillfällig bro som

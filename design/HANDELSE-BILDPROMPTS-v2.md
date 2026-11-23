@@ -4,6 +4,18 @@
 `design/HANDELSE-BILDPROMPTS.md` (den filen ligger kvar oförändrad för jämförelse/historik) —
 det här är en parallell, ny uppsättning prompts i den nya stilen. Inget genererat än.*
 
+## STATUS 2026-11-23
+
+**Klara och sparade i `assets/` (22 unika motiv):** storm, skogsbrand (+kopia `skog_major`), uppror,
+torka (+kopia `aker_major`), godskord (+kopia `gm_braskord`), gronafonden, marknadskrasch (+kopia
+`gm_marknadskrasch`), aker_minor, skog_minor, tundra_minor, tundra_major, stad_minor, stad_major,
+expansion, gronomstallning, framtidsvisionar, gemensamsatsning, naturenblomstrar, miljolyft,
+varmebolja, gm_leveransstopp, gm_ekonomisktstod. De gamla bilderna ligger orörda i
+`assets/event_arkiv/`.
+
+**Klart 2026-11-23:** `sponsrat` och `assets/kris.png` ("Ön står inför kollaps", flygvy över hela ön i akut kris, sparad).
+**Kvar:** endast `resursbrist` (parkerad — Skola).
+
 **Hur du använder det här dokumentet:** för varje händelse, klistra in i ordning:
 1. **MASTER STYLE** (stilguiden §5) — samma text varje gång, oförändrad.
 2. **Subject** — motivbeskrivningen nedan, specifik per händelse.
@@ -42,14 +54,28 @@ fire across the whole hillside is the focus — no people needed.
 ### 3. `uppror` → `assets/event_uppror.png`
 *Folket har fått nog. rikaste, pengar −15, material −10, öhälsa −3.*
 
-> ⚠ **Behöver mest justering av de åtta:** den befintliga bilden har läsbara engelska protestplakat
-> ("OUR ISLAND OUR HOME") och en anime-liknande stil — bryter mot BÅDE no-text-regeln och den nya
-> stilen. Full omgörning rekommenderas, inte bara en stiljustering.
+> **Justerad (2026-11-23):** (1) Scenen ska ligga på TORGET framför Centralmaktens stora byggnad
+> från trailern (Shot 3, `Maktspelet trailer.mp4` 0:09) — referensruta sparad som
+> `design/referensbilder/centralmakten-torg-trailer.png` (brutalistisk fasad med stor rund
+> klocka/emblem, bred trappa, rad av tomma flaggstänger, monument på trappstegsformad sockel).
+> (2) **Medvetet undantag från no-text-regeln:** protestplakaten SKA ha läsbar engelsk text, som i
+> den gamla bilden — det är en demonstration, plakaten är själva berättelsen. Endast de angivna
+> slagorden; ingen annan text, inga skyltar på byggnaden, ingen asiatisk skrift (den gamla bilden
+> hade japanska tecken + "TOTEI ISLAND COUNTY ADMINISTRATION" på fasaden — ska INTE med).
+> (3) Realistisk människostil enligt ny stilguide (inte anime), unika ansikten.
 
-**Subject:** A determined but orderly crowd of real, individually-rendered islanders — weathered
-work clothing, a range of ages — marching down a modest street toward a plain municipal building.
-A few carry simple hand-painted signs showing only color and shape, no readable text. Overcast
-daylight, a sense of collective frustration rather than violence or chaos.
+**Subject:** A large, orderly protest on the wide square in front of a monumental brutalist
+government building — tall columned facade with a big round emblem above the entrance (no
+lettering anywhere on the building), a wide flight of steps, a row of tall empty flagpoles and a
+stepped stone plinth with a monument on one side (use the attached trailer frame as the
+architectural reference for the building and square). A dense crowd of real, individually-rendered
+islanders — a range of ages from children to elderly, weathered everyday work clothes, genuinely
+varied faces, none resembling people from other scenes in this set — hold up a long hand-painted
+cloth banner and many cardboard signs. The ONLY text in the image is protest slogans on these
+signs, in plain hand-lettered English capitals: "OUR ISLAND, OUR HOME, OUR FUTURE" on the big
+banner, and on the signs "PEOPLE BEFORE PROFITS", "OUR LAND OUR PEOPLE OUR CHILDREN", "ISLANDS ARE
+NOT DISPOSABLE". Overcast daylight, damp stone, a few patches of old snow, a sense of collective
+frustration and quiet determination rather than violence or chaos.
 
 ### 4. `torka` → `assets/event_torka.png` *(delas med `aker_major`)*
 *Torkan slår till. sektorMaterial, material −12, öhälsa −4.*
@@ -70,7 +96,7 @@ margin at its old shoreline. The scale of the dryness across the whole farm is t
 distant figure may be present but is not the subject. Same region and climate as the mild version,
 clearly a different spot within it.
 
-### 5. `godskord` → `assets/event_godskord.png` *(delas med `gm_braskord`)*
+### 5. `godskord` → `assets/event_godskord.png` *(delas med `gm_braskord`)* ✅ KLAR (sparad)
 *Ett ovanligt gott år. alla, +8 egen valuta, öhälsa +2.*
 
 > Bedöm om den befintliga bilden redan kommer nära målet (redan ganska verklighetstrogen) — annars,
@@ -81,7 +107,8 @@ workers gathering wheat into stooks across a wide field, a small fishing harbour
 visible at the shoreline below, warm late-summer evening light. A sense of broad, shared abundance
 across a whole community, not just one farm.
 
-### 6. `sponsrat` → `assets/event_sponsrat.png` *(ingen bild genererad än)*
+### 6. `sponsrat` → `assets/event_sponsrat.png` ✅ KLAR (sparad 2026-11-23)
+> Slutlig scen: kväll i örådets mörka sal, fyra lokalbor (bonde, skogsarbetare, hamnarbetare, stadsbo) vid långbord, direktör i vit kostym står lutad över bordet med lysande surfplatta + myntstaplar. Prompten nedan är ersatt av denna scen.
 *Ett erbjudande ni knappast kan tacka nej till. Röstningshändelse: pengarTillJa 15, öhälsa −6.*
 **Subject:** A formally dressed corporate representative extending a signed contract and a small
 case of money toward a hesitant local island official outside a modest town hall. A faint
@@ -101,12 +128,27 @@ banknotes from an official hand extended from off-frame, in front of his small f
 vegetable garden, stone walls, a few grazing sheep, a calm fjord and a single wind turbine on a
 distant ridge. Warm, soft daylight, a quiet, dignified, hopeful moment.
 
-### 8. `marknadskrasch` → `assets/event_marknadskrasch.png` *(delas med `gm_marknadskrasch`)*
+### 8. `marknadskrasch` → `assets/event_marknadskrasch.png` *(delas med `gm_marknadskrasch`)* ✅ KLAR (sparad)
 *Marknaden kollapsar. sektorPengar, pengar −15.*
-**Subject:** A small, old-fashioned bank or trading office interior — a few real, individually-
-rendered clerks in shirtsleeves staring at a wall-mounted ticker board showing falling numbers,
-scattered papers on the floor, a single desk lamp the only warm light in an otherwise cool, dim
-room. Quiet, real bad news, not theatrical panic.
+
+> **Justerad igen (2026-11-23):** vill ha BÅDA på en gång — en stor nedåtgående graf OCH en
+> sifferbräda med kolumner/procent/röda pilar, synliga samtidigt (inte antingen eller). Också:
+> bort med 1900-tals-banker-estetiken (vita skjortor med hängslen, antik träpanel) — byt till en
+> 1990-tals kontorskänsla: lysrörsbelysning, en gammal CRT-skärm med grafen, kortärmade skjortor,
+> mer modernt (men fortfarande slitet) kontorsmöblemang. OBS siffror/procent/pilar är OK men INGA
+> läsbara ord/fraser/skyltar i bilden (den tidigare varianten hade engelsk text på en affisch —
+> det bryter mot no-text-regeln).
+
+**Subject:** A cramped, worn 1990s-style trading office with harsh fluorescent tube lighting and a
+rainy window looking out over a modest harbour. An old CRT monitor on a cluttered desk shows a
+sharply plunging red line graph. Right beside it, a separate wall-mounted ticker board displays
+rows of numbers with red down-arrows next to each, showing percentage changes — both screens
+visible together in the same shot. A real, individually-rendered clerk in a short-sleeved 1990s
+button shirt sits slumped in front of the monitor, head in hand; one or two more in the
+background. Banknotes and coins scattered across the desk and floor alongside dropped papers — the
+sense that money itself is now worthless. No readable words, letters or signage anywhere in the
+scene — only numeric digits, percentages and arrow symbols on the displays. Quiet, real bad news,
+not theatrical panic.
 
 ---
 
@@ -307,26 +349,36 @@ light over the whole scene. A quiet sense of island-wide scarcity, not one local
 
 ### 25. `gm_marknadskrasch` = `marknadskrasch` (#8 ovan)
 
-### 26. `gm_leveransstopp` → `assets/event_gm_leveransstopp.png` *(ingen bild genererad än)*
+### 26. `gm_leveransstopp` → `assets/event_gm_leveransstopp.png` ✅ KLAR (sparad)
 *Leveransstopp. material −5, alla, negativ.*
-**Subject:** A small island harbour at a standstill: a cargo ship idle at the dock, its crane
-unmoving, stacked shipping containers and pallets piled along the quay with nowhere to go, a real
-dockworker leaning against a post checking a clipboard with nothing to do. Grey overcast light,
-still water, everything backed up and waiting.
+
+> **Justerad (2026-11-23):** första försöket (lugn hamnarbetare vid kaj) läste inte tydligt som
+> "stopp" — för stillsamt/overksamt. Byt till synligt TRAFIKKAOS: en lång kö av lastbilar som
+> fastnat på vägen in mot hamnen, i kombination med den overksamma kranen/båten, så det blir
+> omedelbart begripligt att leveranserna fysiskt har fastnat, inte bara "en lugn dag".
+
+**Subject:** A long line of delivery trucks backed up and stuck on the access road leading into a
+small island harbour, brake lights glowing red in the grey overcast light, drivers out of their
+cabs looking frustrated or waiting. Beyond them at the dock, a cargo ship sits idle, its crane
+unmoving, stacked shipping containers and pallets piled along the quay with nowhere to go. The
+sense of a physical jam — everything backed up and unable to move — should be unmistakable at a
+glance.
 
 ### 27. `gm_braskord` = `godskord` (#5 ovan)
 
 ### 28. `gm_ekonomisktstod` → `assets/event_gm_ekonomisktstod.png` *(ingen bild genererad än)*
 *Ekonomiskt stöd. pengar+material +10, fattigast, positiv.*
 
-> Medvetet skild från `gronafonden` (#7) trots liknande "kuvert byter hand"-komposition: här är
-> givaren mer byråkratisk/formell, mottagaren ser lättad/trött ut snarare än firad — stöd, inte pris.
+> **Justerad igen (2026-11-23):** andra försöket (skåpbil/leverans) återanvände av misstag samma
+> man som redan figurerar i `aker_minor`/`torka` — bryter mot regeln om unika personer per bild.
+> Enklaste lösningen: ta bort människor helt. Ett stilleben — ett bord med en öppen portfölj full
+> med pengar — löser både upprepnings-problemet och skillnaden mot `gronafonden` på en gång.
 
-**Subject:** A formally dressed official's hand holding out a sealed envelope with an official wax
-stamp toward a visibly weathered, modest worker — patched work jacket, a tired but relieved
-expression, standing in the doorway of a small struggling workshop or farmhouse. Quieter, more
-official in tone than a reward scene. Warm light on the envelope and the worker's face, otherwise
-plain daylight.
+**Subject:** A still-life close shot of an old leather briefcase lying open on a worn wooden table,
+packed full of banknotes and a few stacks of coins. A simple, modest workshop or farmhouse
+interior softly out of focus in the background — tools on a wall, a window with hazy daylight. No
+people in frame at all. Plain, practical, matter-of-fact — support quietly delivered, not a
+celebration.
 
 ---
 

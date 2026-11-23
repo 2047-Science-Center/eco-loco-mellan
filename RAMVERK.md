@@ -19,7 +19,7 @@ ersätter inte `ARCHITECTURE.md` (mock→drift), `RIGG-KONTRAKT.md` (signalsöm)
 | **Klient-fasad** | `src/ui.js` | Vylager. Tre backends bakom SAMMA fasad via `makeProxy`: `makeLocal` (mock), `makeOnline` (`src/net.js`), `makeTutorial`. Seriell event-kö med scenpauser. |
 | **Nätklient** | `src/net.js` | WebSocket mot servern; håller en replik-state (`EcoLoco` enbart som läsare). |
 | **Karta** | `src/map.js` | Genererad ö-bild (`assets/Karta 1.2.png`) + slots + byggnadsdrop + öhälso-overlay + seating-clamp. |
-| **Grafik** | `src/icons.js` (fasett-ikoner, `ico()/moodIco()/curIco()`), `src/logos.js` (lag-badges). |
+| **Grafik** | `src/icons.js` (fasett-ikoner, `ico()/moodIco()/curIco()`), `src/logos.js` (lag-emblem). |
 | **Rigg (semantik)** | `src/rigg.js` | Motor-events → semantiska cues `ecoloco/rigg/*`. `src/mqtt.js` → den fysiska riggens bänk-topics. **Ingen** direkt ljus/ljud-styrning. |
 | **Hjärna** | `tools/hjarna-stubb.py` | Översätter semantiska cues → granulärt (`ecoloco/rigg/out/*`) + ljud. Python-stubb nu → Blocks sen. |
 | **Sida** | `spel.html` | All DOM + CSS (`:root`-tokens). `?online=1` / `?lag=` / `?mode=` / `?slutdeltest=1`. |
@@ -67,6 +67,15 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
 - **Chrome och spel-copy ska gå via `src/icons.js`** (`ico()/moodIco()/curIco()`), inte emoji.
   Tillgängliga id: pengar, material, tillvaxt, industri, on, byt, rosta, krona, varning, trofe,
   sabotor, borsen, lage1–5 (moods). Nya symboler ritas som fasett-ikon där, inte som ny emoji.
+  **`on` (ön) är en illustrerad flat-scen (2026-11-23):** nordisk ö — grå spetsiga snötoppar (vänster
+  högre), gröna kullar, gul strand + stenar, mjukt hav med ljust grund-vatten-band. Mjuka path-kurvor,
+  lagren överlappar (ingen glipa), ingen himmel. Avviker medvetet från de enkla symbol-ikonerna.
+  **Lag-emblemen (`src/logos.js`, 2026-11-23):** INTE längre ritade silhuetter — nu de riktiga
+  väggemblemen (`assets/makt/*` / `assets/trailer/emblem-vagg-fargad.png`) vektoriserade och omfärgade
+  så djurytan fått sitt `AREA_COLORS`-kartfärg (oxe=guld, björn=grön, räv=orange, örn=grå; mörk platta +
+  vita highlights orörda). Källa: `design/emblem-svg/{aker,skog,tundra,stad}.svg` (+ `emblem1-4.svg` =
+  original). `logoSVG(id, size)` lägger emblemet på en liggande (1.25:1) **blek lagfärg-platta** med
+  lagfärgad ram. Löser §6-tråden om stad-gråtonerna (allt utgår nu från `AREA_COLORS`).
   **Politik-förslagens ikoner (2026-11-19):** forbud, naturreservat, gron, krispaket, marknadsavtal,
   gronstod, allians, skatt, utslappshandel, solidaritet, grannskatt, sektorskatt, naturbruksskatt,
   kustvakt, skogsvard — en per förslag, satta i `propDefs()` (`src/ui.js`) via `ico(id, 64)`. Vote-rutan
