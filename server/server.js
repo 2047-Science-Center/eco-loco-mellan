@@ -1205,6 +1205,10 @@ function handleGmCmd(m) {
     case 'tilllobby':    // SPELLEDARE: omstart → alla till lobbyn (när som helst)
       resetToLobby();
       break;
+    case 'reloadScreens':   // SPELLEDARE: hård omladdning av ALLA spelskärmar (t.ex. efter variant-byte) → de
+      resetToLobby();       // återansluter färskt och hamnar rätt på den nya versionen. Först tillbaka till lobbyn.
+      broadcast({ type: 'reloadClients' });
+      break;
     case 'tillattract':  // SPELLEDARE: ta alla hela vägen till ATTRACT-skärmen (ny grupp redo att komma in)
       resetToLobby();                                     // nollställ allt (motor/timers/started) → lobby-läge
       broadcast({ type: 'event', event: 'tillattract' }); // skärmarna lägger attract-skärmen överst + spelar filmen

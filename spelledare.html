@@ -324,6 +324,7 @@
         <p class="note" style="margin-bottom:10px">Fas just nu: <b id="partifas" style="color:var(--gold)">–</b></p>
         <button class="btn primary" id="lobby-btn">↺ OMSTART → LOBBYN<small>river allt (spel/intro/tutorial) och tar alla till lobbyn</small></button>
         <button class="btn" id="attract-btn" style="margin-top:10px">⏮ NY GRUPP → ATTRACT<small>hela vägen till attract-skärmen + filmen</small></button>
+        <button class="btn" id="reload-btn" style="margin-top:10px">⟳ LADDA OM ALLA SKÄRMAR<small>hård omladdning — t.ex. efter variant-byte, så alla hamnar rätt på nya versionen</small></button>
       </div>
       <div class="card">
         <h2>STARTA / HOPPA <span class="hint">— grå = går inte i denna fas</span></h2>
@@ -654,6 +655,7 @@ $('#slutdel-next').onclick  = () => { net.gmcmd({ cmd: 'slutdel_next' }); if (sl
 // ——— ADMIN ———
 $('#lobby-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.tillLobby(); toast('Alla till lobbyn (omstart)'); });
 $('#attract-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'tillattract' }); toast('Alla till attract-skärmen (ny grupp)'); });
+$('#reload-btn').onclick = (e) => confirmAct(e.currentTarget, () => { net.gmcmd({ cmd: 'reloadScreens' }); toast('Laddar om alla spelskärmar'); });
 $('#forcestart-btn').onclick = () => { net.gmcmd({ cmd: 'forcestart' }); toast('Tvingar gemensam nedräkning → runda 1'); };
 document.querySelectorAll('[data-variant]').forEach(b => {
   b.onclick = () => {

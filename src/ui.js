@@ -165,7 +165,7 @@ function makeProxy() {
   const FWD = ['start', 'roundStart', 'build', 'trade', 'proposalOpened', 'proposalResolved',
                'dilemmaOpened', 'dilemmaResolved',
                'income', 'ohalsa', 'award', 'awardCeremony', 'awardStep', 'awardDone',
-               'event', 'eventClosed', 'companyEvent', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
+               'event', 'eventClosed', 'reloadClients', 'companyEvent', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
                'botTakeover', 'disconnected', 'reconnected', 'paused',
                'politicsStart', 'politicsDone', 'politicsTimer',
@@ -454,6 +454,8 @@ game.on('crisis', p => run(async () => {
 // eventDismiss→servern→eventClosed stängs ALLA skärmar samtidigt + spelet resumas. 15,5 s failsafe.
 let _evCloseResolve = null, _evFailsafe = null;
 game.on('eventClosed', () => { if (_evCloseResolve) _evCloseResolve(); });
+// Spelledaren tryckte "ladda om alla skärmar" (t.ex. efter variant-byte) → hård omladdning.
+game.on('reloadClients', () => { try { location.reload(); } catch {} });
 function waitEventClose(el) {
   return new Promise(res => {
     let locked = true;
