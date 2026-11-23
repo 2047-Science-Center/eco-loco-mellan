@@ -450,6 +450,14 @@ function newEngine() {
   // RESUME. Ligger fler i motorns kö LÖSES de inte direkt — en COOLDOWN av normalt spel (EVENT_COOLDOWN_MS)
   // får passera innan nästa köade händelse löses och visas. Effekten tillämpas i motorn vid emit (oförändrat).
   engine.on('companyEvent', p => {
+    // Företagshändelser hör BYGGFASEN till. Om en (köad) händelse emittas UTANFÖR byggfasen — byggtimern
+    // stoppad (prisutdelning/Ö-råd) eller mitt i resolve — ska belöningen ändå gälla (motorn har redan
+    // applicerat den i _processNextCompanyEvent) men INGEN popup/paus visas, annars "läcker" t.ex. Grön
+    // omställning / Framtidsvisionär in i Ö-rådet. Dränera ev. kö tyst (rekursivt via denna vakt).
+    if (!timerInt || resolvingNow) {
+      if (engine.getState().activeCompanyEvent) engine.companyEventResolved();
+      return;
+    }
     autoPaused = true;
     eventDismissed = new Set();   // ny händelse → nollställ vilka skärmar som klickat bort den
     broadcastPause();   // auto=true → klienten fryser/blockerar men visar INGEN paus-overlay (bara händelserutan)
@@ -736,9 +744,22 @@ function forceOpenVotes() {
   mockOpponentsVote(engine, humanIds());
 }
 
+// Stäng en ev. pågående företagshändelse-popup innan rundan löses → den ska aldrig ligga kvar
+// in i prisutdelning/Ö-råd. Belöningen är redan applicerad; vi nollar paus/timer, säger åt skärmarna
+// att stänga rutan och dränerar motorns kö tyst (vakten i companyEvent-hanteraren tystar emits).
+function cancelCompanyEventPopup() {
+  clearTimeout(crisisTimer); crisisTimer = null;
+  clearTimeout(eventCooldownTimer); eventCooldownTimer = null;
+  if (autoPaused && engine?.getState()?.activeCompanyEvent) {
+    autoPaused = false;
+    broadcast({ type: 'event', event: 'eventClosed' });
+    try { engine.companyEventResolved(); } catch {}
+  }
+}
 function forceResolve() {
   if (paused || resolvingNow || !started || engine.getState().over) return;
   resolvingNow = true;
+  cancelCompanyEventPopup();   // byggfasen slut → ingen händelse-popup får följa med in i Ö-rådet
   forceOpenVotes();
   broadcast({ type: 'resolveStart' });
   mockOpponentsAct(engine, humanIds());
