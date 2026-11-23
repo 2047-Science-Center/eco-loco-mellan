@@ -279,6 +279,16 @@
   #ov-dilemma .dz-tally { text-align: center; font-family: var(--font-num); font-size: 34px; letter-spacing: 3px; margin-top: 24px; color: var(--dim); }
   #ov-dilemma .dz-tally .av { color: #6FA8C7; }
   #ov-dilemma .dz-tally .bv { color: #E0A64C; }
+  /* Sponsrat = individuellt JA/NEJ i samma v3-vy, men grön/röd (ja/nej) i stället för blå/guld. */
+  #ov-dilemma .dchoice.ja { border-color: #35D97B; background: #12351f; }
+  #ov-dilemma .dchoice.ja .ab { color: #35D97B; }
+  #ov-dilemma .dchoice.nej { border-color: #E04438; background: #3a1b17; }
+  #ov-dilemma .dchoice.nej .ab { color: #E04438; }
+  #ov-dilemma .dz-votes .d.ja { background: #35D97B; border-color: #1E4A2C; }
+  #ov-dilemma .dz-votes .d.nej { background: #E04438; border-color: #6e2a24; }
+  #ov-dilemma .resultcard.win.ja { border-color: #35D97B; background: #12351f; }
+  #ov-dilemma .resultcard.win.ja .ab { color: #35D97B; }
+  #ov-dilemma .dz-tally .jav { color: #35D97B; } #ov-dilemma .dz-tally .nejv { color: #E04438; }
 
   .tradegrid { display: flex; align-items: center; gap: 22px; margin: 8px 0 20px; }
   .tradebox { flex: 1; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 18px; text-align: center; }
@@ -315,6 +325,7 @@
      sista stängts (ingen glipa där spelplanen blinkar fram). */
   #room-bg { position: absolute; inset: 0; z-index: 9; pointer-events: none; background: #0b0a07 url('assets/kontrollrum_neutral.png') center / cover no-repeat; opacity: 0; visibility: hidden; transition: opacity .6s ease, visibility 0s .6s; }
   #room-bg.on { opacity: 1; visibility: visible; transition: opacity .2s ease; }
+  #room-bg.snabb { transition: opacity .25s ease, visibility 0s .25s; }   /* örådet klart → rummet rivs snabbt */
   /* Under omröstning (dilemma/politik) ligger kontrollrummet kvar men MYCKET mörkare/tonat (Klara 2026-11-23),
      så röst-UI:t förblir läsbart. Justera de två alfa-värdena för mörkare/ljusare. */
   #ov-vote, #ov-choose { background: linear-gradient(rgba(6,5,4,.80), rgba(6,5,4,.88)); }

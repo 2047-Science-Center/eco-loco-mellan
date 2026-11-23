@@ -640,7 +640,7 @@ export class EcoLoco {
     if (!ev || ev.typ !== 'rost') return;
     this.S.proposal = { type: 'event', event: ev, by: null, votes: {}, resolved: false, passed: false };
     this._emit('proposalOpened', { type: 'event', by: null,
-      event: { id: ev.id, rubrik: ev.rubrik, text: ev.text, rostFraga: ev.rostFraga, ja: ev.pengarTillJa, ljud: ev.ljud, bild: 'assets/event_' + ev.id + '.png' } });
+      event: { id: ev.id, rubrik: ev.rubrik, text: ev.text, rostFraga: ev.rostFraga, ja: ev.pengarTillJa, oh: ev.oh, ljud: ev.ljud, bild: 'assets/event_' + ev.id + '.png' } });
   }
 
   // Grönast = högst impactNeg (minst negativ). Tie-break: lägst totalt kapital, sedan AREAS-ordning.

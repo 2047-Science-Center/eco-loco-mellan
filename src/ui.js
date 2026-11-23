@@ -519,9 +519,16 @@ const AWARD_BILD = {
 // Kontrollrummet (#room-bg) ligger kvar bakom hela örådet: tänds direkt när prisutdelning/"har ordet"/förslag/
 // omröstning öppnas, släcks först RUM_HALL ms efter att den sista stängts → ingen blink av spelplanen mellan dem.
 const RUM_HALL = 2500;
+let rumT = null;
+// Örådet helt klart (politicsDone) → riv kontrollrummet DIREKT (snabb tonad ut) så spelaren landar på ön och ser "ÅR N".
+function rivRummet() {
+  const el = $('room-bg'); if (!el) return;
+  clearTimeout(rumT); rumT = null;
+  el.classList.add('snabb'); el.classList.remove('on');
+  setTimeout(() => el.classList.remove('snabb'), 500);
+}
 if (typeof MutationObserver !== 'undefined' && $('room-bg')) {
   const ids = ['ov-award', 'ov-power', 'ov-choose', 'ov-vote', 'ov-dilemma'];
-  let rumT = null;
   const syncRum = () => {
     if (ids.some(i => $(i)?.classList.contains('open'))) { clearTimeout(rumT); rumT = null; $('room-bg').classList.add('on'); }
     else if (!rumT) rumT = setTimeout(() => { rumT = null; if (!ids.some(i => $(i)?.classList.contains('open'))) $('room-bg').classList.remove('on'); }, RUM_HALL);
@@ -698,13 +705,31 @@ game.on('gameEnd', p => run(async () => {
 game.on('proposalOpened', p => run(async () => {
   // proposal_open-ljud spelas centralt (rigg); 'vote' stannar som torr feedback när DU trycker JA/NEJ.
   $('ov-choose').classList.remove('open');   // ÖRÅD: stäng förslagsväljaren → röstningen öppnas
-  openVoteModal(p);
+  if (p.type === 'event') openSponsratModal(p);   // sponsrat (rost) → v3-vyn (JA/NEJ, grön/röd)
+  else openVoteModal(p);                           // politik-förslag → #ov-vote
 }));
 
 game.on('proposalResolved', p => run(async () => {
   audio.play(p.passed ? 'proposal_pass' : 'proposal_fail');
   const _pnamn = p.type === 'event' ? 'Erbjudande' : (propDefs().find(d => d.type === p.type)?.rubrik || 'Förslag');
   logg(`${ico('orad', 14)} <b>${_pnamn}</b> — ${p.passed ? `gick igenom ${ico('ja', 14)}` : `föll ${ico('nej', 14)}`} (${p.yesCount}/4 ja)`, 'lg-politik');
+  // SPONSRAT i v3-vyn (#ov-dilemma): resultat återanvänder vyn (vinnande ja-kort / grå ruta).
+  if (p.type === 'event' && $('ov-dilemma')?.classList.contains('open')) {
+    const ev = sponsratVote?.event || {};
+    const noCount = Object.values(p.votes || {}).filter(v => v === false).length;
+    $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = 'Klart';
+    if (p.passed) {
+      let kons = `<div class="r">${ico('pengar', 34)}<span class="who">Varje ja-företag</span><b>+${ev.ja ?? 0}</b></div>`;
+      if (ev.oh) { const up = ev.oh >= 0; kons += `<div class="r">${ico(up ? 'tillvaxt' : 'industri', 34)}<span class="who">Öns hälsa</span><b class="${up ? 'up' : 'down'}">${up ? '+' : '−'}${Math.abs(ev.oh)}</b></div>`; }
+      $('dz-choices').innerHTML = `<div class="resultcard win ja"><div class="rtop"><span class="ab">JA</span><span class="won">${p.yesCount} TOG EMOT</span></div><div class="kons">${kons}</div></div>`;
+    } else {
+      $('dz-choices').innerHTML = `<div class="resultcard none">Inget företag nappade · ön slapp undan</div>`;
+    }
+    $('dz-foot').innerHTML = `<div class="dz-tally"><span class="jav">${p.yesCount} JA</span> · <span class="nejv">${noCount} NEJ</span></div>`;
+    sponsratVote = null; sponsratPicked = null;
+    setTimeout(() => { $('ov-dilemma').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, 5000);
+    return;
+  }
   renderVoteState();
   $('vote-btns').style.display = 'none';
   if (p.type === 'event') {
@@ -747,7 +772,7 @@ game.on('dilemmaResolved', p => run(async () => {
   setTimeout(() => { $('ov-dilemma').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, holdMs);
 }));
 
-game.on('voteUpdate', () => { renderVoteState(); if ($('ov-dilemma')?.classList.contains('open')) renderDilemmaVotes(); });   // röst-tally live (politik + dilemma-pluttar)
+game.on('voteUpdate', () => { renderVoteState(); if ($('ov-dilemma')?.classList.contains('open')) (sponsratVote ? renderSponsratVotes() : renderDilemmaVotes()); });   // röst-tally live (politik + dilemma/sponsrat-pluttar)
 
 game.on('timer', ({ left, full }) => {
   const m = Math.floor(Math.max(0, left) / 60), s = Math.max(0, left) % 60;
@@ -1223,6 +1248,7 @@ game.on('politicsTimer', p => {
 });
 game.on('politicsDone', () => run(async () => {
   $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null; dilemmaVote = null;
+  rivRummet();
   $('choose-timer').textContent = ''; $('vote-timer').textContent = '';
   // Örådet klart → NU byter årssiffran, loggens ÅR-avdelare sätts (så örådsbeslutet ligger kvar
   // under året vars öråd det var) och "ÅR N"-bannern visas, sedan spelas det nya året.
@@ -1342,6 +1368,55 @@ function openDilemmaModal(p) {
   $('dz-lead').textContent = p.text;    // kort situation/fråga
   $('dz-timer').className = 'dz-timer politimer'; $('dz-timer').textContent = '';
   renderDilemmaChoices(); renderDilemmaVotes();
+  audio.play('ui_open');
+  $('ov-dilemma').classList.add('open');
+}
+// ── Sponsrat (rost): samma v3-vy, men individuellt JA/NEJ i grönt/rött. ──
+let sponsratVote = null, sponsratPicked = null;
+function sponsratKons(ev, which) {
+  if (which !== 'JA') return `<div class="r none">Ingen förändring för ditt företag</div>`;
+  let rows = `<div class="r">${ico('pengar', 34)}<span class="who">Ditt företag</span><b>+${ev.ja ?? 0}</b></div>`;
+  if (ev.oh) { const up = ev.oh >= 0; rows += `<div class="r">${ico(up ? 'tillvaxt' : 'industri', 34)}<span class="who">Öns hälsa om någon tar emot</span><b class="${up ? 'up' : 'down'}">${up ? '+' : '−'}${Math.abs(ev.oh)}</b></div>`; }
+  return rows;
+}
+function renderSponsratChoices() {
+  const p = sponsratVote; if (!p) return;
+  const ev = p.event || {};
+  const card = (which, label, cls) => {
+    const c = 'dchoice ' + cls + (sponsratPicked === which ? ' picked' : '') + (sponsratPicked && sponsratPicked !== which ? ' dim' : '');
+    return `<div class="${c}" data-ja="${which === 'JA' ? '1' : '0'}"><div class="toprow"><div class="ab">${which}</div><div class="nm">${label}</div></div><div class="kons">${sponsratKons(ev, which)}</div></div>`;
+  };
+  $('dz-choices').innerHTML = card('JA', 'TA EMOT', 'ja') + card('NEJ', 'AVSTÅ', 'nej');
+  if (p.by !== game.me && sponsratPicked === null) $('dz-choices').querySelectorAll('.dchoice').forEach(el => el.onclick = () => sponsratVoteClick(el.dataset.ja === '1'));
+}
+function renderSponsratVotes() {
+  const S = E()?.getState(); if (!S?.teams) return;
+  const votes = S.proposal?.votes || {};
+  const dots = S.teams.map(t => {
+    const v = votes[t.id]; const c = v === true ? 'ja' : v === false ? 'nej' : '';
+    return `<div class="v"><div class="d ${c}"></div>${t.namn}${t.id === game.me ? ' (du)' : ''}</div>`;
+  }).join('');
+  $('dz-foot').innerHTML = `<div class="dz-votes">${dots}</div>${sponsratPicked !== null ? '' : `<div class="dz-hint">Varje lag väljer själv</div>`}`;
+}
+function sponsratVoteClick(yes) {
+  if (Date.now() < voteLockUntil || sponsratPicked !== null) return;
+  audio.play('vote');
+  game.vote(yes);
+  sponsratPicked = yes ? 'JA' : 'NEJ';
+  renderSponsratChoices(); renderSponsratVotes();
+}
+function openSponsratModal(p) {
+  sponsratVote = p; sponsratPicked = null; dilemmaVote = null;
+  armVoteLock();
+  voteOpenFor = p;
+  const ev = p.event || {};
+  const img = $('dz-img'), fallback = 'assets/event_stad_major.png';
+  img.onerror = () => { img.onerror = null; img.src = fallback; };
+  img.src = 'assets/dilemma/koncernerbjudande.png';   // tematiskt: koncernens erbjudande (fallback om saknas)
+  $('dz-q').textContent = ev.rubrik || 'Ett erbjudande';
+  $('dz-lead').textContent = ev.rostFraga || ev.text || '';
+  $('dz-timer').className = 'dz-timer politimer'; $('dz-timer').textContent = '';
+  renderSponsratChoices(); renderSponsratVotes();
   audio.play('ui_open');
   $('ov-dilemma').classList.add('open');
 }
