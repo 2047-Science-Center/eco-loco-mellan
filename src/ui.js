@@ -119,6 +119,7 @@ function makeLocal() {
     vote: yes => { engine.vote(me, yes); setTimeout(() => mockOpponentsVote(engine, me), 900); },
     klar: () => doResolve(),
     awardsKlara: () => { if (!tid && !engine.getState().over) startT(); },
+    eventDismiss: () => {},   // lokalt läge: popupen stängs direkt vid klick (ingen server att resuma)
     pause: () => {},   // lokalt läge: ingen server/rigg att pausa
     playAgain: () => location.reload(),
   };
@@ -144,6 +145,7 @@ async function makeOnline() {
     vote: y => net.vote(y),
     klar: () => net.klar(),
     awardsKlara: () => net.awardsKlara(),
+    eventDismiss: () => net.eventDismiss(),
     playAgain: () => net.startGame(),
     playTrailer: () => net.playTrailer(),
     skipTrailer: () => net.skipTrailer(),
@@ -163,7 +165,7 @@ function makeProxy() {
   const FWD = ['start', 'roundStart', 'build', 'trade', 'proposalOpened', 'proposalResolved',
                'dilemmaOpened', 'dilemmaResolved',
                'income', 'ohalsa', 'award', 'awardCeremony', 'awardStep', 'awardDone',
-               'event', 'companyEvent', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
+               'event', 'eventClosed', 'companyEvent', 'crisis', 'roundReplay', 'roundEnd', 'gameEnd', 'timer', 'resolveStart',
                'lobby', 'klarUpdate', 'claimAck', 'voteUpdate', 'tradeIncoming', 'notis',
                'botTakeover', 'disconnected', 'reconnected', 'paused',
                'politicsStart', 'politicsDone', 'politicsTimer',
@@ -192,6 +194,7 @@ function makeProxy() {
     vote: (...a) => cur.vote(...a),
     klar: (...a) => cur.klar(...a),
     awardsKlara: (...a) => cur.awardsKlara?.(...a),
+    eventDismiss: (...a) => cur.eventDismiss?.(...a),
     pause: (...a) => cur.pause?.(...a),
     playAgain: (...a) => cur.playAgain(...a),
     playTrailer: (...a) => cur.playTrailer?.(...a),
@@ -447,6 +450,22 @@ game.on('crisis', p => run(async () => {
 }));
 
 // Företagshändelse (companyEvent): miljökriser (warn) + prestationshändelser (belöning). Visas i
+// Händelse-popupen ligger kvar UPP TILL 15 s, men ett klick (efter 800 ms) stänger den — och via
+// eventDismiss→servern→eventClosed stängs ALLA skärmar samtidigt + spelet resumas. 15,5 s failsafe.
+let _evCloseResolve = null, _evFailsafe = null;
+game.on('eventClosed', () => { if (_evCloseResolve) _evCloseResolve(); });
+function waitEventClose(el) {
+  return new Promise(res => {
+    let locked = true;
+    el.classList.add('clicklock');
+    const lockT = setTimeout(() => { locked = false; el.classList.remove('clicklock'); }, 800);
+    const finish = () => { clearTimeout(lockT); clearTimeout(_evFailsafe); el.removeEventListener('pointerdown', onDown); _evCloseResolve = null; res(); };
+    const onDown = () => { if (!locked) { game.eventDismiss?.(); finish(); } };   // klick → be servern lösa + stäng
+    el.addEventListener('pointerdown', onDown);
+    _evCloseResolve = finish;                 // 'eventClosed' från servern (annan skärm klickade / 15 s) → stäng
+    _evFailsafe = setTimeout(finish, 15500);
+  });
+}
 // #ov-event (samma kort som vanliga händelser). warn styr röd/neutral ram.
 game.on('companyEvent', p => run(async () => {
   renderMe(); renderTeams(); renderRegs();
@@ -472,10 +491,8 @@ game.on('companyEvent', p => run(async () => {
   $('ov-event').classList.toggle('warn', !!p.warn);
   $('ov-event').classList.add('open');
   await delay(300);
-  // KORT visning (~3 s) i takt med serverns händelse-frys. ignorePause=true → rutans timer fryser inte av
-  // auto-pausen (annars skulle den aldrig räkna ner). Klick efter 800 ms kan stänga den tidigare.
-  await clickOrTimeout($('ov-event'), 2700, 800, true);
-  $('ov-event').classList.remove('open');
+  await waitEventClose($('ov-event'));   // upp till 15 s / klick / eventClosed (synkat över alla skärmar)
+  $('ov-event').classList.remove('open', 'clicklock');
   await delay(150);
 }));
 
@@ -543,7 +560,7 @@ function renderAwardCard(typ, w, footer = '') {
   // PRISUTDELNING (P3, Klara 2026-11-23): prisbilden fyller HELA skärmen + en centrerad grå popup med
   // text/ikoner (ingen liten prisbild-popup). Bilden byts per pris → "rummet byter färg". 'prize'
   // gör kortet fullskärm. Ingen bov → ingen bild (mörk skärm + popup).
-  $('awardcard').className = 'awardcard prize' + (typ === 'sab' ? ' sab' : '') + (w ? '' : ' ingen');
+  $('awardcard').className = 'awardcard prize' + (typ === 'sab' ? ' sab' : typ === 'eld' ? ' eld' : '') + (w ? '' : ' ingen');
   const bild = w ? (AWARD_BILD[typ] || '') : '';
   // Föregående prisbild ligger kvar under och den nya tonas in över den → ingen svart blink mellan priserna.
   const prev = bild && prevAwardBild && prevAwardBild !== bild ? prevAwardBild : '';   // 'ingen vinnare' → neutrala rummet, inte förra färgen
@@ -717,7 +734,7 @@ game.on('proposalResolved', p => run(async () => {
   if (p.type === 'event' && $('ov-dilemma')?.classList.contains('open')) {
     const ev = sponsratVote?.event || {};
     const noCount = Object.values(p.votes || {}).filter(v => v === false).length;
-    $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = 'Klart';
+    $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = '';
     if (p.passed) {
       let kons = `<div class="r">${ico('pengar', 34)}<span class="who">Varje ja-företag</span><b>+${ev.ja ?? 0}</b></div>`;
       if (ev.oh) { const up = ev.oh >= 0; kons += `<div class="r">${ico(up ? 'tillvaxt' : 'industri', 34)}<span class="who">Öns hälsa</span><b class="${up ? 'up' : 'down'}">${up ? '+' : '−'}${Math.abs(ev.oh)}</b></div>`; }
@@ -752,7 +769,7 @@ game.on('dilemmaOpened', p => run(async () => {
 game.on('dilemmaResolved', p => run(async () => {
   const d = dilemmaById(p.id);
   const tallyHtml = `<span class="av">${p.aCount} A</span> · <span class="bv">${p.bCount} B</span>`;
-  $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = 'Klart';   // nedräkning → KLART
+  $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = '';   // nedräkning → KLART
   if (!p.outcome) {   // OAVGJORT (dilemmaStrict): inget beslut → inga effekter. Grå ruta över båda.
     audio.play('ui_close');
     logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — INGET BESLUT (${p.aCount} A – ${p.bCount} B)`, 'lg-politik');

@@ -168,7 +168,7 @@ let crisisDueRound = 0;        // ÅRSGATADE lokala kriser: senaste runda vi red
 // Händelse-pacing (presentation, beslut Klara 2026-11-19): en företagshändelse fryser spelet bara en KORT
 // stund (skärmen oklickbar), sen rullar spelet vidare — INTE hela kön på en gång. Ligger flera händelser i
 // kö får de en COOLDOWN av normalt spel emellan så popups inte staplas. Rör inga regler/effekter/trösklar.
-const EVENT_PAUSE_MS = 3000;     // hur länge varje händelse fryser spelet (skärmen oklickbar)
+const EVENT_PAUSE_MS = 15000;    // händelse-popupen ligger kvar (och spelet fryst) UPP TILL 15 s — ett klick (eventDismiss) löser den tidigare (Klara 2026-11-23)
 const EVENT_COOLDOWN_MS = 4000;  // normalt (ofryst) spel mellan två köade händelser
 const PROPOSE_SECS = 30, VOTE_SECS = 30;
 const BOT_POWER_WAIT_S = 60;         // en bot med makten väntar så här många sek IN I rundan innan den lägger sitt förslag (människor hinner ringa & påverka)
@@ -597,6 +597,7 @@ function autoPauseReason() { return engine?.getState()?.activeCompanyEvent ? 'en
 function afterEventShow() {
   if (!engine) return;
   autoPaused = false;
+  broadcast({ type: 'event', event: 'eventClosed' });   // alla skärmar stänger händelse-popupen samtidigt
   broadcastPause();   // auto=false; manuell paus (paused=true) består om spelledaren pausat
   clearTimeout(eventCooldownTimer);
   if (engine.getState().companyEventQueue.length > 0) {
@@ -1049,6 +1050,10 @@ wss.on('connection', ws => {
       }
       case 'awardsKlara': {
         if (lag) awardsKlar(lag);   // klickat igenom prisutdelningen → timern startar när alla är klara
+        break;
+      }
+      case 'eventDismiss': {   // valfri skärm klickade bort händelse-popupen → lös den direkt (resume + eventClosed till alla)
+        if (autoPaused && engine?.getState()?.activeCompanyEvent) { clearTimeout(crisisTimer); afterEventShow(); }
         break;
       }
       case 'openProposal': {

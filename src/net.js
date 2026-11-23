@@ -86,6 +86,8 @@ export class ServerNet {
   vote(v) { this._send(typeof v === 'string' ? { type: 'vote', choice: v } : { type: 'vote', yes: v }); }   // ja/nej (bool) ELLER dilemma A/B (sträng)
   klar() { this._send({ type: 'klar' }); }
   awardsKlara() { this._send({ type: 'awardsKlara' }); }
+  eventDismiss() { this._send({ type: 'eventDismiss' }); }   // valfri skärm klickar bort händelse-popupen → servern löser den
+
   tutBeat(beat) { this._send({ type: 'tutBeat', beat }); }
   podiumAnswer(questionId, option) { this._send({ type: 'podiumAnswer', questionId, option }); }   // slutdelen
   rigCue(phase) { this._send({ type: 'rigCue', phase }); }   // startceremonin → rigg (hjärnan)

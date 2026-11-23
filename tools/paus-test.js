@@ -74,13 +74,12 @@ try {
   const gotManualDuring = await waitFor(() => paused.some(p => p.paused === true), 3000);
   ok(gotManualDuring, 'manuell paus mitt i händelsen → en broadcast med paused=true (overlay visas)');
 
-  console.log('3) Händelsen avslutas efter ~3 s (INTE 10 s) → auto=false MEN manuell paus består (paused=true)');
-  const resumed = await waitFor(() => paused.some(p => p.t > autoP.t && p.auto === false), 8000);
+  console.log('3) eventDismiss (klick) löser händelsen DIREKT → auto=false MEN manuell paus består (paused=true)');
+  send({ type: 'eventDismiss' });   // en skärm klickar bort händelse-popupen (annars ligger den kvar upp till 15 s)
+  const resumed = await waitFor(() => paused.some(p => p.t > autoP.t && p.auto === false), 5000);
   const autoFalse = paused.find(p => p.t > autoP.t && p.auto === false);
-  ok(resumed && autoFalse, 'en broadcast med auto=false kom när händelsen avslutades');
-  const dur = autoFalse ? autoFalse.t - autoP.t : -1;
-  ok(dur >= 1500 && dur <= 6000, `händelse-frysen varade ~3 s, inte 10 s (uppmätt ${dur} ms)`);
-  ok(autoFalse && autoFalse.paused === true, 'manuell paus kvar (paused=true) efter händelsens slut — händelsen upphävde den INTE');
+  ok(resumed && autoFalse, 'eventDismiss → broadcast med auto=false (händelsen löst direkt)');
+  ok(autoFalse && autoFalse.paused === true, 'manuell paus kvar (paused=true) efter händelsen — händelsen upphävde den INTE');
 
   console.log('4) Spelledaren återupptar manuellt → paused=false');
   const n4 = paused.length;
@@ -88,16 +87,18 @@ try {
   await waitFor(() => paused.length > n4, 3000);
   ok(paused[paused.length - 1].paused === false, 'manuell fortsättning → paused=false (overlay stängs)');
 
-  console.log('5) KÖ-COOLDOWN: två köade händelser visas INTE back-to-back utan med cooldown emellan');
+  console.log('5) KÖ-COOLDOWN: dismiss första → cooldown → nästa köade händelse (staplas inte back-to-back)');
   send({ type: 'gmcmd', cmd: 'gm', on: true }); await delay(200);
   const nc = cevents.length;
   send({ type: 'gmcmd', cmd: 'gmEvent', id: 'gm_marknadskrasch' }); await delay(150);
   send({ type: 'gmcmd', cmd: 'gmEvent', id: 'gm_ekonomisktstod' });
-  await waitFor(() => cevents.length >= nc + 2, 12000);
+  await waitFor(() => cevents.length >= nc + 1, 4000);   // första visas
+  await delay(200); send({ type: 'eventDismiss' });       // lös första → cooldown till nästa
+  await waitFor(() => cevents.length >= nc + 2, 8000);
   const two = cevents.slice(nc, nc + 2);
   ok(two.length === 2, `båda GM-händelserna visades (${two.map(e => e.id).join(', ')})`);
   const gap = two.length === 2 ? two[1].t - two[0].t : -1;
-  ok(gap >= 5000 && gap <= 9000, `mellanrum ~3 s frys + ~4 s cooldown ≈ 7 s (uppmätt ${gap} ms) → popups staplas inte`);
+  ok(gap >= 3500 && gap <= 7500, `dismiss + cooldown ~4 s mellan dem (uppmätt ${gap} ms) → staplas inte`);
 
   ws.close();
 } catch (e) {
