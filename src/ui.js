@@ -726,7 +726,7 @@ game.on('proposalResolved', p => run(async () => {
       $('dz-choices').innerHTML = `<div class="resultcard none">Inget företag nappade · ön slapp undan</div>`;
     }
     $('dz-foot').innerHTML = `<div class="dz-tally"><span class="jav">${p.yesCount} JA</span> · <span class="nejv">${noCount} NEJ</span></div>`;
-    sponsratVote = null; sponsratPicked = null;
+    sponsratVote = null; sponsratPicked = null; dzResolved = true;
     setTimeout(() => { $('ov-dilemma').classList.remove('open'); rivRummet(); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, 5000);
     return;
   }
@@ -766,13 +766,13 @@ game.on('dilemmaResolved', p => run(async () => {
     $('dz-choices').innerHTML = `<div class="resultcard win ${side}"><div class="rtop"><span class="ab">${p.outcome}</span><span class="won">VANN</span><span class="nm">${(a.namn || '').toUpperCase()}</span></div><div class="kons">${dilemmaKons(a.effects)}</div></div>`;
     $('dz-foot').innerHTML = `<div class="dz-tally">${tallyHtml}</div>`;
   }
-  dilemmaVote = null; dilemmaPicked = null;
+  dilemmaVote = null; dilemmaPicked = null; dzResolved = true;
   // Håll resultatet (matchar serverns fördröjning): 7 s vid beslut, 4,5 s vid "inget beslut".
   const holdMs = p.outcome ? 7000 : 4500;
   setTimeout(() => { $('ov-dilemma').classList.remove('open'); rivRummet(); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, holdMs);
 }));
 
-game.on('voteUpdate', () => { renderVoteState(); if ($('ov-dilemma')?.classList.contains('open')) (sponsratVote ? renderSponsratVotes() : renderDilemmaVotes()); });   // röst-tally live (politik + dilemma/sponsrat-pluttar)
+game.on('voteUpdate', () => { renderVoteState(); if ($('ov-dilemma')?.classList.contains('open') && !dzResolved) (sponsratVote ? renderSponsratVotes() : renderDilemmaVotes()); });   // röst-tally live (ej efter avgörandet)
 
 game.on('timer', ({ left, full }) => {
   const m = Math.floor(Math.max(0, left) / 60), s = Math.max(0, left) % 60;
@@ -1318,6 +1318,7 @@ let dilemmaVote = null;   // det öppna dilemmats payload (null = ingen dilemma-
 // ── v3-design (#ov-dilemma): stor bild + fråga, två helfärgade A/B-kort med konsekvenser, lag-pluttar,
 //    resultat där vinnarkortet täcker båda. Separat overlay → Mellans politik-röstning (#ov-vote) orörd. ──
 let dilemmaPicked = null;   // vilket alternativ DU röstat på i det öppna dilemmat ('A'/'B')
+let dzResolved = false;     // true efter avgörandet → voteUpdate skriver INTE över resultatet med pluttar
 const _DTL = { richest: 'Rikaste laget', greenest: 'Grönaste laget', all: 'Alla företag', sectorMaterial: 'Material-lagen', sectorPengar: 'Pengar-lagen' };
 function dilemmaKons(effects) {   // effekt-lista → konsekvens-rader med spelets riktiga ikoner
   if (!effects || !effects.length) return `<div class="r none">Ingen direkt effekt</div>`;
@@ -1358,7 +1359,7 @@ function dilemmaVoteClick(choice) {
   renderDilemmaChoices(); renderDilemmaVotes();
 }
 function openDilemmaModal(p) {
-  dilemmaVote = p; dilemmaPicked = null;
+  dilemmaVote = p; dilemmaPicked = null; dzResolved = false;
   armVoteLock();   // 3 s innan valen går att trycka
   voteOpenFor = { type: 'dilemma' };
   const img = $('dz-img'), fallback = 'assets/event_tundra_major.png';
@@ -1406,7 +1407,7 @@ function sponsratVoteClick(yes) {
   renderSponsratChoices(); renderSponsratVotes();
 }
 function openSponsratModal(p) {
-  sponsratVote = p; sponsratPicked = null; dilemmaVote = null;
+  sponsratVote = p; sponsratPicked = null; dilemmaVote = null; dzResolved = false;
   armVoteLock();
   voteOpenFor = p;
   const ev = p.event || {};
