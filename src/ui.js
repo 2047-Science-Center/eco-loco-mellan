@@ -527,7 +527,7 @@ function renderAwardCard(typ, w, footer = '') {
     (bild ? `<img class="aw-img" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +
     `<div class="aw-scrim"></div>` +
     `<div class="aw-pop"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
-    (w ? `<div class="who">${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
+    (w ? `<div class="who">${logoSVG(w.teamId, 84)}<span class="nm">${w.namn}</span><span class="val ${m.cls}">${m.val}</span></div>`
        : `<div class="who" style="font-size:22px;color:var(--dim)">${typ === 'sab' ? 'Alla skötte klimatet i år — ingen bov' : 'Ön andas ut'}</div>`) +
     footer + `</div>`;
 }
