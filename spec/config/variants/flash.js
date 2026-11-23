@@ -20,7 +20,7 @@ export default {
   // Flash 4 visnings-slots/byggfas (mot 2 vid 30 s) → marginal även om 3 öhälsohändelser kvalificerar
   // samma bokslut. Verifierat (tools/fordrojd-sim.js flash): 0 väntande hinner aldrig visas. Presentations-
   // tidsvärde, ingen balansändring. Se design/MELLAN-FORDROJDA-HANDELSER.md §7.
-  ohalsaDelaySeconds: 20,
+  ohalsaDelaySeconds: 10,   // Flash: naturkatastrofer visas 10 s (aktiv byggtid) in i nästa år (Klara 2026-11-23; var 20 — hann sällan visas i snabba Flash).
   // Fas-längder i sek. Beslut 2026-11-19: bygge 60 s, dilemma-röst 30 s (politik → vote i dilemma-läge).
   phases: { bygga: 60, prisutdelning: 20, politik: 30 },
 
