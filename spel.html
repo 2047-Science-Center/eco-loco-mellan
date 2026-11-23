@@ -227,6 +227,59 @@
   .votestat.dilemma .d.ja { background: #6FA8C7; border-color: #1b3a47; }   /* A = blå */
   .votestat.dilemma .d.nej { background: #E0A64C; border-color: #5c4518; }  /* B = bärnsten */
 
+  /* ═══ Flash Ö-råd: A/B-dilemma v3 (1920-ytan; #stage är 1920×1080 → px direkt) ═══ */
+  #ov-dilemma { background: rgba(6,5,3,.92); }
+  #ov-dilemma .dz { width: 1560px; }
+  #ov-dilemma .dz-head { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid var(--edge); padding-bottom: 16px; margin-bottom: 22px; }
+  #ov-dilemma .dz-lbl { display: flex; align-items: center; gap: 14px; font-size: 30px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold); font-weight: 800; }
+  #ov-dilemma .dz-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--gold); }
+  #ov-dilemma .dz-timer { margin-left: auto; font-family: var(--font-num); font-size: 50px; font-weight: 800; color: var(--gold); letter-spacing: 1px; }
+  #ov-dilemma .dz-timer.hot { color: var(--led-red); }
+  #ov-dilemma .dz-timer.done { color: var(--gold); font-size: 40px; }
+  #ov-dilemma .dz-situ { display: flex; gap: 30px; align-items: stretch; }
+  #ov-dilemma .dz-img { width: 57%; height: 420px; border: 3px solid var(--edge2); border-radius: 16px; overflow: hidden; background: #000; }
+  #ov-dilemma .dz-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #ov-dilemma .dz-q { width: 43%; display: flex; flex-direction: column; justify-content: center; padding: 4px 10px; }
+  #ov-dilemma .dz-big { font-size: 56px; font-weight: 800; line-height: 1.1; }
+  #ov-dilemma .dz-lead { font-size: 28px; color: var(--dim); line-height: 1.45; margin-top: 16px; }
+  #ov-dilemma .dz-choices { display: flex; gap: 28px; margin-top: 26px; }
+  #ov-dilemma .dchoice { flex: 1; border: 5px solid; border-radius: 20px; padding: 22px 30px 24px; position: relative; cursor: pointer; color: var(--text); }
+  #ov-dilemma .dchoice.a { border-color: #6FA8C7; background: #213f4c; }
+  #ov-dilemma .dchoice.b { border-color: #E0A64C; background: #473417; }
+  #ov-dilemma .dchoice .toprow { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
+  #ov-dilemma .dchoice .ab { font-size: 72px; font-weight: 800; line-height: .85; width: 84px; text-align: center; }
+  #ov-dilemma .dchoice.a .ab { color: #6FA8C7; }
+  #ov-dilemma .dchoice.b .ab { color: #E0A64C; }
+  #ov-dilemma .dchoice .nm { font-size: 36px; font-weight: 800; }
+  #ov-dilemma .kons { display: flex; flex-direction: column; gap: 12px; font-size: 29px; font-weight: 700; }
+  #ov-dilemma .kons .r { display: flex; align-items: center; gap: 14px; }
+  #ov-dilemma .kons .r b { font-family: var(--font-num); font-size: 34px; margin-left: auto; }
+  #ov-dilemma .kons .r.none { color: var(--dim); font-style: italic; }
+  #ov-dilemma .kons .up { color: var(--led-green); }
+  #ov-dilemma .kons .down { color: var(--led-red); }
+  #ov-dilemma .dchoice.picked { box-shadow: 0 0 0 5px rgba(255,255,255,.4) inset, 0 18px 46px rgba(0,0,0,.5); }
+  #ov-dilemma .dchoice.dim { opacity: .3; }
+  #ov-dilemma .dz-votes { display: flex; align-items: flex-start; justify-content: center; gap: 30px; margin-top: 26px; }
+  #ov-dilemma .dz-votes .v { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 22px; color: var(--dim); font-weight: 700; }
+  #ov-dilemma .dz-votes .d { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--edge2); background: var(--panel3); }
+  #ov-dilemma .dz-votes .d.a { background: #6FA8C7; border-color: #1b3a47; }
+  #ov-dilemma .dz-votes .d.b { background: #E0A64C; border-color: #5c4518; }
+  #ov-dilemma .dz-hint { text-align: center; font-size: 24px; color: var(--dim); letter-spacing: 2px; margin-top: 18px; text-transform: uppercase; }
+  #ov-dilemma .resultcard { flex: 1; border-radius: 20px; }
+  #ov-dilemma .resultcard.win { border: 5px solid; padding: 24px 34px; }
+  #ov-dilemma .resultcard.win.a { border-color: #6FA8C7; background: #213f4c; }
+  #ov-dilemma .resultcard.win.b { border-color: #E0A64C; background: #473417; }
+  #ov-dilemma .resultcard .rtop { display: flex; align-items: center; gap: 24px; margin-bottom: 14px; }
+  #ov-dilemma .resultcard .ab { font-size: 88px; font-weight: 800; line-height: .85; }
+  #ov-dilemma .resultcard.win.a .ab { color: #6FA8C7; }
+  #ov-dilemma .resultcard.win.b .ab { color: #E0A64C; }
+  #ov-dilemma .resultcard .won { font-size: 50px; font-weight: 800; letter-spacing: 6px; color: var(--gold); }
+  #ov-dilemma .resultcard .nm { font-size: 34px; font-weight: 800; margin-left: auto; text-align: right; }
+  #ov-dilemma .resultcard.none { border: 4px solid var(--edge2); background: var(--panel2); color: var(--dim); text-align: center; font-size: 44px; font-weight: 800; padding: 60px 30px; letter-spacing: 1px; text-transform: uppercase; }
+  #ov-dilemma .dz-tally { text-align: center; font-family: var(--font-num); font-size: 34px; letter-spacing: 3px; margin-top: 24px; color: var(--dim); }
+  #ov-dilemma .dz-tally .av { color: #6FA8C7; }
+  #ov-dilemma .dz-tally .bv { color: #E0A64C; }
+
   .tradegrid { display: flex; align-items: center; gap: 22px; margin: 8px 0 20px; }
   .tradebox { flex: 1; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 18px; text-align: center; }
   .tradebox .who { font-size: 15px; color: var(--dim); letter-spacing: 1px; margin-bottom: 10px; }
@@ -673,6 +726,14 @@
     <div class="propcard"><div class="pic" id="vote-pic"></div><div class="tx" id="vote-tx"></div></div>
     <div class="votebtns" id="vote-btns"><button class="ja" id="btn-ja"></button><button class="nej" id="btn-nej">NEJ</button></div>
     <div class="votestat" id="votestat"></div>
+  </div></div>
+
+  <!-- Flash Ö-råd: A/B-dilemma (v3-design, separat från #ov-vote så Mellans politik är orörd) -->
+  <div class="overlay" id="ov-dilemma"><div class="dz">
+    <div class="dz-head"><div class="dz-lbl"><span class="dz-dot"></span> Ö-RÅDET BESLUTAR</div><div class="dz-timer politimer" id="dz-timer"></div></div>
+    <div class="dz-situ"><div class="dz-img"><img id="dz-img" alt=""></div><div class="dz-q"><div class="dz-big" id="dz-q"></div><div class="dz-lead" id="dz-lead"></div></div></div>
+    <div class="dz-choices" id="dz-choices"></div>
+    <div class="dz-foot" id="dz-foot"></div>
   </div></div>
 
   <!-- Award-popup -->

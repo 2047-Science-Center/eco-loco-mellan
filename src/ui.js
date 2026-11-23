@@ -520,7 +520,7 @@ const AWARD_BILD = {
 // omröstning öppnas, släcks först RUM_HALL ms efter att den sista stängts → ingen blink av spelplanen mellan dem.
 const RUM_HALL = 2500;
 if (typeof MutationObserver !== 'undefined' && $('room-bg')) {
-  const ids = ['ov-award', 'ov-power', 'ov-choose', 'ov-vote'];
+  const ids = ['ov-award', 'ov-power', 'ov-choose', 'ov-vote', 'ov-dilemma'];
   let rumT = null;
   const syncRum = () => {
     if (ids.some(i => $(i)?.classList.contains('open'))) { clearTimeout(rumT); rumT = null; $('room-bg').classList.add('on'); }
@@ -666,7 +666,7 @@ game.on('roundStart', p => run(async () => {
   if (!(ONLINE && p.round > 1)) $('roundnum').textContent = p.round;
   // Stäng ALLA kvarglömda spel-popups från förra rundan. roundStart emitteras FÖRE rundans 'event',
   // så nya rundans händelse-ruta öppnas EFTER detta (stängs alltså inte av misstag).
-  ['ov-trade', 'ov-tradein', 'ov-choose', 'ov-vote', 'ov-event', 'ov-register', 'ov-bot'].forEach(id => $(id)?.classList.remove('open'));
+  ['ov-trade', 'ov-tradein', 'ov-choose', 'ov-vote', 'ov-dilemma', 'ov-event', 'ov-register', 'ov-bot'].forEach(id => $(id)?.classList.remove('open'));
   voteOpenFor = null;
   roundPowerTeam = p.powerTeam || null;                          // MAKT-ROTATION: vem styr politiken denna runda
   if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
@@ -726,31 +726,28 @@ game.on('dilemmaOpened', p => run(async () => {
 }));
 game.on('dilemmaResolved', p => run(async () => {
   const d = dilemmaById(p.id);
-  const rost = n => `${n} ${n === 1 ? 'röst' : 'röster'}`;
-  const tally = `${rost(p.aCount)} på A – ${rost(p.bCount)} på B`;
-  renderVoteState();
-  $('vote-btns').style.display = 'none';
-  if (!p.outcome) {   // OAVGJORT (Flash dilemmaStrict): inget beslut → inga effekter. Enkel barnvänlig popup.
+  const tallyHtml = `<span class="av">${p.aCount} A</span> · <span class="bv">${p.bCount} B</span>`;
+  $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = 'Klart';   // nedräkning → KLART
+  if (!p.outcome) {   // OAVGJORT (dilemmaStrict): inget beslut → inga effekter. Grå ruta över båda.
     audio.play('ui_close');
-    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — INGET BESLUT (${tally})`, 'lg-politik');
-    $('vote-sub').innerHTML = `<b style="color:var(--led-yellow)">INGET BESLUT FATTADES</b><br>`
-      + `<span style="opacity:.85">Ni kunde inte komma överens. Därför genomförs ingen åtgärd.</span><br>`
-      + `<small style="opacity:.7">${tally} · inga resurser eller öhälsopoäng förändras</small>`;
-  } else {
-    const altNamn = p.alternativ || d?.alternativ?.[p.outcome]?.namn || p.outcome;
-    const col = p.outcome === 'A' ? '#6FA8C7' : '#E0A64C';   // samma A=blå / B=bärnsten som knapparna
+    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — INGET BESLUT (${p.aCount} A – ${p.bCount} B)`, 'lg-politik');
+    $('dz-choices').innerHTML = `<div class="resultcard none">Inget beslut · ni kunde inte bestämma er</div>`;
+    $('dz-foot').innerHTML = `<div class="dz-tally">${tallyHtml} · inga förändringar</div>`;
+  } else {   // vinnarkortet täcker båda knapparnas bredd, i sin färg + konsekvenser
+    const a = (d && d.alternativ[p.outcome]) || {};
+    const side = p.outcome === 'A' ? 'a' : 'b';
     audio.play('proposal_pass');
-    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — alternativ <b>${p.outcome}</b> genomförs: ${altNamn}`, 'lg-politik');
-    $('vote-sub').innerHTML = `<b style="color:${col}">${ico('ja', 16)} Alternativ ${p.outcome} genomförs</b><br><span style="opacity:.9">${altNamn}</span>`;
+    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — alternativ <b>${p.outcome}</b> genomförs: ${a.namn || ''}`, 'lg-politik');
+    $('dz-choices').innerHTML = `<div class="resultcard win ${side}"><div class="rtop"><span class="ab">${p.outcome}</span><span class="won">VANN</span><span class="nm">${(a.namn || '').toUpperCase()}</span></div><div class="kons">${dilemmaKons(a.effects)}</div></div>`;
+    $('dz-foot').innerHTML = `<div class="dz-tally">${tallyHtml}</div>`;
   }
-  dilemmaVote = null;
-  // Håll resultatet länge nog att läsa (matchar serverns fördröjning innan nästa år): 7 s vid beslut
-  // (barn ska hinna se VILKET alternativ som genomfördes), 4,5 s vid "INGET BESLUT".
+  dilemmaVote = null; dilemmaPicked = null;
+  // Håll resultatet (matchar serverns fördröjning): 7 s vid beslut, 4,5 s vid "inget beslut".
   const holdMs = p.outcome ? 7000 : 4500;
-  setTimeout(() => { $('ov-vote').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, holdMs);
+  setTimeout(() => { $('ov-dilemma').classList.remove('open'); voteOpenFor = null; renderMe(); renderTeams(); renderRegs(); }, holdMs);
 }));
 
-game.on('voteUpdate', () => renderVoteState());   // online: serverns röst-tally; tutorial: skriptade bot-röster
+game.on('voteUpdate', () => { renderVoteState(); if ($('ov-dilemma')?.classList.contains('open')) renderDilemmaVotes(); });   // röst-tally live (politik + dilemma-pluttar)
 
 game.on('timer', ({ left, full }) => {
   const m = Math.floor(Math.max(0, left) / 60), s = Math.max(0, left) % 60;
@@ -1218,6 +1215,11 @@ function showOrdforande(power) {
 game.on('politicsTimer', p => {
   const el = p.stage === 'vote' ? $('vote-timer') : $('choose-timer');
   if (el) { el.textContent = `⏱ ${p.left}s`; el.classList.toggle('hot', p.left <= 10); }
+  // Dilemma-vyn (#ov-dilemma): samma nedräkning i dz-timer (om inte redan "Klart").
+  const dt = $('dz-timer');
+  if (p.stage === 'vote' && dt && $('ov-dilemma')?.classList.contains('open') && !dt.classList.contains('done')) {
+    dt.textContent = `⏱ ${p.left}s`; dt.classList.toggle('hot', p.left <= 10);
+  }
 });
 game.on('politicsDone', () => run(async () => {
   $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null; dilemmaVote = null;
@@ -1287,21 +1289,61 @@ function renderVoteState() {
 }
 // DILEMMA (Flash Ö-råd): samma röst-overlay som politik, men två alternativ A/B i stället för ja/nej.
 let dilemmaVote = null;   // det öppna dilemmats payload (null = ingen dilemma-omröstning öppen)
+// ── v3-design (#ov-dilemma): stor bild + fråga, två helfärgade A/B-kort med konsekvenser, lag-pluttar,
+//    resultat där vinnarkortet täcker båda. Separat overlay → Mellans politik-röstning (#ov-vote) orörd. ──
+let dilemmaPicked = null;   // vilket alternativ DU röstat på i det öppna dilemmat ('A'/'B')
+const _DTL = { richest: 'Rikaste laget', greenest: 'Grönaste laget', all: 'Alla företag', sectorMaterial: 'Material-lagen', sectorPengar: 'Pengar-lagen' };
+function dilemmaKons(effects) {   // effekt-lista → konsekvens-rader med spelets riktiga ikoner
+  if (!effects || !effects.length) return `<div class="r none">Ingen direkt effekt</div>`;
+  return effects.map(e => {
+    if (e.type === 'resource') { const sign = e.op === 'sub' ? '−' : '+';
+      return `<div class="r">${ico(e.currency === 'material' ? 'material' : 'pengar', 34)}<span class="who">${_DTL[e.target] || e.target}</span><b>${sign}${e.amount}</b></div>`; }
+    if (e.type === 'ohalsa') { const up = e.value >= 0;
+      return `<div class="r">${ico(up ? 'tillvaxt' : 'industri', 34)}<span class="who">Öns hälsa</span><b class="${up ? 'up' : 'down'}">${up ? '+' : '−'}${Math.abs(e.value)}</b></div>`; }
+    if (e.type === 'buildRestriction') return `<div class="r">${ico('varning', 34)}<span class="who">Inga smutsiga byggen nästa år</span></div>`;
+    return '';
+  }).join('');
+}
+function renderDilemmaChoices() {
+  const p = dilemmaVote; if (!p) return;
+  const d = dilemmaById(p.id);   // namn ur payload + effekter ur banken
+  const card = L => {
+    const a = (d && d.alternativ[L]) || p.alternativ[L] || {};
+    const cls = 'dchoice ' + (L === 'A' ? 'a' : 'b') + (dilemmaPicked === L ? ' picked' : '') + (dilemmaPicked && dilemmaPicked !== L ? ' dim' : '');
+    return `<div class="${cls}" data-vote="${L}"><div class="toprow"><div class="ab">${L}</div><div class="nm">${(a.namn || '').toUpperCase()}</div></div><div class="kons">${dilemmaKons(a.effects)}</div></div>`;
+  };
+  $('dz-choices').innerHTML = card('A') + card('B');
+  if (!dilemmaPicked) $('dz-choices').querySelectorAll('.dchoice').forEach(el => el.onclick = () => dilemmaVoteClick(el.dataset.vote));
+}
+function renderDilemmaVotes() {   // lag-pluttar: blå=A / guld=B / grå=ej röstat (som spelets votestat)
+  const S = E()?.getState(); if (!S?.teams) return;
+  const votes = S.proposal?.votes || {};
+  const dots = S.teams.map(t => {
+    const v = votes[t.id]; const c = v === 'A' ? 'a' : v === 'B' ? 'b' : '';
+    return `<div class="v"><div class="d ${c}"></div>${t.namn}${t.id === game.me ? ' (du)' : ''}</div>`;
+  }).join('');
+  $('dz-foot').innerHTML = `<div class="dz-votes">${dots}</div>${dilemmaPicked ? '' : `<div class="dz-hint">Flest röster vinner</div>`}`;
+}
+function dilemmaVoteClick(choice) {
+  if (Date.now() < voteLockUntil || dilemmaPicked) return;   // 3 s klick-lås; en röst per spelare
+  audio.play('vote');
+  game.vote(choice);
+  dilemmaPicked = choice;
+  renderDilemmaChoices(); renderDilemmaVotes();
+}
 function openDilemmaModal(p) {
-  dilemmaVote = p;
-  armVoteLock();   // 3 s innan A/B går att trycka
+  dilemmaVote = p; dilemmaPicked = null;
+  armVoteLock();   // 3 s innan valen går att trycka
   voteOpenFor = { type: 'dilemma' };
-  $('vote-btns').classList.add('dilemma'); $('votestat').classList.add('dilemma');   // A/B = blå/bärnsten, INTE ja/nej
-  $('vote-sub').textContent = 'Två vägar — rösta A eller B. Flest röster vinner.';
-  if (p.bild) $('vote-pic').innerHTML = `<img src="${p.bild}" alt="" style="width:200px;height:120px;object-fit:cover;border-radius:12px;display:block">`;
-  else $('vote-pic').innerHTML = ico('vag', 64);
-  $('vote-tx').innerHTML = `<b style="color:var(--text)">${p.rubrik}</b><br>${p.text}`;
-  $('btn-ja').innerHTML = `A — ${p.alternativ.A.namn}`;
-  $('btn-nej').innerHTML = `B — ${p.alternativ.B.namn}`;
-  $('vote-btns').style.display = 'flex';
-  renderVoteState();
+  const img = $('dz-img'), fallback = 'assets/event_tundra_major.png';
+  img.onerror = () => { img.onerror = null; img.src = fallback; };   // dilemma-bild saknas → platshållare
+  img.src = p.bild || fallback;
+  $('dz-q').textContent = p.rubrik;     // dilemmats namn = titel
+  $('dz-lead').textContent = p.text;    // kort situation/fråga
+  $('dz-timer').className = 'dz-timer politimer'; $('dz-timer').textContent = '';
+  renderDilemmaChoices(); renderDilemmaVotes();
   audio.play('ui_open');
-  $('ov-vote').classList.add('open');
+  $('ov-dilemma').classList.add('open');
 }
 $('btn-ja').addEventListener('click', () => humanVote(dilemmaVote ? 'A' : true));
 $('btn-nej').addEventListener('click', () => humanVote(dilemmaVote ? 'B' : false));
