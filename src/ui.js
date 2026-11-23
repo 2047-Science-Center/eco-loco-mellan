@@ -1465,6 +1465,11 @@ function setConn(ok) {
 function rebuildFromState(S) {
   if (!S || !S.teams) return;
   $('roundnum').textContent = S.round;
+  // PARTIETS config-härledda chrome (år-total, öhälsomål) — MÅSTE sättas om här, inte bara i 'start'.
+  // Annars står tutorialmotorns värden (8 år, Mellans mål) kvar efter convergeToGame → Flash visade "ÅR N/8".
+  $('roundmax').textContent = E().cfg.rounds;
+  $('ohgoal').style.left = `${E().cfg.threshold}%`;
+  $('ohgoal-lbl').textContent = `MÅL ${E().cfg.threshold}`;
   map.clearBuildings();
   for (const t of S.teams) t.slots.forEach((b, i) => {
     const c = handFor(t.id).find(x => x.tier === b.tier);   // härled namn + öhälso-effekt för info-rutan
