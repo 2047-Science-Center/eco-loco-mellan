@@ -427,7 +427,7 @@ game.on('crisis', p => run(async () => {
     $('krisglow').classList.add('on');
     renderMe(); renderTeams(); renderRegs();
     const reset = E().cfg.krisReset ?? 35;
-    $('event-img').src = 'assets/kris.png';   // placeholder tills Josef genererar bilden (fallback = som andra saknade event-bilder)
+    $('event-img').src = 'assets/kris.png';
     $('event-rubrik').textContent = 'Ön står inför kollaps';
     $('event-text').textContent = 'Centralmakten meddelar kyligt: öns hälsa är kritisk. Rädda den innan året är slut — annars faller allt, och ni får börja om. Lösningen är er.';
     $('event-kons').innerHTML =
@@ -518,16 +518,14 @@ const AWARD_BILD = {
 };
 function renderAwardCard(typ, w, footer = '') {
   const m = awardMeta(typ, w);
-  // PRISUTDELNING = sker i RUMMET: scen med gyllene spotlight + lagets badge som hjälte (ekar riggens
-  // ljus). INGEN sändningsram/bild — det språket hör till öns händelser (RAPPORT FRÅN ÖN). Ingen bov →
-  // lugn ö-ikon i stället för badge.
-  $('awardcard').className = 'awardcard' + (typ === 'sab' ? ' sab' : '');
-  const hero = w ? `<div class="aw-hero">${logoSVG(w.teamId, 170)}</div>`
-                 : `<div class="aw-hero aw-hero-tom">${ico('on', 120)}</div>`;
+  // PRISUTDELNING (P3, Klara 2026-11-23): prisbilden fyller HELA skärmen + en centrerad grå popup med
+  // text/ikoner. Ingen bov → ingen bild (lugn mörk skärm + popup). 'prize'-klassen gör kortet fullskärm.
+  $('awardcard').className = 'awardcard prize' + (typ === 'sab' ? ' sab' : '');
+  const bild = w ? (AWARD_BILD[typ] || '') : '';
   $('awardcard').innerHTML =
-    `<div class="aw-head">PRISUTDELNING</div>` +
-    `<div class="aw-stage"><div class="aw-spot"></div>${hero}</div>` +
-    `<div class="aw-tx"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
+    (bild ? `<img class="aw-img" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +
+    `<div class="aw-scrim"></div>` +
+    `<div class="aw-pop"><div class="aw-head">PRISUTDELNING</div><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
     (w ? `<div class="who">${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
        : `<div class="who" style="font-size:22px;color:var(--dim)">${typ === 'sab' ? 'Alla skötte klimatet i år — ingen bov' : 'Ön andas ut'}</div>`) +
     footer + `</div>`;
