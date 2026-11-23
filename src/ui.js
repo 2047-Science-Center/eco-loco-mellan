@@ -518,13 +518,19 @@ const AWARD_BILD = {
 };
 function renderAwardCard(typ, w, footer = '') {
   const m = awardMeta(typ, w);
-  // Event-korts-struktur: lag-agnostisk prisbild på topp (döljs snällt om filen saknas) + ram med
-  // titel + vinnarlag (laget färg-/namnges här, bilden är samma för alla).
-  const img = `<img src="${AWARD_BILD[typ] || ''}" alt="" onerror="this.style.display='none'">`;
+  // PRISUTDELNING = sker i RUMMET: scen med gyllene spotlight + lagets badge som hjälte (ekar riggens
+  // ljus). INGEN sändningsram/bild — det språket hör till öns händelser (RAPPORT FRÅN ÖN). Ingen bov →
+  // lugn ö-ikon i stället för badge.
   $('awardcard').className = 'awardcard' + (typ === 'sab' ? ' sab' : '');
-  $('awardcard').innerHTML = img + `<div class="aw-tx"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
-    (w ? `<div class="who">${logoSVG(w.teamId, 64)}${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
-       : `<div class="who" style="font-size:19px;color:var(--dim)">${typ === 'sab' ? 'Alla skötte klimatet i år — ingen bov 🌱' : 'Ön andas ut 😮‍💨'}</div>`) + footer + `</div>`;
+  const hero = w ? `<div class="aw-hero">${logoSVG(w.teamId, 170)}</div>`
+                 : `<div class="aw-hero aw-hero-tom">${ico('on', 120)}</div>`;
+  $('awardcard').innerHTML =
+    `<div class="aw-head">PRISUTDELNING</div>` +
+    `<div class="aw-stage"><div class="aw-spot"></div>${hero}</div>` +
+    `<div class="aw-tx"><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
+    (w ? `<div class="who">${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
+       : `<div class="who" style="font-size:22px;color:var(--dim)">${typ === 'sab' ? 'Alla skötte klimatet i år — ingen bov' : 'Ön andas ut'}</div>`) +
+    footer + `</div>`;
 }
 
 // Slutskärmen (win/lose) ska visas FÖRST när prisceremonin för sista rundan spelats klart.
