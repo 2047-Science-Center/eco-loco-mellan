@@ -702,6 +702,19 @@ function startAutoCeremony() {
     if (!advanceCeremony()) cerTimer = setTimeout(step, ceremonyStepMs(cer.steps.length));
   }
 }
+// ÅTERANSLUTNING / OMLADDAD SIDA MITT I PRISUTDELNINGEN: landa klienten på exakt det pris rummet
+// visar NU — i stället för att missa ceremonin eller (som förr) spela om den från början. Speglar
+// slutdel-återsändningen i hello-hanteraren. cer.i = -1 → ÖRÅD-skylten; i >= 0 → det aktuella priset.
+// Den löpande auto-stegaren (selfplay) resp. spelledarens award_next (GM) fortsätter som vanligt för alla.
+function resumeAwards(ws) {
+  if (!started || !cer) return;
+  if (cer.i < 0) {
+    send(ws, { type: 'event', event: 'awardCeremony', payload: { total: cer.steps.length } });
+  } else if (cer.i < cer.steps.length) {
+    const s = cer.steps[cer.i];
+    send(ws, { type: 'event', event: 'awardStep', payload: { typ: s.typ, w: s.w, i: cer.i, total: cer.steps.length } });
+  }
+}
 function awardsKlar(lag) {
   if (!awardsVantar.has(lag)) return;
   awardsVantar.delete(lag);
@@ -985,6 +998,8 @@ wss.on('connection', ws => {
         broadcast(lobbyMsg());
         // Sent ansluten mitt i slutdelen → skicka DET steg som visas nu, så skärmen hamnar rätt.
         if (phase === 'slutdel' && slutdel && slutdel.i >= 0 && slutdel.i < slutdel.steps.length) sendSlutdelStep(ws);
+        // Sent ansluten / omladdad sida mitt i prisutdelningen → landa på det pris rummet visar nu.
+        if (started && cer) resumeAwards(ws);
         // (trailern triggas nu av STARTA-knappen/fönstret, inte av anslutning — se playTrailer + klientens startEfterTrailer)
         break;
       }
