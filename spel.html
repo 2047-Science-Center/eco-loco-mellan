@@ -263,8 +263,12 @@
   @keyframes fortsattpuls { 50% { opacity: .4; } }
 
   /* Event-popup (bild + rubrik + text) */
-  #ov-event .eventcard { width: min(960px, 92vw); background: var(--panel); border: 4px solid var(--edge2); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,.7); padding: 16px 16px 0; }
+  #ov-event .eventcard { width: min(960px, 92vw); background: var(--panel); border: 4px solid var(--edge2); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,.7); padding: 14px 16px 0; }
   #ov-event.warn .eventcard { border-color: var(--led-red); }
+  /* "Live"-rubrik: inkommande sändning från ön (pulserande prick). Kontrast mot prisutdelning (sker i rummet). */
+  #ov-event .event-head { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0 12px; font-family: var(--font-disp); font-size: 16px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); }
+  #ov-event .event-head::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--led-red); box-shadow: 0 0 8px var(--led-red); animation: livedot 1.4s ease-in-out infinite; }
+  @keyframes livedot { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
   /* Sändnings-ram (Analog Control Room Transmission, C v3): bilden ensam i ramen → känns som "det som syns på skärmen". */
   #ov-event .event-frame { position: relative; border: 2px solid var(--edge2); border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
   #ov-event.warn .event-frame { border-color: var(--led-red); }
@@ -272,15 +276,15 @@
   #ov-event .event-frame .warm { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(240,179,60,.08), rgba(10,8,5,.15)); mix-blend-mode: soft-light; pointer-events: none; }
   #ov-event .event-frame .glow { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 50px rgba(201,169,79,.20), inset 0 0 14px rgba(201,169,79,.10); animation: signalvar 5s ease-in-out infinite; }
   @keyframes signalvar { 0%, 100% { opacity: 1; } 48% { opacity: .94; } 50% { opacity: .88; } 52% { opacity: .94; } }
-  #ov-event .event-tx { padding: 22px 32px 26px; text-align: center; }
-  #ov-event .event-tx h3 { margin: 0 0 10px; font-size: 34px; letter-spacing: 1px; }
-  #ov-event .event-tx p { margin: 0; font-size: 21px; line-height: 1.5; color: var(--text); }
+  #ov-event .event-tx { padding: 24px 36px 28px; text-align: center; }
+  #ov-event .event-tx h3 { margin: 0 0 12px; font-size: 42px; letter-spacing: 1px; }
+  #ov-event .event-tx p { margin: 0 auto; max-width: 760px; font-size: 26px; line-height: 1.5; color: var(--text); }
   #ov-event .event-kons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
-  #ov-event .event-kons .kons { background: var(--panel3); border: 2px solid var(--edge2); border-radius: 10px; padding: 8px 14px; font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  #ov-event .event-kons .kons { background: var(--panel3); border: 2px solid var(--edge2); border-radius: 10px; padding: 9px 16px; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
   #ov-event .event-kons .kons.oh { border-color: var(--gold); }
   #ov-event .event-kons .plus { color: var(--led-green); }
   #ov-event .event-kons .minus { color: var(--led-red); }
-  #ov-event .event-tx .fortsatt { margin-top: 16px; font-size: 13px; color: var(--dim); letter-spacing: 1px; animation: fortsattpuls 1.6s ease-in-out infinite; }
+  #ov-event .event-tx .fortsatt { margin-top: 18px; font-size: 15px; color: var(--dim); letter-spacing: 1px; animation: fortsattpuls 1.6s ease-in-out infinite; }
 
   .slideover { position: absolute; top: 0; right: 0; bottom: 0; width: 640px; background: var(--panel); border-left: 4px solid var(--edge2); padding: 26px 30px; overflow: auto; box-shadow: -20px 0 60px rgba(0,0,0,.6); z-index: 11; display: none; }
   .slideover.open { display: block; }
@@ -629,8 +633,10 @@
 
   <!-- Event-popup (bild + rubrik + text) -->
   <div class="overlay" id="ov-event"><div class="eventcard">
-    <!-- Bilden ensam i en "sändnings-ram" (Analog Control Room Transmission, variant C v3):
-         ram + varmt soft-light-lager + animerad inre glöd. Text/konsekvenser ligger UNDER ramen. -->
+    <!-- HÄNDELSE = rapport från ön (inkommande sändning). Live-rubrik + "sändnings-ram"
+         (Analog Control Room Transmission, variant C v3): ram + varmt soft-light-lager + animerad
+         inre glöd. Text/konsekvenser ligger UNDER ramen som fri text på den mörka tonen. -->
+    <div class="event-head">RAPPORT FRÅN ÖN</div>
     <div class="event-frame">
       <img id="event-img" alt="">
       <div class="warm"></div>
