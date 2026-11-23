@@ -119,7 +119,7 @@ console.log('9) Fördröjda öhälsohändelser fungerar fortfarande i Flash (kva
      `VÄRMEBÖLJA + STORM väntande till nästa år (pending=[${e.getState().pendingOhalsa}])`);
   const r = e.fireNextPendingOhalsa(); drain(e);
   ok(r.ok && evs.includes('varmebolja'), 'väntande öhälsohändelse kan avfyras nästa år');
-  ok(e.cfg.ohalsaDelaySeconds === 20, 'Flash använder 20 s-intervall (oförändrat)');
+  ok(e.cfg.ohalsaDelaySeconds === 10, 'Flash använder 10 s-intervall (Klara 2026-11-23, var 20)');
 }
 
 console.log(fails === 0 ? '\n[flash-byggrans] ALLA TESTER OK' : `\n[flash-byggrans] ${fails} TEST MISSLYCKADES`);
