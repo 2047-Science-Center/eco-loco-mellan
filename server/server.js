@@ -118,7 +118,9 @@ const httpServer = http.createServer((req, res) => {
     createReadStream(file, { start, end }).pipe(res);
     return;
   }
-  res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', 'Accept-Ranges': 'bytes', 'Content-Length': size });
+  // no-store på icke-video: webbläsaren (även kiosk/pekskärm) cachar ALDRIG html/js/css/bild → en vanlig
+  // reload hämtar alltid färsk kod. (Video går via 206-grenen ovan med no-cache så den får cachas.)
+  res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Accept-Ranges': 'bytes', 'Content-Length': size });
   createReadStream(file).pipe(res);
 });
 
