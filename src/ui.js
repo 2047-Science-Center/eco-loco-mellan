@@ -518,17 +518,20 @@ const AWARD_BILD = {
 };
 function renderAwardCard(typ, w, footer = '') {
   const m = awardMeta(typ, w);
-  // PRISUTDELNING (P3, Klara 2026-11-23): prisbilden fyller HELA skärmen + en centrerad grå popup med
-  // text/ikoner. Ingen bov → ingen bild (lugn mörk skärm + popup). 'prize'-klassen gör kortet fullskärm.
+  // PRISUTDELNING (P3 v2, Klara 2026-11-23): KONTROLLRUMMET (assets/kontrollrum.png) som backdrop —
+  // prisbilden + text "tänds" som en bulletin på rummets skärm. Prisbilden kapas till popup-bredd →
+  // skarp (variant 2, ingen uppskalning). Ingen bov → ingen prisbild (bara text på rummet).
   $('awardcard').className = 'awardcard prize' + (typ === 'sab' ? ' sab' : '');
   const bild = w ? (AWARD_BILD[typ] || '') : '';
   $('awardcard').innerHTML =
-    (bild ? `<img class="aw-img" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +
+    `<img class="aw-room" src="assets/kontrollrum.png" alt="">` +
     `<div class="aw-scrim"></div>` +
-    `<div class="aw-pop"><div class="aw-head">PRISUTDELNING</div><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
+    `<div class="aw-pop">` +
+    (bild ? `<img class="aw-prisbild" src="${bild}" alt="" onerror="this.style.display='none'">` : '') +
+    `<div class="aw-txin"><div class="aw-head">PRISUTDELNING</div><div class="em">${m.em}</div><h4>${m.rubrik}</h4>` +
     (w ? `<div class="who">${w.namn}<span class="val ${m.cls}">${m.val}</span></div>`
        : `<div class="who" style="font-size:22px;color:var(--dim)">${typ === 'sab' ? 'Alla skötte klimatet i år — ingen bov' : 'Ön andas ut'}</div>`) +
-    footer + `</div>`;
+    footer + `</div></div>`;
 }
 
 // Slutskärmen (win/lose) ska visas FÖRST när prisceremonin för sista rundan spelats klart.
