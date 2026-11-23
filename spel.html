@@ -279,7 +279,7 @@
   /* Event-popup (bild + rubrik + text) */
   /* Ingen grå ytterruta → undvik "ruta i ruta". Sändnings-ramen (bilden) är enda "rutan"; rubrik +
      text ligger fritt på den mörka overlay-tonen (.overlay = rgba(10,9,7,.78)). */
-  #ov-event .eventcard { width: min(960px, 92vw); background: transparent; border: none; box-shadow: none; display: flex; flex-direction: column; padding: 0; }
+  #ov-event .eventcard { width: min(1200px, 92vw); background: transparent; border: none; box-shadow: none; display: flex; flex-direction: column; padding: 0; }
   /* "Live"-rubrik: inkommande sändning från ön (pulserande prick). Kontrast mot prisutdelning (sker i rummet). */
   #ov-event .event-head { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0 12px; font-family: var(--font-disp); font-size: 16px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); }
   #ov-event .event-head::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--led-red); box-shadow: 0 0 8px var(--led-red); animation: livedot 1.4s ease-in-out infinite; }
@@ -287,12 +287,14 @@
   /* Sändnings-ram (Analog Control Room Transmission, C v3): bilden ensam i ramen → känns som "det som syns på skärmen". */
   #ov-event .event-frame { position: relative; border: 2px solid var(--edge2); border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
   #ov-event.warn .event-frame { border-color: var(--led-red); }
-  #ov-event .event-frame img { width: 100%; height: 480px; object-fit: cover; display: block; background: #14120E; filter: contrast(1.05) saturate(.88) brightness(1.05); }
+  /* Bilderna är 16:9 (1672×941) → ramen följer bildens höjd (height:auto), ingen beskärning. */
+  #ov-event .event-frame img { width: 100%; height: auto; display: block; background: #14120E; filter: contrast(1.05) saturate(.88) brightness(1.05); }
   #ov-event .event-frame .warm { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(240,179,60,.08), rgba(10,8,5,.15)); mix-blend-mode: soft-light; pointer-events: none; }
   #ov-event .event-frame .glow { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 50px rgba(201,169,79,.20), inset 0 0 14px rgba(201,169,79,.10); animation: signalvar 5s ease-in-out infinite; }
   @keyframes signalvar { 0%, 100% { opacity: 1; } 48% { opacity: .94; } 50% { opacity: .88; } 52% { opacity: .94; } }
-  /* H3 (Klara 2026-11-23): texten på en MÖRK tonplatta under bilden (inte ljusgrå). */
-  #ov-event .event-tx { margin: 16px auto 0; max-width: 840px; padding: 22px 32px; text-align: center; background: rgba(8,7,4,.80); border: 1px solid rgba(201,169,79,.14); border-radius: 14px; }
+  /* H3 (Klara 2026-11-23): texten på en MÖRK tonplatta under bilden (inte ljusgrå).
+     Plattan är LIKA BRED som sändningsramen (ingen max-width → följer .eventcard). */
+  #ov-event .event-tx { margin: 14px 0 0; padding: 22px 32px; text-align: center; background: rgba(8,7,4,.80); border: 1px solid rgba(201,169,79,.14); border-radius: 14px; }
   #ov-event .event-tx h3 { margin: 0 0 12px; font-size: 42px; letter-spacing: 1px; }
   #ov-event .event-tx p { margin: 0 auto; max-width: 760px; font-size: 26px; line-height: 1.5; color: var(--text); }
   #ov-event .event-kons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
