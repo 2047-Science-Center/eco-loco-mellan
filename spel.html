@@ -251,6 +251,11 @@
   .award .val { font-family: var(--font-num); font-size: 22px; }
   .award .fortsatt { margin-top: 16px; font-size: 13px; color: var(--dim); letter-spacing: 1px; animation: fortsattpuls 1.6s ease-in-out infinite; }
   /* Award-REVEAL: samma struktur/storlek som event-kortet (bild på topp + ram med titel/vinnare) */
+  /* KONTROLLRUMMET som ihållande bakgrund genom öråd → prisutdelning → omröstning (Klara 2026-11-23).
+     #ov-award (öråd-skylt + prisutdelning) + #ov-vote/#ov-choose (omröstning/förslag) får rummet som
+     bakgrund. Prisutdelningens .prize-kort är fullskärm → täcker rummet → "bilden byts till resp pris". */
+  #ov-award, #ov-vote, #ov-choose { background: linear-gradient(rgba(8,7,5,.45), rgba(8,7,5,.58)), url('assets/kontrollrum.png') center / cover no-repeat; }
+
   /* ÖRÅD-popupen återanvänder #ov-award (plain .awardcard) → behåll som panel-kort. */
   #ov-award .awardcard { width: min(880px, 90vw); background: var(--panel); border: 4px solid var(--gold); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,.7); }
   #ov-award .awardcard.sab { border-color: var(--led-red); }
@@ -263,22 +268,19 @@
   /* PRISUTDELNING (varje år) = P3 (Klara 2026-11-23): prisbilden fyller HELA skärmen + centrerad grå
      popup med text/ikoner. .prize gör kortet fullskärm (öråd-popupen ovan opåverkad).
      FINJUSTERING: aw-pop top/min-width/max-width/padding nedan är reglagen för storlek+placering. */
-  #ov-award .awardcard.prize { position: absolute; inset: 0; width: 100%; height: 100%; background: #0b0a07; border: none; border-radius: 0; box-shadow: none; overflow: hidden; display: block; }
-  /* Kontrollrummet = backdrop (rummets skärm). Prisbilden + text "tänds" som en bulletin på den.
-     FINJUSTERING: .aw-pop width/top är reglagen för storlek+placering. */
-  #ov-award .awardcard.prize .aw-room { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  #ov-award .awardcard.prize .aw-scrim { position: absolute; inset: 0; pointer-events: none; background: rgba(0,0,0,.40); }
-  #ov-award .awardcard.prize .aw-pop { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: min(900px, 84vw); background: rgba(18,16,11,.96); border: 3px solid var(--gold); border-radius: 16px; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,.72); }
+  #ov-award .awardcard.prize { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; border: none; border-radius: 0; box-shadow: none; overflow: hidden; display: block; }
+  /* Prisbilden fyller skärmen (byts per pris → "rummet byter färg"). Centrerad grå text-popup ovanpå.
+     FINJUSTERING: .aw-pop top/min-width/max-width är reglagen för storlek+placering. */
+  #ov-award .awardcard.prize .aw-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #ov-award .awardcard.prize .aw-scrim { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,.18), rgba(0,0,0,.62)); }
+  #ov-award .awardcard.prize .aw-pop { position: absolute; top: 52%; left: 50%; transform: translate(-50%,-50%); background: rgba(33,30,23,.94); border: 3px solid var(--gold); border-radius: 18px; padding: 26px 44px 28px; text-align: center; min-width: 360px; max-width: 72vw; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
   #ov-award .awardcard.prize.sab .aw-pop { border-color: var(--led-red); }
-  /* Prisbilden: 16:9, obeskuren, nedskalad till popup-bredd → skarp (variant 2, ingen uppskalning). */
-  #ov-award .awardcard.prize .aw-prisbild { width: 100%; height: auto; display: block; }
-  #ov-award .awardcard.prize .aw-txin { padding: 18px 32px 24px; text-align: center; }
-  #ov-award .awardcard.prize .aw-head { font-family: var(--font-disp); font-size: 14px; letter-spacing: 4px; color: var(--gold); text-transform: uppercase; margin-bottom: 6px; }
-  #ov-award .awardcard.prize .em { font-size: 40px; line-height: 1; }
-  #ov-award .awardcard.prize h4 { margin: 4px 0 8px; font-size: 26px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
-  #ov-award .awardcard.prize .who { font-size: 26px; font-weight: 800; }
-  #ov-award .awardcard.prize .val { font-family: var(--font-num); font-size: 24px; display: block; margin-top: 6px; }
-  #ov-award .awardcard.prize .fortsatt { margin-top: 14px; font-size: 15px; color: var(--dim); letter-spacing: 1px; animation: fortsattpuls 1.6s ease-in-out infinite; }
+  #ov-award .awardcard.prize .aw-head { font-family: var(--font-disp); font-size: 14px; letter-spacing: 4px; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
+  #ov-award .awardcard.prize .em { font-size: 46px; line-height: 1; }
+  #ov-award .awardcard.prize h4 { margin: 6px 0 10px; font-size: 28px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
+  #ov-award .awardcard.prize .who { font-size: 28px; font-weight: 800; }
+  #ov-award .awardcard.prize .val { font-family: var(--font-num); font-size: 26px; display: block; margin-top: 6px; }
+  #ov-award .awardcard.prize .fortsatt { margin-top: 16px; font-size: 15px; color: var(--dim); letter-spacing: 1px; animation: fortsattpuls 1.6s ease-in-out infinite; }
   @keyframes fortsattpuls { 50% { opacity: .4; } }
 
   /* Event-popup (bild + rubrik + text) */
