@@ -350,7 +350,7 @@ game.on('build', p => run(async () => {
   map.placeBuilding(p.area, p.slotIndex, b.file, 135, { namn: p.card.namn, oh: p.card.oh, lagNamn: teamName(p.teamId) });
   audio.play(`build_${p.card.tier}`);
   if (p.teamId !== game.me) toast(`${teamName(p.teamId)} byggde ${p.card.namn} <span class="${p.card.oh > 0 ? 'ohplus' : 'ohminus'}">${fmtOh(p.card.oh)}</span>`);
-  logg(`${ico('bygge', 14)} ${loggLag(p.teamId)} byggde <b>${p.card.namn}</b> <span class="lg-oh">${fmtOh(p.card.oh)} ${ico('on', 14)}</span>`, p.card.oh >= 0 ? 'lg-ohplus' : 'lg-ohminus');
+  logg(`${ico('bygge', 14)} ${loggLag(p.teamId)} byggde <b>${p.card.namn}</b> <span class="lg-oh">${fmtOh(p.card.oh)}</span>`, p.card.oh >= 0 ? 'lg-ohplus' : 'lg-ohminus');
   renderMe(); renderTeams();
   if (resolving) await delay(650);
 }));
