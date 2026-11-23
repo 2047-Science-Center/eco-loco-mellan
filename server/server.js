@@ -143,6 +143,7 @@ let klar = new Set();          // mänskliga lag som tryckt AVSLUTA
 let timerLeft = 0, timerInt = null;
 let paused = false;       // MANUELL paus (spelledare/knapp) → frys spelmotorn. Riggen/ambiencen rörs ej.
 let autoPaused = false;   // AUTO-paus: ett spelledarstyrt dilemma pågår under byggfasen → frys timer + blockera
+let eventDismissed = new Set();   // lag som klickat bort NUVARANDE händelse-popup (resume när alla levande människor gjort det, annars 15 s-taket)
                           // bygge/handel. Skild från manuell paus: när dilemmat avgörs återupptas spelet BARA
                           // om spelledaren inte också pausat manuellt.
 let tutBeats = {};             // tutorial-barriären: beat → Set av lag som är klara
@@ -443,6 +444,7 @@ function newEngine() {
   // får passera innan nästa köade händelse löses och visas. Effekten tillämpas i motorn vid emit (oförändrat).
   engine.on('companyEvent', p => {
     autoPaused = true;
+    eventDismissed = new Set();   // ny händelse → nollställ vilka skärmar som klickat bort den
     broadcastPause();   // auto=true → klienten fryser/blockerar men visar INGEN paus-overlay (bara händelserutan)
     // RIGG-CUE: varje visad händelse ger en cue (ompekade från det gamla systemet, se EVENT_RIGG_CUE).
     // Gatas av riggSilent (spelledarläge = operatören driver riggen själv). Latchande specialcues
@@ -1052,8 +1054,11 @@ wss.on('connection', ws => {
         if (lag) awardsKlar(lag);   // klickat igenom prisutdelningen → timern startar när alla är klara
         break;
       }
-      case 'eventDismiss': {   // valfri skärm klickade bort händelse-popupen → lös den direkt (resume + eventClosed till alla)
-        if (autoPaused && engine?.getState()?.activeCompanyEvent) { clearTimeout(crisisTimer); afterEventShow(); }
+      case 'eventDismiss': {   // en skärm klickade bort SIN händelse-popup (de andra ser den kvar). Resume FÖRST
+        if (!lag || !autoPaused || !engine?.getState()?.activeCompanyEvent) break;   // när ALLA levande människo-skärmar klickat (annars 15 s-taket).
+        eventDismissed.add(lag);
+        const humans = liveHumanIds();
+        if (humans.length && humans.every(id => eventDismissed.has(id))) { clearTimeout(crisisTimer); afterEventShow(); }
         break;
       }
       case 'openProposal': {
