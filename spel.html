@@ -639,6 +639,7 @@
   #ov-attract video { object-fit: contain; }
   /* Berättar-/trailerfilm spelas helskärm; cover om skärmen matchar, annars byt till contain här med. */
   #ov-narrativ video, #ov-trailer video { object-fit: cover; }
+  #trailer-ram { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
   .vid-fallback { position: absolute; inset: 0; background:
       radial-gradient(1200px 600px at 50% 30%, #1C4E60 0%, #14323E 45%, #0E0D0A 100%); }
   .vid-fallback .note { position: absolute; bottom: 36px; left: 0; right: 0; text-align: center;
@@ -1011,16 +1012,16 @@
     <button class="onb-skip" id="btn-narr-skip">VIDARE ›</button>
   </div>
 
-  <!-- KOPPLING 2: intro-trailer (30 s). Servern broadcastar 'trailer' när alla anslutit (före
-       tutorial) eller via spelledarens kommando; skärmen spelar bara videon. Ljussekvensen körs
-       från servern (EN källa) — skärmen skickar INGA rigg-cues. Döljs vid 'trailerDone'/ended/dur. -->
-  <!-- Trailern spelas MED sitt eget ljud (ljudspåret ligger i klippet). OBS kiosk: varje skärm måste
-       ha fått en användarinteraktion (attract-klicket låser upp ljudet) för att autoplay-med-ljud
-       ska tillåtas av webbläsaren. -->
+  <!-- KOPPLING 2: intro-trailer v2 (69 s, 2026-11-25). Servern broadcastar 'trailer' {src, dur, start_at};
+       skärmen visar filmens HTML-spelare (assets/trailer-film/skarm.html) i #trailer-ram, TYST och synkad
+       mot serverns klocka (/time). Masterljudet spelas centralt av hjärnan (ecoloco/rigg/trailer = "1"),
+       ljussekvensen körs från servern (EN källa: assets/trailer-film/rigg-cues.json) — skärmen skickar INGA
+       rigg-cues. Döljs vid 'trailerDone' / failsafe efter filmens längd. <video> finns kvar för en .mp4-src. -->
   <div class="overlay" id="ov-trailer">
+    <iframe id="trailer-ram" title="Intro-trailer" allow="autoplay" style="display:none"></iframe>
     <video id="trailer-video" muted playsinline></video>
     <div class="vid-fallback" id="trailer-fallback" style="display:none">
-      <div class="note">INTRO-TRAILER 30 s — ljussekvensen körs från servern</div>
+      <div class="note">INTRO-TRAILER — ljussekvensen körs från servern</div>
     </div>
   </div>
 

@@ -83,6 +83,13 @@ I onlineläget är samma ruta även lobby: välj lag → se vilka som gått med 
 
 **Kända introduktionsproblem från originalspelet:** folk förstod inte röstningen; för mycket text överlag; beroendet (att man MÅSTE byta) gick många förbi tills det var för sent.
 
+**Intro-trailer (v2, 2026-11-25):** när STARTA trycks spelas en trailer på 69 s på alla skärmar innan tutorialen.
+- Ön, de fyra företagen Oxen, Björnen, Räven och Örnen, och målet att bli öns rikaste företag och ta makten som borgmästare.
+- Öns gränser, och slutet med MAKTSPELET – THE EXPERIENCE.
+- Josefs egen inläsning, i centralhögtalaren.
+- Riggens ljus följer filmen: varje lag lyser i sin ruta, guld vid borgmästaren, rött och blandaren på "faller allt".
+- Se `RIGG-KONTRAKT.md`, avsnittet om intro-trailern.
+
 ## UI:t i korthet
 
 Dashboard utan flikar på 16:9 touch: öns hälsa som stor mätare överst (färgzoner, MÅL 60-markering, delta-pil, läges-emoji) · vänster kolumn = ditt lag (logga, LED-resurser, inkomst, sektorruta "Du producerar X — Y måste du byta till dig", BYT-knapp, årsberättelse) · mitten = ön (AI-genererad låg-poly-karta, byggnader droppar på fasta platser, smog/grönska-overlay) · höger = de andra lagen (resurser, 👑/⚠, BYT per lag) + Börsen/Klimatregistret + LÄGG FÖRSLAG · nederst = handen med 3 stora kort (tryck = expandera med detaljer, tryck KÖP = bygg; "har inte råd" visar exakt vad som saknas och pekar mot byteshandeln) + AVSLUTA OMGÅNG med timer-ring. Röstning och byteshandel är fullskärms-modaler. Retro kontrollpanel-estetik (mörk oliv, LED-siffror, guld) från den fysiska riggen.
