@@ -1,10 +1,26 @@
-# Eco Loco (Mellan) — komplett spelinformation
+# Maktspelet (Eco Loco) — komplett spelinformation
 
-*Underlag för att arbeta vidare med spelet i en ny Claude-session (t.ex. en uppdaterad introduktion). Självbärande — allt väsentligt står här. Uppdaterad 2026-09-25.*
+*Underlag för att arbeta vidare med spelet i en ny Claude-session. Självbärande — allt väsentligt står här. Uppdaterad 2026-11-25 (flerversion + aktuell struktur).*
 
 ## Vad spelet är
 
-Eco Loco är 2047 Science Centers hållbarhetsstation. Detta är **mellanversionen**: en självfaciliterande webbversion på ~15 minuter för besökare och skolgrupper, spelbar på touchskärmar — en spelare/lag per skärm, eller en skärm mot datorstyrda motståndare. Den byggs som ersättare/komplement till den fysiska riggen (4 bänkar med Unreal-spel, displayer, LED och telefonförhandling) och behåller riggens MQTT-koppling så hårdvaran kan återanvändas.
+Maktspelet (fd Eco Loco) är 2047 Science Centers hållbarhetsstation: en självfaciliterande webbversion
+för besökare och skolgrupper, spelbar på touchskärmar — en spelare/lag per skärm, eller en skärm mot
+datorstyrda motståndare. Den byggs som ersättare/komplement till den fysiska riggen (4 bänkar med
+Unreal-spel, displayer, LED och telefonförhandling) och behåller riggens MQTT-koppling så hårdvaran
+kan återanvändas. Utåt heter spelet **Maktspelet**; internt (klass, MQTT-topics, filnamn) **EcoLoco**.
+
+**Flerversion (beslut 2026-11-11): EN motor, tre jämbördiga varianter** — de delar regler/motor och
+skiljer sig genom config + taggat innehåll (`spec/config/variants/*`), inte separata spel:
+
+| Variant | Längd | Rundor | Beslutssystem | Särdrag |
+|---|---|---|---|---|
+| **Flash** | ~8 min | 4 | Ö-rådet kör DILEMMAN (A/B) | max ett bygge/lag/år; kort byggfas |
+| **Mellan** | ~25 min | 8 | Ö-råds-POLITIK (förslag + ja/nej) | obegränsat byggande; tutorial |
+| **Skola** | ~45 min | ~10 | som Mellan + adderad slutdel/analys | stackade/beroende byggnader (framåt) |
+
+Resten av detta dokument beskriver **Mellan** som referens; Flash/Skola avviker via sina variant-configar.
+Balansvärdena nedan är **aktuella men preliminära** (balanseringen är medvetet ogjord, se sist).
 
 **Målgrupp:** besökare och skolklasser som aldrig sett spelet förut. Låg insättningströskel, minimal text (spelet har historiskt haft "för mycket ord"), stödjande piktogram, all copy på svenska.
 
@@ -19,34 +35,33 @@ Konflikten mellan **eget vinstintresse** och **tvånget att samarbeta — annars
 
 ## Regler (motorns skarpa värden)
 
-- **4 lag = 4 öområden.** Områdesfärg = lagfärg. Loggor = fasetterade djurbadges:
-  - Åkermark (gul, bison) — producerar **material** 🧱
-  - Skog (grön, björn) — producerar **material** 🧱
-  - Tundra (orange, varg) — producerar **pengar** 🪙
-  - Stad (grå, örn) — producerar **pengar** 🪙
-- **8 rundor**, 90 s/runda (timer-ring; tar den slut sker bokslutet automatiskt).
-- **Start:** 40 pengar / 30 material per lag. **Öns hälsa:** 0–100, start 50. Röd zon < 30 (katastrofer slår varje runda: alla förlorar 10🪙+10🧱), grön zon > 70.
-- **Utfall:** öhälsa ≥ 60 efter runda 8 → rikaste laget (pengar+material) vinner. Under 60 → **alla förlorar**. Når 0 → omedelbar kollaps, alla förlorar.
-- **Handen:** alltid exakt 3 val — SMUTSIG / STANDARD / GRÖN (spelets heliga treenighet; namn och bild skiljer per område men begreppen är alltid desamma):
-
-  | Materialsektorn (Åker/Skog) | kostar | ger/runda | öhälsa |
-  |---|---|---|---|
-  | Smutsig (Industrijordbruk / Sågverk) | 10🪙 | +8🧱 | −4 |
-  | Standard (Jordbruk / Skogsbruk) | 15🪙+5🧱 | +6🧱 | −2 |
-  | Grön (Ekologiskt jordbruk / Skogsjordbruk) | 25🪙+10🧱 | +5🧱 | +1 |
-
-  | Pengarsektorn (Tundra/Stad) | kostar | ger/runda | öhälsa |
-  |---|---|---|---|
-  | Smutsig (Oljeplattform / Kolkraftverk) | 8🧱 | +10🪙 | −2 |
-  | Standard (Fabrik / Kontor & hotell) | 6🪙+6🧱 | +7🪙 | +1 |
-  | Grön (Vindkraft / Solceller) | 10🪙+8🧱 | +6🪙 | +3 |
-
+- **4 lag = 4 öområden.** Områdesfärg = lagfärg. Loggor = fasetterade djurbadges (`spec/content/teams.js`):
+  - Åkermark (gul) — **Oxen** — producerar **material** 🧱
+  - Skog (grön) — **Björnen** — producerar **material** 🧱
+  - Tundra (orange) — **Räven** — producerar **pengar** 🪙
+  - Stad (grå) — **Örnen** — producerar **pengar** 🪙
+- **Rundor:** Mellan 8 (Flash 4, Skola ~10), timer-ring per bygg-runda; tar den slut sker bokslutet automatiskt.
+- **Start:** 35 pengar / 35 material per lag. **Öns hälsa:** 0–100, start 50, MÅL 60. Röda zonen är en
+  VISUELL/bot-tröskel — den ger INGEN automatisk årlig förlust längre (den gamla "katastrof varje runda"
+  + årlig −3 är borttagna 2026-11-18/19). Låg öhälsa hanteras av öhälsohändelser + KRIS (se nedan).
+- **Utfall:** öhälsa ≥ 60 på sista rundan → rikaste laget (pengar+material) vinner. Under 60 → **alla
+  förlorar**. **KRIS** deklareras när öhälsan är mycket låg (≤20) — tydlig röd look + siren; en olöst
+  kris vid deadline spelar om rundan (konfigurerbart). 0-golvet är backstop.
+- **Handen:** alltid exakt 3 val — SMUTSIG / STANDARD / GRÖN (spelets heliga treenighet; namn och bild
+  skiljer per område men begreppen är alltid desamma). **De 12 byggnadernas aktuella namn, kostnader,
+  inkomst och öhälso-effekt bor i `spec/content/buildings.js`** (källan till sanning — värdena är
+  preliminära och underhålls inte i detta dokument). Varje byggnad anger själv i vilka varianter den finns.
 - **Byteshandel:** fritt mellan lag, valfri kurs. UI:t ramar det som "du ger din valuta, du får den andra". Mot datorlag svarar en enkel accept-logik; mot människor kommer en accept-dialog.
-- **Politik:** ett förslag per runda, 3 av 4 JA krävs:
-  - 🌱 *Grön satsning* — alla ja-röstare betalar 10🪙 → öhälsa +8.
-  - 💸 *Miljöskatt* — värsta boven betalar 15🪙 som delas av de andra.
-  - 🚫 *Förbjud smutsig* — nästa runda kan ingen välja smutsigt.
-- **Bokslut varje runda (ceremoni i sekvens):** allas byggen avslöjas ett i taget med ljud → inkomster betalas → ö-mätaren slår → ev. katastrof → tre awards som popup (tryck för att fortsätta): 🏆 Årets ledande företag, 🌱 Årets eldsjäl, 💀 Årets sabotör (sociala, ingen mekanisk bonus).
+- **Ö-rådet (efter prisutdelningen varje år):** Mellan kör **politik** — årets ordförande (roterar) väljer
+  ett av flera förslag (eller inget), alla röstar ja/nej, konsekvensen slår direkt på öhälsan. Flash kör
+  i stället **dilemman** (A/B-beslut). Förslags-/dilemmabanken: `spec/content/{proposals,dilemmas}.js`.
+- **Händelser under byggfasen (inte vid bokslut):** tre kategorier ur motorn — företagskriser
+  (`company-crises.js`), företagsprestationer (`company-events.js`, t.ex. GRÖN OMSTÄLLNING) och
+  öhälsohändelser (`ohalsa-events.js`, visas fördröjt en bit in i året). Spelledaren kan dessutom kasta in
+  direkta GM-händelser (`gm-events.js`). Varje händelse är en popup som kort fryser byggtimern.
+- **Bokslut varje runda (ceremoni i sekvens):** allas byggen avslöjas ett i taget med ljud → inkomster
+  betalas → ö-mätaren slår → tre awards som popup (tryck för att fortsätta): 🏆 Årets ledande företag,
+  🌱 Årets eldsjäl, 💀 Årets sabotör (sociala, ingen mekanisk bonus). Sedan Ö-rådet (politik/dilemma).
 - **Alltid synligt:** 💰 Börsen (rank på förmögenhet, 👑 på ledaren) och 🏭 Klimatregistret (rank på ackumulerad skada, ⚠ på boven) + personlig årsberättelse (dina val, ditt avtryck, ditt kapital).
 - **De fem ölägena** (kartan är öhälso-visningen, med overlay + ljudlandskap): superdåligt 0–20 (smog, hosta), dåligt 20–40, neutralt 40–60, bra 60–80 (fågelkvitter), mycket bra 80–100 (feststämning).
 
@@ -74,7 +89,16 @@ Dashboard utan flikar på 16:9 touch: öns hälsa som stor mätare överst (fär
 
 ## Teknik (för sammanhang)
 
-Ren spelmotor (`spec/engine.js`, all balans i config + `spec/assets.json` som läses live) · samma motor kör i webbläsaren (mot datorlag) och server-side i Node (multiplayer: server äger sanningen, klienter är statslösa vyer över WebSocket, återanslutning ger full state-synk) · `spel.html` lokalt, `spel.html?online=1` med lobby · ljud genereras via ElevenLabs SFX från färdiga prompts (tre signatur-byggljud som tonal trappa + fem ambienser) · MQTT-topics behållna för den fysiska riggens displayer/LED.
+**EN innehållstom spelmotor** (`spec/engine.js` + `effects.js` + `systems/`): regler + `DEFAULT_CONFIG`
+(versionsneutral baslinje). **Allt innehåll som data** i `spec/content/*` (byggnader, lag, förslag,
+dilemman, händelsebanker) + `spec/slutdel.js`; manifest/slots/ljud i `spec/assets.json` (läses live).
+**Varianterna** (Flash/Mellan/Skola) ligger i `spec/config/variants/*` och overridar `DEFAULT_CONFIG`;
+`server/variant-config.js` bygger motor-config för vald variant. Samma motor kör i webbläsaren (mot
+datorlag) och server-side i Node (multiplayer: server äger sanningen, klienter är statslösa vyer över
+WebSocket, återanslutning ger full state-synk). Lägesväxel `config.mode = tutorial | selfplay | gm`
+(gm = spelledarpanel på iPad). `spel.html` lokalt, `spel.html?online=1` med lobby; `spelledare.html` =
+spelledarpult. Ljud via ElevenLabs SFX (tonal trappa + ambienser). MQTT-topics behållna för riggen.
+Fullständig arkitektur-/filträdskarta: `RAMVERK.md §1` + `ARCHITECTURE.md`.
 
 ## Balansläget (viktigt för introduktionens löften)
 

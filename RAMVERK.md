@@ -12,9 +12,10 @@ ersätter inte `ARCHITECTURE.md` (mock→drift), `RIGG-KONTRAKT.md` (signalsöm)
 
 | Lager | Fil | Ansvar |
 |---|---|---|
-| **Motor (sanning)** | `spec/engine.js` | Regler, balans, state. Ren modul, ingen DOM/nät. `EcoLoco`-klassen (internt namn — behålls). Kör oförändrad i webbläsare och i Node. |
-| **Innehåll (data)** | `spec/assets.json` + `spec/content/*` | `assets.json`: config-overrides, slots, ljud-manifest (läses LIVE). `spec/content/`: byggnadsbank (`buildings.js`), lagbank (`teams.js` → motorn re-exporterar som `AREAS`), förslag (`proposals.js`), dilemman (`dilemmas.js`) och händelsebanker (`company-crises`, `company-events`, `ohalsa-events`, `gm-events`, `events.js` = bara 'rost'/sponsrat). `spec/slutdel.js` = podiefrågor + reveal-kort. Motorn är innehållstom: den importerar/re-exporterar banken, har inga hårdkodade innehålls-listor (korthänder + AREAS utflyttade, Etapp 1–2). |
-| **Server (auktoritativ)** | `server/server.js` | Äger EN motorinstans i drift, statiska filer + WebSocket, lobby/botar/klar-logik/hjärtslag, GM-flagga, award-/slutdel-stegning. |
+| **Motor (sanning)** | `spec/engine.js` (+ `spec/effects.js`, `spec/systems/proposal-selector.js`) | Regler, balans, state — **innehållstom**: inga hårdkodade innehålls-listor, motorn läser content-banken + config. `EcoLoco`-klassen (internt namn — behålls). Ren modul, ingen DOM/nät, kör oförändrad i webbläsare och i Node. `effects.js` = förslags-/dilemma-effekter, `systems/proposal-selector.js` = förslagsurval. |
+| **Innehåll (data)** | `spec/assets.json` + `spec/content/*` | `assets.json`: config-overrides, slots, ljud-manifest (läses LIVE). `spec/content/`: byggnadsbank (`buildings.js`), lagbank (`teams.js` → motorn re-exporterar som `AREAS`), förslag (`proposals.js`), dilemman (`dilemmas.js`) och händelsebanker (`company-crises`, `company-events`, `ohalsa-events`, `gm-events`, `events.js` = bara 'rost'/sponsrat). `spec/slutdel.js` = podiefrågor + reveal-kort. Motorn importerar/re-exporterar banken (korthänder + AREAS utflyttade, migrerings-Etapp 1–2). |
+| **Variant-config (flerversion)** | `spec/config/variants/*` + `server/variant-config.js` | EN motor, TRE jämbördiga varianter (Flash/Mellan/Skola, ingen är standard). Varje variant = en config-fil (`flash.js`/`mellan.js`/`skola.js`, register i `index.js`) som overridar `DEFAULT_CONFIG` (rundantal, fas-tider, bygggräns, beslutssystem, kvoter, `mode`). `server/variant-config.js` (`buildEngineConfig`) slår ihop manifest + vald variant → `new EcoLoco(config)`. Variant-specifikt INNEHÅLL taggas i content-banken (`variants[]`/`flashOnly` per post) — inte separata innehållsfiler. |
+| **Server (auktoritativ)** | `server/server.js` | Äger EN motorinstans i drift, statiska filer + WebSocket, lobby/botar/klar-logik/hjärtslag, GM-flagga, award-/slutdel-stegning, vald variant. |
 | **Persistens** | `server/persist.js` | Fire-and-forget JSONL + `<id>.summary.json` per session till `data/` (gitignorerad). Tappar motorns eventström. |
 | **Klient-fasad** | `src/ui.js` | Vylager. Tre backends bakom SAMMA fasad via `makeProxy`: `makeLocal` (mock), `makeOnline` (`src/net.js`), `makeTutorial`. Seriell event-kö med scenpauser. |
 | **Nätklient** | `src/net.js` | WebSocket mot servern; håller en replik-state (`EcoLoco` enbart som läsare). |
@@ -31,8 +32,10 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
 
 ## 2. INVARIANTER (orubbliga — bryts bara efter beslut med Josef)
 
-1. **Motorn = sanning.** Ändra ALDRIG balans/regler i `spec/engine.js` (siffror, kort, events, utfall)
-   utan avstämning. Tunbara värden ligger i `DEFAULT_CONFIG` + `spec/assets.json`.
+1. **Motorn = sanning, och innehållstom.** Ändra ALDRIG balans/regler i `spec/engine.js` (siffror,
+   utfall) utan avstämning. Innehåll (kort, events, förslag, dilemman, lag) bor i `spec/content/*` —
+   aldrig hårdkodat i motorn. Tunbara värden: `DEFAULT_CONFIG` (versionsneutral baslinje) +
+   `spec/assets.json`; **per-variant-värden i `spec/config/variants/*`** (Flash/Mellan/Skola).
 2. **Servern är auktoritativ, klienterna är statslösa vyer.** Varje servermeddelande bär hela state;
    återanslutning = full rebuild. Lägg ingen spel-sanning i klienten.
 3. **Offline/LAN-först.** Inga CDN/molnberoenden i drift. **Inga nya npm-beroenden** — bara `ws`
@@ -55,9 +58,10 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
 - **Kort-tiers:** `--smutsig #8A4A38` · `--standard #7A7263` · `--gron #4E9C58`.
 - **Lagfärg (spine/accent i chromet, dämpad):** `--team-aker #D4A53C` · `--team-skog #1F6E57` ·
   `--team-tundra #C96F2E` · `--team-stad #7E8794`.
-- **Lagfärg (KANONISK, för badges/karta/slutdel-marker):** `spec/engine.js → AREAS.farg`:
-  aker `#E7C24C` · skog `#3F8F4A` · tundra `#D98A3C` · stad `#8A8F96`. **`AREAS.farg` är sanningen** —
-  `src/map.js AREA_COLORS`, `src/logos.js` och slutdel-markern ska matcha den. (Se öppen tråd §6: stad driftar.)
+- **Lagfärg (KANONISK, för badges/karta/slutdel-marker):** `spec/content/teams.js → TEAMS.farg`
+  (motorn re-exporterar som `AREAS.farg`): aker `#E7C24C` · skog `#3F8F4A` · tundra `#D98A3C` ·
+  stad `#8A8F96`. **`TEAMS.farg`/`AREAS.farg` är sanningen** — `src/map.js AREA_COLORS`, `src/logos.js`
+  och slutdel-markern ska matcha den. (Se öppen tråd §6: stad driftar.)
 
 ### Typsnitt
 - `--font-disp` = **Oxanium** (rubriker, knappar, UI-text). `--font-num` = **Chakra Petch**

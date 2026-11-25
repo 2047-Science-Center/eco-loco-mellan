@@ -1,20 +1,46 @@
-# Eco Loco — Mellan · byggpaket för Fable 5
+# Maktspelet (Eco Loco) — självfaciliterande webbspel för 2047 Science Center
 
 > **Se [`RAMVERK.md`](RAMVERK.md) först** — invarianter, palett/ikon/typsnitt-konventioner och konflikt-checklista innan du utvecklar vidare i Maktspelet (fd Eco Loco).
 
-Det här är underlaget för att bygga **mellanversionen** av Eco Loco: en självständig, självfacilerande webbversion (~15 min) som behåller kärnkonflikten men skär bort krånglet. Den ska kunna köras med spelledare + Blocks-lager ovanpå, och senare i skarp drift som multiplayer mellan flera NUC-datorer med samma MQTT-söm som den fysiska riggen redan använder.
+En självfaciliterande webbversion av Eco Loco: behåll kärnkonflikten (individuell vinst mot gemensam
+överlevnad av ön), skär bort krånglet. Server-auktoritativ multiplayer mellan flera NUC-datorer med
+samma MQTT-söm som den fysiska riggen, + spelledar-/Blocks-lager ovanpå.
 
-Du (Fable) bygger detta **i fyra faser, i ordning**. Stäm av med Josef mellan fas 1→2 och fas 2→3.
+**Flerversion (beslut 2026-11-11): EN motor, tre jämbördiga varianter** — **Flash** (~8 min, 4 rundor),
+**Mellan** (~25 min, 8 rundor) och **Skola** (~45 min). Varianterna skiljer sig genom config +
+taggat innehåll, inte genom separata motorer/repon. Filträdet speglar detta (se nedan + `ARCHITECTURE.md`).
+
+---
+
+## Läs först
+1. `RAMVERK.md` — arkitektur-kartan (§1), invarianterna och konflikt-checklistan. **Läs före en ändring.**
+2. `ARCHITECTURE.md` — filträdet (motor / innehåll / variant-config), mock→drift, MQTT-sömmen, driftskraven.
+3. `spec/engine.js` — den körbara spelmotorn = **källan till sanning för reglerna**. Ren modul, ingen DOM,
+   **innehållstom**: regler + `DEFAULT_CONFIG`; allt innehåll bor i `spec/content/*`, per-variant-värden i
+   `spec/config/variants/*`. Rör inte balans/regler utan avstämning.
+4. `design/` — speldesign, UI-, ljud- och balansdokument (inte en del av filträds-/arkitektur-kartan).
+
+## Filträd (kort)
+```
+spec/engine.js  effects.js  systems/     ← MOTOR (regler + DEFAULT_CONFIG, innehållstom)
+spec/content/   buildings, teams,         ← INNEHÅLL (data; variant-tillhörighet taggas per post)
+                proposals, dilemmas,
+                company-crises/-events,
+                ohalsa-events, gm-events, events
+spec/config/variants/ flash, mellan,      ← PER-VARIANT CONFIG (override av DEFAULT_CONFIG)
+                      skola, index
+spec/assets.json                          ← MANIFEST (slots, ljud, config-overrides, läses live)
+spec/mock-opponents.js  bot-policy.js     ← BOT/AI
+server/server.js  variant-config.js       ← SERVER (auktoritativ) + buildEngineConfig
+src/ui.js net.js map.js icons.js logos.js rigg.js mqtt.js audio.js   ← KLIENT
+```
 
 ---
 
-## Läs först (ändra inte reglerna)
-1. `design/GAME-DESIGN.md` — spelets kärna, regler, parametrar, de fyra områdena, 12 byggnaderna, awards, topplistor.
-2. `spec/engine.js` — **den körbara spelmotorn = källan till sanning för reglerna.** Ren modul, ingen DOM. Rör inte balans/regler utan avstämning; siffror som får tunas ligger i configen överst i filen och i `spec/assets.json`.
-3. `spec/mock-opponents.js` — enkel AI som fyller de lag du inte styr, för test på en skärm. **Slängbar** — ersätts av nätverksspelare i skarp drift.
-4. `ARCHITECTURE.md` — hur mock-nu blir riktig multiplayer mellan NUCar, MQTT-sömmen och driftskraven.
-
----
+## Bygg-faserna (historik)
+*Nedan är den ursprungliga byggbriefen för Fable 5 (hur mellanversionen byggdes från grunden i fyra
+faser). Bygget är genomfört — multiplayer, drift och flerversion finns — så detta är bakgrund, inte en
+att-göra-lista. Vidareutveckling styrs av `RAMVERK.md` + `att-gora.md` (i Klaras Kontext).*
 
 ## FAS 1 — Rita ön + färgsätt lagen
 - Rita en **stiliserad 2D-karta** i samma anda som Josefs nuvarande UI (referensbilder i `Referens spelrigg/` = foton på riggen och hur det ser ut när man spelar, och `Referens UI/` = digitalt UI/skärmdelar — tolka dem, återskapa dem inte), med **fyra färgade områden**: Åkermark (gul), Skog (grön), Tundra (orange), **Stad (grå, ny)**. Se `design/UI-AND-MAP.md`.

@@ -4,6 +4,17 @@
 ska bygga snabbversionen. Det är självbärande: all kontext, alla standarder och alla repolänkar
 finns här. Skrivet 2026-10-09 av Josef Sjönneby + Claude utifrån bygget av mellanversionen.*
 
+> **UPPDATERING 2026-11-11 → 2026-11-25 (flerversion):** Sedan det här skrevs är arkitekturen beslutad:
+> **Flash, Mellan och Skola byggs som TRE jämbördiga varianter på SAMMA motor, i DETTA repo**
+> (`eco-loco-mellan`) — inte som ett separat bygge/repo med en egen, enklare motor. Snabbversionen
+> (Flash) finns alltså redan som en variant här. Konkret innebär det:
+> - Motorn (`spec/engine.js`) är **innehållstom**; allt innehåll bor i `spec/content/*` och
+>   per-variant-värden i `spec/config/variants/{flash,mellan,skola}.js`. Filträdet: se
+>   `ARCHITECTURE.md` + `RAMVERK.md §1`.
+> - "Bygg en ny enklare motor" (§2–3 nedan) gäller INTE längre — lägg i stället en config-fil +
+>   taggat innehåll ovanpå den gemensamma motorn. UE-referensen "5 minutes to collapse" (§1) är
+>   fortsatt designreferens för spelkänslan. Standarderna i övrigt (§4–10) gäller oförändrat.
+
 ---
 
 ## 0. Repokarta — allt ligger i GitHub-organisationen 2047-Science-Center

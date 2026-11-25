@@ -10,6 +10,23 @@
    selectCard/transfer/vote/endRound                                         MQTT (displayer/LED)
 ```
 
+## Filträd — en motor, innehåll + variant-config utanför
+Flash, Mellan och Skola är **tre jämbördiga varianter på SAMMA motor** (beslut 2026-11-11). Motorn är
+**innehållstom**: regler + state i koden, allt innehåll och alla siffror som data utanför den. Att lägga
+till/ändra en version = ny config-fil + taggar i content-banken — aldrig en motorändring.
+
+- **Motor (regler):** `spec/engine.js` (+ `spec/effects.js` förslags-/dilemma-effekter,
+  `spec/systems/proposal-selector.js` urval). Ändras bara efter avstämning (RAMVERK invariant 1).
+- **Innehåll (data):** `spec/content/*` — byggnader (`buildings.js`), lag (`teams.js`), förslag
+  (`proposals.js`), dilemman (`dilemmas.js`), händelsebanker (`company-crises`, `company-events`,
+  `ohalsa-events`, `gm-events`, `events.js` = 'rost'/sponsrat). `spec/slutdel.js` = slutdelen.
+  `spec/assets.json` = manifest (slots, ljud, config-overrides, läses live).
+- **Variant-config (flerversion):** `spec/config/variants/{flash,mellan,skola}.js` (register
+  `index.js`) overridar `DEFAULT_CONFIG` (rundantal, fas-tider, bygggräns, beslutssystem, `mode`).
+  `server/variant-config.js` (`buildEngineConfig`) slår ihop manifest + vald variant → `new EcoLoco(config)`.
+  Variant-specifikt INNEHÅLL taggas i banken (`variants[]`/`flashOnly` per post), inte i separata filer.
+- **Bot/AI:** `spec/mock-opponents.js` + `spec/bot-policy.js` (botars kort/byten/röster/förslag).
+
 ## Nu (Fas 3) — en skärm, mockade motståndare
 - Allt i webbläsaren. Du styr ett lag; `mock-opponents.js` väljer kort/byten/röster för de andra tre.
 - Motorns events driver vyn (bygg på karta, kontoanimation, öhälsa-overlay, soundscape, awards, register).
