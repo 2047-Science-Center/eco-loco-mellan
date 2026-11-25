@@ -1,0 +1,54 @@
+{
+ "film": "ecoloco-trailer",
+ "duration_s": 69.307,
+ "sprak": [
+  "sv"
+ ],
+ "slutlig": true,
+ "ljudkalla": "assets/audio/master.wav",
+ "kr_platshallare": [],
+ "master": "trailer.mp3",
+ "tidskalla": "manus/ord.json (inlagd röst)",
+ "rutor": [
+  {
+   "ruta": 1,
+   "start": 0.0
+  },
+  {
+   "ruta": 2,
+   "start": 9.268
+  },
+  {
+   "ruta": 3,
+   "start": 16.789
+  },
+  {
+   "ruta": 4,
+   "start": 25.889
+  },
+  {
+   "ruta": 5,
+   "start": 31.155
+  },
+  {
+   "ruta": 6,
+   "start": 36.885
+  },
+  {
+   "ruta": 7,
+   "start": 42.708
+  },
+  {
+   "ruta": 8,
+   "start": 48.206
+  },
+  {
+   "ruta": 9,
+   "start": 55.78
+  },
+  {
+   "ruta": 10,
+   "start": 64.349
+  }
+ ]
+}

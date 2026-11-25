@@ -5,9 +5,9 @@
     "mode": "tutorial"
   },
   "onboarding": {
-    "_readme": "Onboarding-lagrets videoklipp. Saknas filen visas en placeholder - allt funkar utan klipp. attract = bakgrundsvideo pa entre/attract-skarmen (loop, bakom MAKTSPELET-titeln). trailer = 30 s intro som spelas nar alla anslutit, fore tutorial (ljussekvens via server playTrailer / trailer.html). narrativ = 45 s berattarklipp (scenario A).",
+    "_readme": "Onboarding-lagrets videoklipp. Saknas filen visas en placeholder - allt funkar utan klipp. attract = bakgrundsvideo pa entre/attract-skarmen (loop, bakom MAKTSPELET-titeln). trailer = intro-trailern v2 (69 s, 2026-11-25): HTML-paket i assets/trailer-film/ (HyperFrames) som skarmarna spelar tyst och synkat mot serverns klocka (skarm.html?start_at=, /time); masterljudet spelas centralt av hjarnan (assets/audio/rigg/trailer.mp3 pa ecoloco/rigg/trailer=1); ljus-cues ur assets/trailer-film/rigg-cues.json via server playTrailer. narrativ = 45 s berattarklipp (scenario A).",
     "attract": "assets/Maktspelet background video.mp4",
-    "trailer": "assets/Maktspelet trailer.mp4",
+    "trailer": "assets/trailer-film/skarm.html",
     "narrativ": "assets/video/narrativ.mp4"
   },
   "areas": [
