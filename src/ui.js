@@ -16,6 +16,7 @@ import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { botPickProposal } from '../spec/bot-policy.js';
 import { dilemmaById } from '../spec/content/dilemmas.js';
 import { VARIANTS } from '../spec/config/variants/index.js';
+import { TUTORIALS, ANCHORS, tutorialFor } from '../spec/content/tutorial.js';
 import { renderMap } from './map.js';
 import { logoSVG } from './logos.js';
 import { GameAudio } from './audio.js';
@@ -545,6 +546,7 @@ const AWARD_BILD = {
 // omröstning öppnas, släcks först RUM_HALL ms efter att den sista stängts → ingen blink av spelplanen mellan dem.
 const RUM_HALL = 2500;
 let rumT = null;
+let oradAktivt = false;   // true från att örådet börjar (har ordet / dilemma) tills politicsDone → kontrollrummet får inte försvinna mitt i örådet
 // Örådet helt klart (politicsDone) → riv kontrollrummet DIREKT (snabb tonad ut) så spelaren landar på ön och ser "ÅR N".
 function rivRummet(mjukt = false) {
   const el = $('room-bg'); if (!el) return;
@@ -557,11 +559,12 @@ if (typeof MutationObserver !== 'undefined' && $('room-bg')) {
   const ids = ['ov-award', 'ov-power', 'ov-choose', 'ov-vote', 'ov-dilemma', 'ov-result', 'ov-year'];
   const syncRum = () => {
     if (ids.some(i => $(i)?.classList.contains('open'))) { clearTimeout(rumT); rumT = null; $('room-bg').classList.add('on'); }
-    else if (!rumT) rumT = setTimeout(() => { rumT = null; if (!ids.some(i => $(i)?.classList.contains('open'))) $('room-bg').classList.remove('on'); }, RUM_HALL);
+    else if (!rumT) rumT = setTimeout(() => { rumT = null; if (!oradAktivt && !ids.some(i => $(i)?.classList.contains('open'))) $('room-bg').classList.remove('on'); }, RUM_HALL);   // under pågående öråd ligger rummet KVAR tills politicsDone (så ÅR-banderollen visas där, i Mellan som i Flash)
   };
   const mo = new MutationObserver(syncRum);
   ids.forEach(i => $(i) && mo.observe($(i), { attributes: true, attributeFilter: ['class'] }));
 }
+let sistaPrisBild = '';   // sista prisbilden när ceremonin stängdes (startbild för "X har ordet")
 let prevAwardBild = '';   // senast visade prisbild under pågående ceremoni (nollas när prisutdelningen stängs)
 // Förladda + DEKODA alla stora rumsbilder vid start och håll referenserna (annars kan första bilden dekodas under tonade övergången → ingen synlig tonad inkomst).
 const _rumsBilder = [];
@@ -696,6 +699,7 @@ game.on('awardStep', p => run(async () => {
 }));
 game.on('awardDone', p => run(async () => {
   $('ov-award').classList.remove('open');
+  sistaPrisBild = prevAwardBild;   // "har ordet" börjar på samma rum som sista priset visade (sömlös övergång)
   prevAwardBild = '';
   renderRegs();
   if (p?.over) { showPendingSlut(); return; }   // sista rundans ceremoni klar → nu visas slutskärmen
@@ -733,6 +737,7 @@ game.on('roundStart', p => run(async () => {
   ['ov-trade', 'ov-tradein', 'ov-choose', 'ov-vote', 'ov-dilemma', 'ov-event', 'ov-register', 'ov-bot'].forEach(id => $(id)?.classList.remove('open'));
   voteOpenFor = null;
   roundPowerTeam = p.powerTeam || null;                          // MAKT-ROTATION: vem styr politiken denna runda
+  oradAktivt = false;                                            // säkerhetsnät: ett avbrutet öråd (utan politicsDone) får aldrig låsa kontrollrummet
   if (ONLINE && !game.me && lastLobby) renderLobby(lastLobby);   // åskådarbänk: visa ta-över-läget
   // round_start-ljud spelas centralt (rigg). Online: håll "RUNDA N" tills prisceremonin är klar
   // (roundStart kommer medan ceremonin fortfarande spelas) → bannras i awardDone. Lokalt: visa direkt.
@@ -923,7 +928,7 @@ function updateOh({ value, mode, delta }) {
   const d = $('ohdelta');
   d.textContent = delta === 0 ? '—' : (delta > 0 ? `▲ ${delta}` : `▼ ${-delta}`);
   d.className = 'ohdelta' + (delta > 0 ? ' pos' : delta < 0 ? ' neg' : '');
-  $('ohmode').innerHTML = `${moodIco(mode, 22)} ${MODE_LABEL[mode]}`;
+  $('ohmode').innerHTML = moodIco(mode, 44);   // bara emoji/ikon (ordet borttaget) — större
   map.setOhalsaMode(mode);
   // Ambiens flyttad till centralhögtalaren (rigg/hjärna) — skärmen är tyst mellan interaktioner.
 }
@@ -1292,6 +1297,7 @@ $('btn-choose-inget').addEventListener('click', () => { audio.play('ui_close'); 
 
 // ═══════════ ÖRÅD-politik (klient): ordförande-ruta → förslagsväljare (5 förslag) → röstning ═══════════
 game.on('politicsStart', p => run(async () => {
+  oradAktivt = true;
   await showOrdforande(p.power);
   openPolitikval(p.power);
 }));
@@ -1300,9 +1306,11 @@ function showOrdforande(power) {
   return new Promise(res => {
     const namn = teamName(power), farg = AREAS.find(a => a.id === power)?.farg || 'var(--gold)';
     const ov = $('ov-power');
-    // Kontrollrummet (#room-bg) ligger bakom → mörk emblemvägg tonas in över det → lagets emblem lyser upp → banderoll glider in.
+    // Start: sista prisrummet (samma bild som nyss visades → sömlöst) → skärmarna släcks (mjukt dopp) → kort svart →
+    // mörka emblemväggen tonas upp (rummet tänds) → kort paus → lagets emblem tonas upp → banderoll glider in.
+    const startBild = sistaPrisBild || 'assets/kontrollrum_neutral.jpg'; sistaPrisBild = '';
     ov.innerHTML =
-      `<div class="pw-wall pw-room" style="background-image:url(assets/kontrollrum_neutral.jpg)"></div>`
+      `<div class="pw-wall pw-room" style="background-image:url(${startBild})"></div>`
       + `<div class="pw-wall pw-mork" style="background-image:url(assets/vagg_mork.jpg)"></div>`
       + `<div class="pw-wall pw-lit" style="background-image:url(assets/vagg_${power}.jpg)"></div><div class="pw-dim"></div>`
       + `<div class="pw-ban" style="--acc:${farg}"><div class="bar"></div>`
@@ -1313,7 +1321,7 @@ function showOrdforande(power) {
     ov.classList.remove('out'); ov.classList.add('open');
     let done = false;
     const finish = () => { if (done) return; done = true; clearTimeout(tmo); ov.classList.add('out'); setTimeout(() => { ov.classList.remove('open', 'out'); ov.innerHTML = ''; }, 500); res(); };
-    const tmo = setTimeout(finish, 4800);   // timer (ingen klick-stängning): animationen tar ~2,6 s
+    const tmo = setTimeout(finish, 7600);   // timer (ingen klick-stängning): animationen tar ~5,5 s + banderollen visas ~2 s. Servern väntar POLITICS_INTRO_MS (≈ denna tid).
   });
 }
 game.on('politicsTimer', p => {
@@ -1328,6 +1336,7 @@ game.on('politicsTimer', p => {
 game.on('politicsDone', () => run(async () => {
   $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null; dilemmaVote = null;
   const rumPa = $('room-bg')?.classList.contains('on');   // politik: kontrollrummet ligger kvar → ÅR-banderoll där, sedan mjuk övergång till ön
+  oradAktivt = false;
   if (!rumPa) rivRummet();
   $('choose-timer').textContent = ''; $('vote-timer').textContent = '';
   // Örådet klart → NU byter årssiffran, loggens ÅR-avdelare sätts (så örådsbeslutet ligger kvar
@@ -2262,6 +2271,141 @@ async function startCeremony() {
   game.startGame();
 }
 
+// ═══════════════ Tutorial-TOLK (innehåll/ordning ur spec/content/tutorial.js) ═══════════════
+// Maskineriet (tutSay/tutBeat/tutBarrier/startCeremony/makeTutorial) är OFÖRÄNDRAT. Tolken loopar
+// de deklarativa stegen och fyller i dynamik via tre små register: ankare, mallvariabler, until/autoDo.
+// Mellan-sekvensen är ordagrant som förut → identiskt beteende; Flash (coach-läge) byggs i nästa steg.
+const TUT_TERRAIN = { aker: 'Åkermarken', skog: 'Skogen', tundra: 'Tundran', stad: 'Staden' };
+let _tutReopenTrade = null;   // reopen-trade-failsafe-lyssnare under byt-fasen (sätts/rensas av setup)
+
+// Semantiskt ankare → { sel, x, y, side }. prodBox/getBox får sel ur aktuellt läge (mySector/getCur).
+function tutAnchor(name) {
+  const a = ANCHORS[name] || {};
+  let sel = a.sel;
+  if (name === 'prodBox') sel = mySector === 'pengar' ? '#box-pengar' : '#box-material';
+  if (name === 'getBox')  sel = getCur === 'pengar' ? '#box-pengar' : '#box-material';
+  return { sel, x: a.x, y: a.y, side: a.side };
+}
+// Mallvariabler → värden ur aktuellt state. Anropas FÄRSKT per steg (picked/mySector/getCur ändras).
+function tutResolver(myLag) {
+  const cfg = E().cfg;
+  const a = AREAS.find(x => x.id === myLag) || {};
+  const built = handFor(myLag).find(c => c.tier === picked) || handFor(myLag)[0] || {};
+  const prodCur = mySector;
+  const inc = prodCur === 'pengar' ? built.gp : built.gm;
+  const konsekvens = built.oh < 0
+    ? `Men det billiga <b>sänker ön ${built.oh}${ico('industri', 18)}</b> — notan delar ni fyra.`
+    : `Och det <b>lyfter ön +${built.oh}${ico('tillvaxt', 18)}</b>.`;
+  const map = {
+    rounds: cfg.rounds, threshold: cfg.threshold,
+    lagNamn: `<span style="color:${a.farg}">${(a.namn || '').toUpperCase()}</span>`,
+    terrain: TUT_TERRAIN[myLag] || a.namn || '',
+    sektorNamn: a.sektor === 'material' ? 'material' : 'pengar',
+    sektorIco: ico(a.sektor === 'material' ? 'material' : 'pengar', 26),
+    inkomst: inc, prodIco: ico(prodCur === 'pengar' ? 'pengar' : 'material', 18),
+    konsekvens, bytIco: ico(getCur === 'pengar' ? 'pengar' : 'material', 18),
+  };
+  return txt => (txt || '').replace(/\{(\w+)\}/g, (m, k) => (k in map ? map[k] : m));
+}
+// until-villkor (namn → löfte som resolvar när villkoret uppfylls).
+function tutUntil(name, myLag) {
+  switch (name) {
+    case 'build':     return tutOnce('build', p => p.teamId === myLag);
+    case 'tradeOpen': return tutWaitP(() => $('ov-trade').classList.contains('open'));
+    case 'tradeDone': return tutOnce('trade', p => p.from === myLag || p.to === myLag);
+    case 'roundEnd':  return tutOnce('roundEnd');
+    case 'settled':   return tutWaitP(() => !running);
+    default:          return new Promise(() => {});   // okänt → aldrig klart (autoMs/abort räddar)
+  }
+}
+function tutPartner(myLag) {
+  return E().getState().teams.find(x => x.id !== myLag && x.sektor !== mySector)?.id;
+}
+// autoDo-actions (görs åt en övergiven skärm vid inaktivitet).
+function tutAutoDo(name, myLag) {
+  switch (name) {
+    case 'byggSmutsig': return () => buyCard(E().getState().banDirtyThisRound ? 'standard' : 'smutsig');
+    case 'oppnaByt':    return () => { if (!$('ov-trade').classList.contains('open')) openTrade(tutPartner(myLag)); };
+    case 'bekraftaByt': return () => { if (!$('ov-trade').classList.contains('open')) openTrade(tutPartner(myLag)); $('btn-trade-go').click(); };
+    case 'avslutaAr':   return () => $('btn-end').click();
+    default:            return undefined;
+  }
+}
+// setup-hooks (förberedelse mellan steg).
+function tutSetup(name, myLag) {
+  if (name === 'nollaTimer') { $('timertxt').textContent = '–:––'; return; }
+  if (name === 'markeraVagg') {
+    const mig = E().team(myLag);
+    const vagg = handFor(myLag).find(c => c.tier !== picked && (mig.pengar < c.kp || mig.material < c.km));
+    if (vagg) {
+      const el = document.querySelector(`#cards .card[data-tier="${vagg.tier}"]`);
+      const brist = [];
+      if (mig.pengar < vagg.kp) brist.push(`${vagg.kp - mig.pengar}${ico('pengar', 13)}`);
+      if (mig.material < vagg.km) brist.push(`${vagg.km - mig.material}${ico('material', 13)}`);
+      el?.classList.add('tut-vagg', 'poor');
+      if (el) el.querySelector('.saknas').innerHTML = `saknar ${brist.join(' + ')} → BYT`;
+    }
+    // "Avbryt" i bytesrutan får inte lämna återvändsgränd → öppna den igen (nettoeffekt: rutan stannar).
+    _tutReopenTrade = () => { if (!tutAbort) openTrade(tutPartner(myLag)); };
+    $('btn-trade-cancel').addEventListener('click', _tutReopenTrade);
+    return;
+  }
+  if (name === 'rensaVagg') {
+    if (_tutReopenTrade) { $('btn-trade-cancel').removeEventListener('click', _tutReopenTrade); _tutReopenTrade = null; }
+    document.querySelectorAll('#cards .card.tut-vagg').forEach(el => {
+      el.classList.remove('tut-vagg', 'poor');
+      const s = el.querySelector('.saknas'); if (s) s.innerHTML = '';
+    });
+    return;
+  }
+}
+// Kör ETT deklarativt steg.
+async function runTutStep(step, myLag) {
+  const resolve = tutResolver(myLag);
+  switch (step.typ) {
+    case 'mission': {
+      $('ov-mission').classList.add('open'); audio.play('ui_open');
+      await Promise.race([new Promise(res => { $('ov-mission').onclick = res; }), tutAbortP()]);
+      $('ov-mission').onclick = null; $('ov-mission').classList.remove('open');
+      return;
+    }
+    case 'roll': {
+      const a = AREAS.find(x => x.id === myLag);
+      if (!a) return;
+      $('roll-logo').innerHTML = `<img src="assets/makt/${myLag}.png" alt="" style="width:min(640px,70vw);height:auto;border-radius:16px;border:3px solid var(--edge2);box-shadow:0 10px 40px #000">`;
+      $('roll-du').innerHTML = resolve(step.rollDu || 'DU ÄR {lagNamn}');
+      $('roll-tx').innerHTML = resolve(step.rollTxt || '');
+      $('ov-roll').classList.add('open');
+      await Promise.race([new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);
+      $('ov-roll').onclick = null; $('ov-roll').classList.remove('open');
+      return;
+    }
+    case 'banner':   await banner(resolve(step.txt), false, step.ms || 1400); return;
+    case 'endBtn':   setEndBtn('AVSLUTA<br>ÅR', !step.on); return;
+    case 'setup':    tutSetup(step.gor, myLag); return;
+    case 'pause':    await Promise.race([delay(step.ms || 400), tutAbortP()]); return;
+    case 'barrier':  await tutBarrier(step.n); return;
+    case 'ceremony': await startCeremony(); return;
+    case 'say': {
+      if (step.hidden) {                                   // osynligt vänte-steg (vänta ut bokslut/priser)
+        if (step.until === 'settled') await delay(1200);
+        if (step.until) await Promise.race([tutUntil(step.until, myLag), tutAbortP()]);
+        return;
+      }
+      const anc = tutAnchor(step.ankare);
+      await tutSay({ ix: step.ix || 0, txt: resolve(step.txt), x: anc.x, y: anc.y, focus: anc.sel, hold: !!step.hold });
+      return;
+    }
+    case 'beat': {
+      const anc = tutAnchor(step.ankare);
+      await tutBeat({ ix: step.ix || 0, txt: resolve(step.txt), x: anc.x, y: anc.y, focus: anc.sel,
+        beside: anc.side ? anc.sel : undefined, side: anc.side,
+        until: tutUntil(step.until, myLag), autoDo: tutAutoDo(step.autoDo, myLag) });
+      return;
+    }
+  }
+}
+
 async function runTutorial() {
   if (tutRunning) return;                      // redan igång (late-join/claim kan trigga dubbelt)
   tutRunning = true; tutAbort = false; tutInCeremony = false; _tutAborters.length = 0;
@@ -2280,145 +2424,14 @@ async function runTutorial() {
   await delay(500);
   if (tutAbort) return;
 
-  // ——— MÅL (FÖRST): bli borgmästare (helskärm med bild). Väntar på tryck, ingen auto-timeout. ———
-  $('ov-mission').classList.add('open');
-  audio.play('ui_open');
-  await Promise.race([new Promise(res => { $('ov-mission').onclick = res; }), tutAbortP()]);
-  $('ov-mission').onclick = null; $('ov-mission').classList.remove('open');
-  if (tutAbort) return;
-
-  // ——— LAG-IDENTITET (sedan): vem är du, vad ansvarar du för, vad producerar du? ———
-  {
-    const a = AREAS.find(x => x.id === myLag);
-    const TERRAIN = { aker: 'Åkermarken', skog: 'Skogen', tundra: 'Tundran', stad: 'Staden' };
-    if (a) {
-      $('roll-logo').innerHTML = `<img src="assets/makt/${myLag}.png" alt="" style="width:min(640px,70vw);height:auto;border-radius:16px;border:3px solid var(--edge2);box-shadow:0 10px 40px #000">`;   // lagets egen maktbild i stället för badge
-      $('roll-du').innerHTML = `DU ÄR <span style="color:${a.farg}">${a.namn.toUpperCase()}</span>`;
-      $('roll-tx').innerHTML = `Du ansvarar för <b>${TERRAIN[myLag] || a.namn}</b> och producerar `
-        + `<b>${a.sektor === 'material' ? 'material ' + ico('material', 26) : 'pengar ' + ico('pengar', 26)}</b>.`
-        + `<br><br>Kan ditt företag bli öns nästa <b>borgmästare</b>?`;
-      $('ov-roll').classList.add('open');
-      await Promise.race([new Promise(res => { $('ov-roll').onclick = res; }), tutAbortP()]);   // ingen auto-timeout: vänta på tryck (obemannad skärm fångas av 90 s idle→bot)
-      $('ov-roll').onclick = null; $('ov-roll').classList.remove('open');
-      if (tutAbort) return;
-    }
+  // Flöde ur data: variantens tutorial, annars Mellan-sekvensen (Skola ärver tills vidare).
+  // Coach-läge (Flash) byggs i nästa steg — tills dess kör sequence-flöden Mellan-stegen.
+  const flow = tutorialFor(sel) || TUTORIALS.mellan;
+  const steps = flow.mode === 'sequence' ? flow.steps : TUTORIALS.mellan.steps;
+  for (const step of steps) {
+    if (tutAbort) return;
+    await runTutStep(step, myLag);
   }
-
-  // ——— INTRO forts: vad går spelet ut på? (klicka igenom, highlightar relevant yta) ———
-  await tutSay({ ix: 0, focus: '#roundnum', x: 300, y: 190, hold: true,
-    txt: `⏱️ <b>Ni har ${E().cfg.rounds} år på er!</b><br>Bygg, handla och påverka ön genom <b>politiska beslut</b>.` });
-  if (tutAbort) return;
-  await tutSay({ ix: 0, focus: '.ohbar', x: 520, y: 190, hold: true,
-    txt: `🏝️ <b>Men det finns en hake!</b><br>Om <b>öns hälsa sjunker under ${E().cfg.threshold}</b> när spelet är slut kollapsar ön. Då förlorar alla – och ingen blir borgmästare!` });
-  if (tutAbort) return;
-
-  $('timertxt').textContent = '–:––';
-  await banner('ÖVNING — ÅR 0', false, 1400);
-  if (tutAbort) return;
-
-  // ——— 1) BYGG (gör) — det billiga lockar ———
-  setEndBtn('AVSLUTA<br>ÅR', true);   // TUTORIAL: AVSLUTA ÅR nedsläckt under hela lektionen — tänds först vid sista steget (tryck på avsluta år)
-  const dirtyTier = E().getState().banDirtyThisRound ? 'standard' : 'smutsig';
-  await tutBeat({ ix: 0, txt: 'Bygg en byggnad. Tryck på ett kort.', x: 520, y: 560, focus: '.handbar',
-    until: tutOnce('build', p => p.teamId === myLag),
-    autoDo: () => buyCard(dirtyTier) });
-  if (tutAbort) return;
-  await delay(650);
-  if (tutAbort) return;
-
-  // ——— 2) SE KONSEKVENSEN: du tjänar + ön betalar (Josefs kärna) ———
-  const built = handFor(myLag).find(c => c.tier === picked) || handFor(myLag)[0];
-  const prodCur = mySector;
-  const prodBox = prodCur === 'pengar' ? '#box-pengar' : '#box-material';
-  const inc = prodCur === 'pengar' ? built.gp : built.gm;
-  await tutSay({ ix: 0, focus: prodBox, x: 300, y: 300,
-    txt: `Byggt! Den ger dig <b>+${inc}${ico(prodCur === 'pengar' ? 'pengar' : 'material', 18)}</b> varje år.`, ms: 3000 });
-  await tutSay({ ix: 0, focus: '.topbar', x: 520, y: 150,
-    txt: built.oh < 0
-      ? `Men det billiga <b>sänker ön ${built.oh}${ico('industri', 18)}</b> — notan delar ni fyra.`
-      : `Och det <b>lyfter ön +${built.oh}${ico('tillvaxt', 18)}</b>.`, ms: 3400 });
-  if (tutAbort) return;
-  await tutSay({ ix: 0, focus: '.col-island', x: 520, y: 420,
-    txt: `Klicka på <b>byggnaderna på ön</b> för att se vad som byggts.` });
-  if (tutAbort) return;
-  await tutBarrier(1);
-  if (tutAbort) return;
-
-  // ——— 3) SLÅ I VÄGGEN → BYT (beroendet upptäcks genom att fastna) ———
-  const mig = E().team(myLag);
-  const vagg = handFor(myLag).find(c => c.tier !== picked && (mig.pengar < c.kp || mig.material < c.km));
-  if (vagg) {
-    const el = document.querySelector(`#cards .card[data-tier="${vagg.tier}"]`);
-    const brist = [];
-    if (mig.pengar < vagg.kp) brist.push(`${vagg.kp - mig.pengar}${ico('pengar', 13)}`);
-    if (mig.material < vagg.km) brist.push(`${vagg.km - mig.material}${ico('material', 13)}`);
-    el?.classList.add('tut-vagg', 'poor');
-    if (el) el.querySelector('.saknas').innerHTML = `saknar ${brist.join(' + ')} → BYT`;
-  }
-  await tutSay({ ix: 1, focus: '#me-sektor', x: 300, y: 330,
-    txt: `Du saknar den andra valutan. <b>Byt med ett annat lag.</b>` });
-  const partner = E().getState().teams.find(x => x.id !== myLag && x.sektor !== mySector)?.id;
-  // Lys upp BYT-knappen så det är tydligt att man klickar på den för att gå vidare.
-  await tutBeat({ ix: 1, txt: 'Tryck på den upplysta <b>BYT VALUTOR</b>-knappen.', beside: '#btn-trade', side: 'right', focus: '#btn-trade',
-    until: tutWaitP(() => $('ov-trade').classList.contains('open')),
-    autoDo: () => { if (!$('ov-trade').classList.contains('open')) openTrade(partner); } });
-  if (tutAbort) return;
-  // Tutorialen: "Avbryt" i bytesrutan får INTE lämna en återvändsgränd (gör-steget har ingen NÄSTA-knapp).
-  // Öppna rutan igen så lektionen står kvar — 60 s-failsafen nedan föreslår bytet åt en övergiven skärm.
-  const tutReopenTrade = () => { if (!tutAbort) openTrade(partner); };   // körs efter original-cancel (som stänger) → nettoeffekt: rutan stannar öppen
-  $('btn-trade-cancel').addEventListener('click', tutReopenTrade);
-  await tutBeat({ ix: 1, txt: `Välj lag och tryck <b>FÖRESLÅ BYTET</b>.`,
-    x: 1180, y: 150, focus: null,
-    until: tutOnce('trade', p => p.from === myLag || p.to === myLag),
-    autoDo: () => { if (!$('ov-trade').classList.contains('open')) openTrade(partner); $('btn-trade-go').click(); } });
-  $('btn-trade-cancel').removeEventListener('click', tutReopenTrade);
-  if (tutAbort) return;
-  document.querySelectorAll('#cards .card.tut-vagg').forEach(el => {
-    el.classList.remove('tut-vagg', 'poor');
-    el.querySelector('.saknas').innerHTML = '';
-  });
-  await delay(500);
-  if (tutAbort) return;
-  const getBox = getCur === 'pengar' ? '#box-pengar' : '#box-material';
-  await tutSay({ ix: 1, focus: getBox, x: 300, y: 300,
-    txt: `Bytte till dig <b>${ico(getCur === 'pengar' ? 'pengar' : 'material', 18)}</b>.` });
-  await tutSay({ ix: 1, focus: null, x: 1140, y: 150,
-    txt: `Förhandla med de andra lagen genom att <b>ringa dem</b> på telefonen.` });
-  if (tutAbort) return;
-  await tutBarrier(2);
-  if (tutAbort) return;
-
-  // ——— (Politik-steget borttaget) ———
-  // POLITIK-knappen är borttagen ur spelet (ersatt av händelseloggen). Det gamla tutorial-steget där
-  // spelaren lade ett eget förslag är därför borttaget. Politiken görs om till fasta händelser kopplade
-  // till öhälsa/byggen — tutorialen får ett nytt moment när den logiken är klar.
-  await tutBarrier(3);
-  if (tutAbort) return;
-
-  // ——— Coach-tips: peka ut surfplattan med spel-coachen innan sista steget ———
-  // tutSay visar NÄSTA-knapp och ligger kvar tills spelaren trycker (45 s kiosk-säkring) — ingen auto-timer.
-  await tutSay({ ix: 3, focus: null, x: 520, y: 380,
-    txt: `Har ni frågor? Vid sidan står en <b>coach</b> som kan reglerna — fråga den när ni vill.` });
-  if (tutAbort) return;
-
-  // ——— 5) AVSLUTA & BOKSLUT: alla tre priser lärs ut, sedan på riktigt ———
-  await tutSay({ ix: 3, focus: null, x: 1020, y: 540,
-    txt: `Efter <b>varje år</b> blir det <b>öråd</b>.` });   // lys INTE upp AVSLUTA ÅR här — den tänds först vid sista steget
-  if (tutAbort) return;
-  const roundEndP = tutOnce('roundEnd');
-  setEndBtn('AVSLUTA<br>ÅR', false);   // NU tänds knappen → nu får man avsluta året
-  await tutBeat({ ix: 3, txt: 'Klar? Tryck på knappen <b>AVSLUTA ÅR</b>.', x: 1040, y: 760, focus: '#endwrap',
-    until: roundEndP,
-    autoDo: () => $('btn-end').click() });
-  if (tutAbort) return;
-  await delay(1200);
-  await tutWaitP(() => !running);                    // vänta ut bokslutsscenerna + award-popuparna
-  if (tutAbort) return;
-  await tutBarrier(4);
-  if (tutAbort) return;
-
-  // Övningen klar → tydlig startceremoni (redo → nedräkning → vitt ljus → RUNDA 1) → riktiga spelet
-  await startCeremony();
 }
 
 // Spelar-start = ALLTID utan spelledare (selfplay). Spelledar-läget styrs från spelledar-pulten
