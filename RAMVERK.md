@@ -13,7 +13,7 @@ ersätter inte `ARCHITECTURE.md` (mock→drift), `RIGG-KONTRAKT.md` (signalsöm)
 | Lager | Fil | Ansvar |
 |---|---|---|
 | **Motor (sanning)** | `spec/engine.js` | Regler, balans, state. Ren modul, ingen DOM/nät. `EcoLoco`-klassen (internt namn — behålls). Kör oförändrad i webbläsare och i Node. |
-| **Innehåll (data)** | `spec/assets.json` | Config-overrides, byggnader, slots, ljud-manifest. Läses LIVE. `spec/slutdel.js` = podiefrågor + reveal-kort (ren data). Händelsebanker: `spec/content/{company-crises,company-events,ohalsa-events,gm-events}.js` + `events.js` (bara 'rost'-erbjudanden kvar, sponsrat). |
+| **Innehåll (data)** | `spec/assets.json` + `spec/content/*` | `assets.json`: config-overrides, slots, ljud-manifest (läses LIVE). `spec/content/`: byggnadsbank (`buildings.js`), lagbank (`teams.js` → motorn re-exporterar som `AREAS`), förslag (`proposals.js`), dilemman (`dilemmas.js`) och händelsebanker (`company-crises`, `company-events`, `ohalsa-events`, `gm-events`, `events.js` = bara 'rost'/sponsrat). `spec/slutdel.js` = podiefrågor + reveal-kort. Motorn är innehållstom: den importerar/re-exporterar banken, har inga hårdkodade innehålls-listor (korthänder + AREAS utflyttade, Etapp 1–2). |
 | **Server (auktoritativ)** | `server/server.js` | Äger EN motorinstans i drift, statiska filer + WebSocket, lobby/botar/klar-logik/hjärtslag, GM-flagga, award-/slutdel-stegning. |
 | **Persistens** | `server/persist.js` | Fire-and-forget JSONL + `<id>.summary.json` per session till `data/` (gitignorerad). Tappar motorns eventström. |
 | **Klient-fasad** | `src/ui.js` | Vylager. Tre backends bakom SAMMA fasad via `makeProxy`: `makeLocal` (mock), `makeOnline` (`src/net.js`), `makeTutorial`. Seriell event-kö med scenpauser. |

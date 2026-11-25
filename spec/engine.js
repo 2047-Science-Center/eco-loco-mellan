@@ -10,6 +10,7 @@
 // I multiplayer kommer actions från nätverksmeddelanden i stället för från UI/mock.
 
 import { buildingsForRegion } from './content/buildings.js';
+import { TEAMS } from './content/teams.js';
 import { EVENTS } from './content/events.js';   // bara 'rost'-erbjudanden kvar (sponsrat). Det gamla fullt slumpade EVENT_CONFIG är borttaget 2026-11-19.
 import { PROPOSALS, proposalById } from './content/proposals.js';
 import { DILEMMAS, dilemmaById } from './content/dilemmas.js';
@@ -117,14 +118,9 @@ export const DEFAULT_CONFIG = {
 // urvalet görs config-styrt (spec/systems/proposal-selector.js), effekterna av spec/effects.js.
 // Mellan kvoterar per kategori (variant-config), Skola väljer tills vidare helt slumpmässigt.
 
-// Ett område = ett lag. Områdesfärg = lagfärg. sektor styr valuta-beroendet.
-// id = internt områdesnamn (används i MQTT/rigg — ändra ALDRIG). namn = lagets visningsnamn (djuret).
-export const AREAS = [
-  { id: 'aker',   namn: 'Oxen',    farg: '#E7C24C', sektor: 'material' },
-  { id: 'skog',   namn: 'Björnen', farg: '#3F8F4A', sektor: 'material' },
-  { id: 'tundra', namn: 'Räven',   farg: '#D98A3C', sektor: 'pengar'   },
-  { id: 'stad',   namn: 'Örnen',   farg: '#8A8F96', sektor: 'pengar'   },
-];
+// Lagbanken ligger i spec/content/teams.js (migrerings-Etapp 2, 2026-11-25). Motorn re-exporterar den
+// som AREAS → map.js m.fl. och motorns egen logik är oförändrade. Samma värden som tidigare.
+export const AREAS = TEAMS;
 
 // ═══════════════ Händelser (events) ═══════════════
 // Händelser kommer ur tre kategorier: foretag (company-crises/-events), ohalsa (ohalsa-events),
