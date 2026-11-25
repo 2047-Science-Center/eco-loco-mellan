@@ -106,13 +106,13 @@ export const TUTORIALS = {
 
       // 1) BYGG (gör) — det billiga lockar
       { typ: 'beat', ix: 0, ankare: 'byggkort',
-        txt: 'Bygg en byggnad. Tryck på ett kort.',
+        txt: 'Bygg en byggnad!',
         until: 'build', autoDo: 'byggSmutsig' },
       { typ: 'pause', ms: 650 },
 
       // 2) SE KONSEKVENSEN
       { typ: 'say', ix: 0, ankare: 'prodBox', ms: 3000,
-        txt: 'Byggt! Den ger dig <b>+{inkomst}{prodIco}</b> varje år.' },
+        txt: 'Byggt! Ger <b>+{inkomst}{prodIco}</b> varje år.' },
       { typ: 'say', ix: 0, ankare: 'topbar', ms: 3400,
         txt: '{konsekvens}' },                                  // tolken bygger neg/pos-meningen ur byggt kort
       { typ: 'say', ix: 0, ankare: 'on',

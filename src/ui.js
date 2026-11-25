@@ -2294,8 +2294,8 @@ function tutResolver(myLag) {
   const prodCur = mySector;
   const inc = prodCur === 'pengar' ? built.gp : built.gm;
   const konsekvens = built.oh < 0
-    ? `Men det billiga <b>sänker ön ${built.oh}${ico('industri', 18)}</b> — notan delar ni fyra.`
-    : `Och det <b>lyfter ön +${built.oh}${ico('tillvaxt', 18)}</b>.`;
+    ? `Men påverkar också <b>öhälsan ${built.oh}${ico('industri', 18)}</b> — som alla delar.`
+    : `Och lyfter <b>öhälsan +${built.oh}${ico('tillvaxt', 18)}</b> — som alla delar.`;
   const map = {
     rounds: cfg.rounds, threshold: cfg.threshold,
     lagNamn: `<span style="color:${a.farg}">${(a.namn || '').toUpperCase()}</span>`,
