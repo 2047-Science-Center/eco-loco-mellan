@@ -104,6 +104,18 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
 - **Animationsprincip (ska hållas nere):** full animation bara på topparna (prisutdelning, kris, slut); övriga popups
   får EN mjuk inglidning, allt innehåll samtidigt, inga effekter på själva texten. `prefers-reduced-motion` ska stänga av
   animationer (slutläget syns ändå). Bilder i originalproportion (16:9) — beskär inte.
+- **Intro efter introfilmen** (`runIntro` i `src/ui.js`, overlay `#ov-intro`, tutorial-steget `mission`): svart → tomt kontrollrum →
+  kronbild (`kontrollrum_krona.jpg`) + CENTRALMAKTEN-meddelande → rummet släcks → emblemvägg (`vagg_*.jpg`) → "DU ÄR [LAG]" →
+  "ERT UPPDRAG" (Bygg/Handla/Påverka ön + `cfg.rounds` år). Ersätter gamla `ov-mission`/`ov-roll`/år-/hälsa-bubblorna. Tryck efter 2 s hoppar över.
+- **Övningsrutor** (`#tutbox`, `spec/content/tutorial.js` + `ui.js tutBeat/tutSay/tutResolver`): panel med guldram, valfri ikon (`ic:`), en kort rad
+  (siffror/ikoner före ord), räknare med 4 guldprickar (`ix` 0 Bygg · 1 Byt · 2 Ring+Coach · 3 Öråd/Avsluta) och stillastående dubbelpil ›› i stället för NÄSTA.
+  Färger: öns hälsa röd/grön, pengar guld, material silver. Ingen text i grått. AVSLUTA ÅR-knappen pulserar när rutan pekar på den.
+- **Byten** (`#ov-trade`, `#ov-tradein`, `#ov-traderes`, logg-raden `lg-byte`): grå modal, stora lagrutor, ikon + stor siffra (pengar guld `#E8C96A`, material silver `#C9D3DC`),
+  väntrad med prickar, stor grön BYTT!/röd NEJ TACK-ruta mitt på skärmen (ej under övningen). Byt-pilen roteras 180° när du ger material (silver överst).
+  Typsnitt: `button, input… { font-family: inherit }` globalt — knappar får aldrig systemtypsnitt.
+- **Loggen** (`logg()` i `src/ui.js`, rad `.loggrad.lr`): fast radformat `[laglogga] [typikon] [namn] [utfall]`, 52 px, inga meningar. Bygge = logga + bygg-ikon + namn + öns hälsa
+  (röd/grön + ikon); byte = logga −X ikon ⇄ +Y ikon logga; förslag/dilemma = **ingen laglogga**, bara förslagets egen ikon + namn + ✓/✕ och röster (A/B-cirkel för dilemma).
+  Vänsterpanelen: stora pengar/material-rutor (ikon 64 px, guld/silver) + "DU GÖR / DU SAKNAR"-rader med ikon.
 - Händelse-/dilemma-bilder: `assets/event_<id>.png` (16:9) + `assets/dilemma/<id>.png`; stilguide `design/HANDELSE-VISUELL-STILGUIDE.md`.
 
 ### Karta/seating

@@ -22,7 +22,11 @@
 //     'setup'    { gor:'<namn>' } tolk-registrerad förberedelse mellan steg (t.ex. markera "slå-i-väggen"-kort).
 //     'say'      instruktion som LIGGER och sedan går vidare. Fält: txt, ankare, hold?, ms?, ix?.
 //                hold:true → NÄSTA-knapp, väntar på tryck (kiosk-säkring). annars auto efter ms.
+//     'gate'     TYST "GÖR"-grind: lyser upp ett ankare (t.ex. knappen) och väntar på en spel-händelse
+//                (until) UTAN instruktionsruta. autoDo görs åt en övergiven skärm. Fält: ankare, until, autoDo.
 //     'beat'     "GÖR"-steg: väntar på en spel-händelse. Fält: txt, ankare, until, autoDo, ix?.
+//     'demo'     scriptad coach-hand-demo (ingen ruta). Fält: demo:'byggnadsInfo' → handen låser skärmen,
+//                knackar en byggnad på ön (visar dess info), knackar bredvid (stänger), försvinner.
 //     'pause'    { ms } kort paus mellan steg (bevarar dagens pacing, t.ex. 650 ms efter bygget).
 //     'barrier'  { n } fler-skärms-synk (bara Mellan; tolken reläar via servern, se tutBarrier).
 //     'ceremony' avslutande start-ceremoni → RUNDA 1 (bara sequence/Mellan).
@@ -33,7 +37,7 @@
 //   migreringen; de kan senare göras relativa (placering utifrån elementet) utan att röra innehållet.
 //
 // MALLVARIABLER i txt (tolken ersätter mot state): {rounds} {threshold} {lagNamn} {terrain}
-//   {sektorNamn} {sektorIco} {inkomst} {prodIco} {konsekvens} {bytIco}. (Se KONTRAKT nedan.)
+//   {sektorNamn} {sektorIco} {inkomst} {prodIco} {konsekvens} {bytIco} {saknarIco} {fickBelopp} {inkomstK} {fickK}. (Se KONTRAKT nedan.)
 //
 // TOLK-KONTRAKT (det ui.js-tolken MÅSTE tillhandahålla — namnen refereras ovan):
 //   anchors:   se ANCHORS-exporten.
@@ -51,18 +55,21 @@
 export const ANCHORS = {
   ar:        { sel: '#roundnum',   x: 300,  y: 190 },
   matare:    { sel: '.ohbar',      x: 520,  y: 190 },
-  byggkort:  { sel: '.handbar',    x: 520,  y: 560 },
-  prodBox:   { sel: null,          x: 300,  y: 300 },   // sel sätts av tolken: #box-pengar/#box-material
-  topbar:    { sel: '.topbar',     x: 520,  y: 150 },
+  byggkort:  { sel: '.handbar',    x: 520,  y: 588 },
+  prodBox:   { sel: null,          x: 412,  y: 300 },   // sel sätts av tolken: #box-pengar/#box-material
+  topbar:    { sel: '.topbar',     x: 420,  y: 160 },
   on:        { sel: '.col-island', x: 520,  y: 420 },
+  karta:     { sel: '.col-island', x: 690,  y: 676 },   // liten ruta nedanför ön (handen-demon)
   sektor:    { sel: '#me-sektor',  x: 300,  y: 330 },
+  byt1:      { sel: '#btn-trade',  x: 408, y: 490 },     // "Du saknar…"-rutan (lyser upp BYT-knappen)
   bytKnapp:  { sel: '#btn-trade',  side: 'right' },      // visas BESIDE knappen (ingen fast x/y)
   bytForslag:{ sel: null,          x: 1180, y: 150 },
   getBox:    { sel: null,          x: 300,  y: 300 },    // sel sätts av tolken: #box-pengar/#box-material
-  telefon:   { sel: null,          x: 1140, y: 150 },
-  coach:     { sel: null,          x: 520,  y: 380 },
-  orad:      { sel: null,          x: 1020, y: 540 },
-  avsluta:   { sel: '#endwrap',    x: 1040, y: 760 },
+  minruta:   { sel: '.col-me',     x: 412,  y: 300 },    // HELA vänsterpanelen (lag + pengar + material) — tänds så man ser siffrorna ändras
+  telefon:   { sel: null,          x: 1130, y: 270 },
+  coach:     { sel: null,          x: 1210, y: 640 },
+  orad:      { sel: null,          x: 1210, y: 640 },
+  avsluta:   { sel: '#endwrap',    x: 1590, y: 650 },
 };
 
 // Återanvändbara hjälp-block (coach-popups i Flash + ?-knappens meny). EN text per sak → ingen duplicering.
@@ -89,67 +96,56 @@ export const TUTORIALS = {
   mellan: {
     mode: 'sequence',
     steps: [
+      // Hela intro-sekvensen (kartskärm → CENTRALMAKTEN → DU ÄR → ERT UPPDRAG med {rounds} år) ligger i ui.js runIntro.
       { typ: 'mission' },
-      { typ: 'roll',
-        rollDu:  'DU ÄR {lagNamn}',
-        rollTxt: 'Du ansvarar för <b>{terrain}</b> och producerar <b>{sektorNamn} {sektorIco}</b>.'
-               + '<br><br>Kan ditt företag bli öns nästa <b>borgmästare</b>?' },
-
-      { typ: 'say', ix: 0, ankare: 'ar', hold: true,
-        txt: '⏱️ <b>Ni har {rounds} år på er!</b><br>Bygg, handla och påverka ön genom <b>politiska beslut</b>.' },
-      { typ: 'say', ix: 0, ankare: 'matare', hold: true,
-        txt: '🏝️ <b>Men det finns en hake!</b><br>Om <b>öns hälsa sjunker under {threshold}</b> när spelet är slut kollapsar ön. Då förlorar alla – och ingen blir borgmästare!' },
 
       { typ: 'setup', gor: 'nollaTimer' },
       { typ: 'banner', txt: 'ÖVNING — ÅR 0', ms: 1400 },
       { typ: 'endBtn', on: false },
 
       // 1) BYGG (gör) — det billiga lockar
-      { typ: 'beat', ix: 0, ankare: 'byggkort',
-        txt: 'Bygg en byggnad!',
+      { typ: 'beat', ix: 0, ankare: 'byggkort', ic: 'bygge',
+        txt: 'Välj ett kort',
         until: 'build', autoDo: 'byggSmutsig' },
       { typ: 'pause', ms: 650 },
 
       // 2) SE KONSEKVENSEN
-      { typ: 'say', ix: 0, ankare: 'prodBox', ms: 3000,
-        txt: 'Byggt! Ger <b>+{inkomst}{prodIco}</b> varje år.' },
-      { typ: 'say', ix: 0, ankare: 'topbar', ms: 3400,
-        txt: '{konsekvens}' },                                  // tolken bygger neg/pos-meningen ur byggt kort
-      { typ: 'say', ix: 0, ankare: 'on',
-        txt: 'Klicka på <b>byggnaderna på ön</b> för att se vad som byggts.' },
+      { typ: 'say', ix: 0, ankare: 'prodBox',
+        txt: '<span class="lbl">Byggt!</span> {inkomstK} {prodIco} <span class="per">/ år</span>' },
+      { typ: 'say', ix: 0, ankare: 'topbar',
+        txt: '{konsekvens}' },                                  // tolken bygger siffra + ikon + "Alla delar…" ur byggt kort
 
       { typ: 'barrier', n: 1 },
 
       // 3) SLÅ I VÄGGEN → BYT (beroendet upptäcks)
       { typ: 'setup', gor: 'markeraVagg' },
-      { typ: 'say', ix: 1, ankare: 'sektor',
-        txt: 'Du saknar den andra valutan. <b>Byt med ett annat lag.</b>' },
-      { typ: 'beat', ix: 1, ankare: 'bytKnapp',
-        txt: 'Tryck på den upplysta <b>BYT VALUTOR</b>-knappen.',
+      // "Du saknar X → byt" lyser upp BYT VALUTOR-knappen och FÖRSVINNER när man trycker på den (ingen
+      // NÄSTA). Sedan ett TYST gate (ingen ruta) som väntar in att bytet faktiskt görs i modalen.
+      { typ: 'beat', ix: 1, ankare: 'byt1',
+        txt: 'Du saknar {saknarIco} <span class="arr">→</span> byt',
         until: 'tradeOpen', autoDo: 'oppnaByt' },
-      { typ: 'beat', ix: 1, ankare: 'bytForslag',
-        txt: 'Välj lag och tryck <b>FÖRESLÅ BYTET</b>.',
-        until: 'tradeDone', autoDo: 'bekraftaByt' },
+      { typ: 'gate', until: 'tradeDone', autoDo: 'bekraftaByt' },
       { typ: 'setup', gor: 'rensaVagg' },
       { typ: 'pause', ms: 500 },
-      { typ: 'say', ix: 1, ankare: 'getBox',
-        txt: 'Bytte till dig <b>{bytIco}</b>.' },
-      { typ: 'say', ix: 1, ankare: 'telefon',
-        txt: 'Förhandla med de andra lagen genom att <b>ringa dem</b> på telefonen.' },
+      // Ingen automatisk handrörelse: ruta med handikon som väntar på att man trycker på en byggnad. Handen pekar först efter 10 s utan tryck (som övriga steg).
+      { typ: 'beat', ix: 1, ankare: 'karta', ic: 'hand', txt: 'Tryck på en byggnad',
+        until: 'buildingInfo', autoDo: 'visaByggnad', after: 3000, nudge: 'g[data-building][style*="pointer"]' },
+      { typ: 'say', ix: 2, ankare: 'telefon', ic: 'telefon',
+        txt: 'Ring de andra lagen' },
 
       { typ: 'barrier', n: 2 },
       { typ: 'barrier', n: 3 },                                  // (gamla politik-steget borttaget)
 
       // 4) COACH-TIPS + ÖRÅD
-      { typ: 'say', ix: 3, ankare: 'coach',
-        txt: 'Har ni frågor? Vid sidan står en <b>coach</b> som kan reglerna — fråga den när ni vill.' },
-      { typ: 'say', ix: 3, ankare: 'orad',
-        txt: 'Efter <b>varje år</b> blir det <b>öråd</b>.' },
+      { typ: 'say', ix: 2, ankare: 'coach', ic: 'coach',
+        txt: 'Fråga coachen' },
+      { typ: 'say', ix: 3, ankare: 'orad', ic: 'orad',
+        txt: 'Efter varje år: öråd' },
 
       // 5) AVSLUTA & BOKSLUT (alla tre priser lärs ut), sedan på riktigt
       { typ: 'endBtn', on: true },
       { typ: 'beat', ix: 3, ankare: 'avsluta',
-        txt: 'Klar? Tryck på knappen <b>AVSLUTA ÅR</b>.',
+        txt: 'Klar? Tryck<br>AVSLUTA ÅR',
         until: 'roundEnd', autoDo: 'avslutaAr' },
       { typ: 'say', hidden: true, until: 'settled' },            // vänta ut bokslut + prisutdelning (ingen ruta)
 
@@ -158,26 +154,25 @@ export const TUTORIALS = {
     ],
   },
 
-  // ── FLASH: kort intro + trigger-baserade coach-popups UNDER spelet. INGET övningsår. ──
-  // UTKAST (utvecklas i arbetsordningens steg 4, efter att Mellan verifierats). Strukturen är klar:
-  // intro[] visas vid start; coach[] knyter hjälp-block till spelfaser/-händelser; ?-knappen visar help[].
+  // ── FLASH: INGET övningsår — coachning (inforuta + hand) ovanpå det RIKTIGA år 1. ──
+  // Beslut (Klara 2026-11-25): Flash kör Mellans intro + ceremoni (ERT UPPDRAG = 4 år), INGET övningsår.
+  // Sedan SAMMA rutor som tutorialen på det riktiga år 1 (flashCoach-runtimen i src/ui.js):
+  //   1) "Bygg en byggnad" + hand på korten → (eget bygge)
+  //   2) skärmen låses: popup inkomst↑ sedan öns hälsa↓
+  //   3) efter ~10 s: hand på BYT VALUTOR-knappen + "Byt", försvinner när knappen klickas.
+  // År 1:s byggfas +30 s (spec/config/variants/flash.js firstYearBonusSec) för att hinna med coachningen.
   flash: {
     mode: 'coach',
     intro: [
-      { typ: 'mission' },
-      { typ: 'roll',
-        rollDu:  'DU ÄR {lagNamn}',
-        rollTxt: 'Du ansvarar för <b>{terrain}</b> och producerar <b>{sektorNamn} {sektorIco}</b>.'
-               + '<br><br>{rounds} år. Håll ön över {threshold} — annars förlorar alla.' },
+      { typ: 'mission' },   // kontrollrum → CENTRALMAKTEN → DU ÄR → ERT UPPDRAG (4 år) → ceremoni (runTutorial)
     ],
-    // on = spelfas/händelse tolken lyssnar på; ref = HELP-block. (Triggers finslipas i steg 4.)
+    // runtimen (flashCoach) lyssnar på roundStart år 1 + eget bygge; texterna sätts där (samma som tutorialen).
     coach: [
-      { on: 'firstBuildPhase',  ref: 'bygg',       once: true },
-      { on: 'afterFirstBuild',  ref: 'konsekvens', once: true },
-      { on: 'afterFirstBuild',  ref: 'handel',     once: true },
-      { on: 'firstOrad',        ref: 'orad',        once: true },
+      { on: 'firstBuildPhase', do: 'bygg',       once: true },   // "Bygg en byggnad" + hand på korten
+      { on: 'afterFirstBuild', do: 'konsekvens', once: true },   // lås skärm: inkomst↑ + öhälsa↓
+      { on: 'afterConsequence', do: 'byt',       once: true },   // ~10 s senare: hand på BYT + "Byt"
     ],
-    // ?-knappens meny (återanvänder samma HELP-block — ingen duplicerad text).
+    // ?-knappens meny (återanvänder HELP-block — ingen duplicerad text).
     help: ['bygg', 'konsekvens', 'handel', 'orad', 'avsluta'],
   },
 

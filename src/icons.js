@@ -69,6 +69,31 @@ const INNER = {
     <path d="M0,80 Q25,78 50,80 Q75,82 100,80 L100,100 L0,100 Z" fill="#3E8FC7"/>
     <path d="M0,91 Q50,94 100,91 L100,100 L0,100 Z" fill="#2F79B0"/>`,
 
+  // ---------- COACH / TUTORIAL ----------
+  // Pekande hand (coachmark). Pekfinger rakt upp + nagel, knutna fingrars knogar till höger,
+  // liten tumme på sidan, smal grå/blå ärm (materialtoner). Pekar RAKT UPP → under (eller roterad, över)
+  // det element tutorialen vill att man trycker på.
+  hand: `
+    <path d="M38,80 L76,80 L80,100 L34,100 Z" fill="#8FB3C4"/>
+    <path d="M38,80 L57,80 L55,100 L34,100 Z" fill="#B9D4E0"/>
+    <path d="M57,80 L76,80 L80,100 L55,100 Z" fill="#5E8699"/>
+    <path d="M38,80 L76,80" stroke="${DARK}" stroke-width="2" opacity="0.4"/>
+    <path d="M46,50 Q46,41 53,41 Q60,41 60,50 Z" fill="#DCC08A"/>
+    <path d="M58,50 Q58,42 65,42 Q72,42 72,50 Z" fill="#D4B77E"/>
+    <path d="M70,52 Q70,45 76,45 Q82,45 82,53 Z" fill="#CBB078"/>
+    <path d="M30,56 Q30,48 40,48 L74,48 Q84,48 84,58 L84,78 Q84,86 72,86 L40,86 Q30,86 30,76 Z" fill="#EAD4A6"/>
+    <path d="M30,56 Q30,48 40,48 L47,48 L47,86 L40,86 Q30,86 30,76 Z" fill="#F6E6C4"/>
+    <path d="M78,48 Q84,49 84,58 L84,78 Q84,86 72,86 L72,48 Z" fill="#CBB078"/>
+    <path d="M30,60 Q24,62 25,69 Q27,74 32,72 L34,61 Z" fill="#E6D1A2"/>
+    <path d="M30,60 Q24,62 25,69 Q28,70 30,68 L31,62 Z" fill="#F2DEB2"/>
+    <g class="finger">
+      <path d="M33,52 L33,16 Q33,7 41,7 Q49,7 49,16 L49,52 Z" fill="#EAD4A6"/>
+      <path d="M33,52 L33,16 Q33,7 41,7 L41,52 Z" fill="#F6E6C4"/>
+      <path d="M46,52 L46,10 Q49,12 49,16 L49,52 Z" fill="#CBB078"/>
+      <path d="M37,12 Q41,8.5 45,12 L45,19 Q41,21 37,19 Z" fill="#FBF1DC"/>
+      <path d="M37,12 Q41,8.5 45,12 L45,19 Q41,21 37,19 Z" fill="none" stroke="#C7A86A" stroke-width="1.1" opacity="0.6"/>
+    </g>`,
+
   // ---------- HANDLING ----------
   byt: `
     <polygon points="16,32 58,32 58,21 82,40 58,59 58,48 16,48" fill="#F0B33C"/>
@@ -431,6 +456,21 @@ function faceFace(base, ljus, mork, mouth) {
     <polygon points="66,40 59,43 61,51 68,49" fill="${DARK}"/>
     ${m}`;
 }
+
+// Övningsrundans rutor (2026-11-25): telefon, coach, i samma platta stil.
+Object.assign(INNER, {
+  telefon: `
+    <rect x="14" y="52" width="72" height="34" rx="8" fill="#6E7884"/>
+    <rect x="14" y="52" width="72" height="8" rx="4" fill="#8A94A0"/>
+    <path d="M12,44 Q12,26 50,26 Q88,26 88,44 L76,48 Q70,40 50,40 Q30,40 24,48 Z" fill="#F0B33C"/>
+    <circle cx="50" cy="70" r="12" fill="#2A2F36"/>
+    <circle cx="50" cy="70" r="4" fill="#8A94A0"/>`,
+  coach: `
+    <path d="M14,24 Q14,12 26,12 L74,12 Q86,12 86,24 L86,56 Q86,68 74,68 L48,68 L28,86 L30,68 L26,68 Q14,68 14,56 Z" fill="#F0B33C"/>
+    <path d="M14,24 Q14,12 26,12 L74,12 Q86,12 86,24 L86,30 L14,30 Z" fill="#F7CF73"/>
+    <path d="M42,36 Q42,28 50,28 Q58,28 58,35 Q58,40 52,43 Q50,45 50,49" fill="none" stroke="#2A2F36" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="50" cy="58" r="4" fill="#2A2F36"/>`,
+});
 
 Object.assign(INNER, {
   lage1: faceFace('#F0564B', '#F58A82', '#B33A32', 'sick'),

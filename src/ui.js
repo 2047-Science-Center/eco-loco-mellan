@@ -16,7 +16,7 @@ import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { botPickProposal } from '../spec/bot-policy.js';
 import { dilemmaById } from '../spec/content/dilemmas.js';
 import { VARIANTS } from '../spec/config/variants/index.js';
-import { TUTORIALS, ANCHORS, tutorialFor } from '../spec/content/tutorial.js';
+import { TUTORIALS, ANCHORS, tutorialFor, helpById } from '../spec/content/tutorial.js';
 import { renderMap } from './map.js';
 import { logoSVG } from './logos.js';
 import { GameAudio } from './audio.js';
@@ -230,16 +230,22 @@ map.showSlots(false);
 // Egna fasett-ikoner i det statiska chromet (ersätter generiska emoji).
 function initIcons() {
   const set = (sel, html) => { const el = document.querySelector(sel); if (el) el.innerHTML = html; };
-  set('#box-pengar .ic', ico('pengar', 26));
-  set('#box-material .ic', ico('material', 26));
-  set('#btn-trade', `${ico('byt', 22)} BYT VALUTOR`);
+  set('#box-pengar .ic', ico('pengar', 48));
+  set('#box-material .ic', ico('material', 48));
+  set('#logg-h', `${ico('bok', 26)} HÄNDELSER PÅ ÖN`);
+  set('#btn-trade', `${ico('byt', 30)} BYT VALUTOR`);
   set('#btn-prop', `${ico('rosta', 22)} POLITIK`);
   set('#toplist-h', `${ico('borsen', 18)} TOPPLISTA`);
   set('#ov-start h1', `${ico('on', 46)} MAKTSPELET`);
-  set('#ov-trade h2', `${ico('byt', 24)} BYT VALUTOR`);
+  set('#ov-trade h2', `${ico('byt', 40)} BYT VALUTOR`);
   set('#ov-choose h2', `${ico('rosta', 24)} LÄGG ETT FÖRSLAG`);
   set('#ov-vote h2', `${ico('rosta', 24)} OMRÖSTNING`);
-  set('#ov-tradein h2', `${ico('byt', 24)} BYTESFÖRFRÅGAN`);
+  set('#btn-trade-go', `${ico('ja', 40)} FÖRESLÅ BYTET`);
+  set('#btn-trade-cancel', `${ico('nej', 40)} AVBRYT`);
+  set('#btn-trade-cancel2', `${ico('nej', 30)} AVBRYT`);
+  set('#btn-tradein-ja', `${ico('ja', 46)} ACCEPTERA`);
+  set('#btn-tradein-nej', `${ico('nej', 46)} NEJ TACK`);
+  set('#tin-mid', ico('byt', 60));
 }
 initIcons();
 function fit() {
@@ -282,6 +288,7 @@ let tutOnlyProp = null;       // tutorial: begränsa LÄGG FÖRSLAG-väljaren ti
 let vantarLag = false;        // väntläge efter tutorial: visar "X/Y lag klara" tills den gemensamma nedräkningen börjar
 let lastTutReady = null;      // senaste tutReadyUpdate {klara, humans} från servern
 const _tutAborters = [];      // väntare som väcks när tutorialen ska avbrytas
+let tutFick = 0;              // tutorial: belopp spelaren FICK i sitt senaste byte (→ "Du fick +N" i övningen)
 // Obemannad skärm i tutorialen: mäts PÅ skärmen (ingen beröring alls på 90 s) eftersom servern knappt får
 // meddelanden under tutorialen. Når gränsen → berätta för servern, som gör laget till bot så gruppens
 // nedräkning inte blockeras. Bara i drift (ONLINE); solo/lokalt behöver det inte.
@@ -358,18 +365,26 @@ game.on('build', p => run(async () => {
   const b = manifest.buildings[p.card.asset];
   map.placeBuilding(p.area, p.slotIndex, b.file, 135, { namn: p.card.namn, oh: p.card.oh, lagNamn: teamName(p.teamId) });
   audio.play(`build_${p.card.tier}`);
+  if (p.teamId === game.me && p.cost) {                        // kostnaden syns som röd minussiffra på pengar/material (Klara 2026-11-25)
+    if (p.cost.pengar) flashRes('pengar', -p.cost.pengar);
+    if (p.cost.material) flashRes('material', -p.cost.material);
+  }
   if (p.teamId !== game.me) toast(`${teamName(p.teamId)} byggde ${p.card.namn} <span class="${p.card.oh > 0 ? 'ohplus' : 'ohminus'}">${fmtOh(p.card.oh)}</span>`);
-  logg(`${ico('bygge', 14)} ${loggLag(p.teamId)} byggde <b>${p.card.namn}</b> <span class="lg-oh">${fmtOh(p.card.oh)}</span>`, p.card.oh >= 0 ? 'lg-ohplus' : 'lg-ohminus');
+  { const oh = p.card.oh; logg(`${logoSVG(p.teamId, 26)}<span class="ri">${ico('bygge', 20)}</span><span class="rt">${p.card.namn}</span><span class="ro"><b class="${oh >= 0 ? 'pos' : 'neg'}">${oh >= 0 ? '+' : '−'}${Math.abs(oh)}</b>${ico(oh >= 0 ? 'tillvaxt' : 'industri', 20)}</span>`, 'lr'); }
   renderMe(); renderTeams();
+  flashCoachOnBuild(p);                                          // Flash-coach: eget bygge → konsekvens → BYT
   if (resolving) await delay(650);
 }));
 
 game.on('trade', p => run(async () => {
   audio.play('trade');
+  if (p.from === game.me) tutFick = p.get; else if (p.to === game.me) tutFick = p.give;   // tutorial: vad DU fick
+
   if (p.from !== game.me && p.to !== game.me) {
     toast(`${teamName(p.from)} bytte ${p.give} ${CUR_ICON[p.giveCur]} mot ${p.get} ${CUR_ICON[p.getCur]} med ${teamName(p.to)}`);
   }
-  logg(`${ico('byt', 14)} ${loggLag(p.from)} bytte ${p.give} ${CUR_ICON[p.giveCur]} → ${p.get} ${CUR_ICON[p.getCur]} med ${loggLag(p.to)}`);
+  // Loggen: lagloggor + färgade siffror + valutaikoner (inga ord). Från-lagets gives vänster, tar emot höger.
+  logg(`${logoSVG(p.from, 26)}<b style="color:${curCol(p.giveCur)}">−${p.give}</b>${ico(p.giveCur, 20)}<span>${ico('byt', 20)}</span><b style="color:${curCol(p.getCur)}">+${p.get}</b>${ico(p.getCur, 20)}${logoSVG(p.to, 26)}`, 'lr lg-byte');
   renderMe(); renderTeams();
   if (resolving) await delay(350);
 }));
@@ -453,7 +468,7 @@ game.on('crisis', p => run(async () => {
     $('ov-event').classList.add('warn');
     $('ov-event').classList.add('open');
     await delay(500);                               // hinner läsas innan tryck registreras
-    await clickOrTimeout($("ov-event"), resolving ? 6000 : 30000, 3000);   // 3 s klick-lås: hinner uppfattas innan den kan klickas bort
+    await clickOrTimeout($("ov-event"), resolving ? 14000 : 30000, 5000);   // 5 s klick-lås, 14 s auto (Klara 2026-11-25: hinn läsa Centralmakten-texten)
     $('ov-event').classList.remove('open');
     await delay(200);
     // .krisglow ligger KVAR — släcks först vid crisis{on:false}
@@ -568,7 +583,7 @@ let sistaPrisBild = '';   // sista prisbilden när ceremonin stängdes (startbil
 let prevAwardBild = '';   // senast visade prisbild under pågående ceremoni (nollas när prisutdelningen stängs)
 // Förladda + DEKODA alla stora rumsbilder vid start och håll referenserna (annars kan första bilden dekodas under tonade övergången → ingen synlig tonad inkomst).
 const _rumsBilder = [];
-if (typeof Image !== 'undefined') [...Object.values(AWARD_BILD), 'assets/kontrollrum_neutral.jpg', 'assets/vagg_mork.jpg', 'assets/vagg_aker.jpg', 'assets/vagg_skog.jpg', 'assets/vagg_tundra.jpg', 'assets/vagg_stad.jpg'].forEach(src => { const im = new Image(); im.src = src; im.decode?.().catch(() => {}); _rumsBilder.push(im); });
+if (typeof Image !== 'undefined') [...Object.values(AWARD_BILD), 'assets/kontrollrum_neutral.jpg', 'assets/kontrollrum_krona.jpg', 'assets/vagg_mork.jpg', 'assets/vagg_aker.jpg', 'assets/vagg_skog.jpg', 'assets/vagg_tundra.jpg', 'assets/vagg_stad.jpg'].forEach(src => { const im = new Image(); im.src = src; im.decode?.().catch(() => {}); _rumsBilder.push(im); });
 // ÖRÅD-banderollen (mitt på skärmen) tonas mjukt ut INNAN första priset ritas → ingen hård byte (Klara 2026-11-23).
 async function tonaUtOrad() {
   const b = $('awardcard')?.querySelector('.aw-ban.mid');
@@ -709,7 +724,7 @@ game.on('awardDone', p => run(async () => {
   syncBotOverlay();
 }));
 
-game.on('roundEnd', () => run(async () => renderRegs()));
+game.on('roundEnd', () => run(async () => { flashCoachStop(); renderRegs(); }));   // byggfas slut → Flash-coach stängs (säkerhetsnät)
 
 game.on('start', () => run(async () => {
   // Nytt parti → uppdatera chrome ur PARTIETS config (varierar per version: år, mål/tröskel).
@@ -751,6 +766,7 @@ game.on('roundStart', p => run(async () => {
   $('endwrap').classList.remove('pulse');
   setEndBtn('AVSLUTA<br>ÅR', false);
   syncBotOverlay();   // bot-rutan öppnas igen BARA om bänken fortfarande körs av en bot (annars stängd)
+  flashCoachStart(p.round);   // Flash: starta lätt coachning (BYGG → BYT) ovanpå det riktiga år 1
 }));
 
 game.on('gameEnd', p => run(async () => {
@@ -778,7 +794,8 @@ game.on('proposalOpened', p => run(async () => {
 game.on('proposalResolved', p => run(async () => {
   audio.play(p.passed ? 'proposal_pass' : 'proposal_fail');
   const _pnamn = p.type === 'event' ? 'Erbjudande' : (propDefs().find(d => d.type === p.type)?.rubrik || 'Förslag');
-  logg(`${ico('orad', 14)} <b>${_pnamn}</b> — ${p.passed ? `gick igenom ${ico('ja', 14)}` : `föll ${ico('nej', 14)}`} (${p.yesCount}/4 ja)`, 'lg-politik');
+  { const _pd = propDefs().find(d => d.type === p.type); const _pi = ICON_IDS.includes(p.type) ? p.type : (p.type === 'event' ? 'happening' : 'orad');   // förslagets egen ikon, ingen laglogga
+    logg(`<span class="ri">${ico(_pi, 22)}</span><span class="rt">${_pnamn}</span><span class="ro">${ico(p.passed ? 'ja' : 'nej', 20)}<b class="fr">${p.yesCount}/4</b></span>`, 'lr'); }
   // SPONSRAT i v3-vyn (#ov-dilemma): resultat återanvänder vyn (vinnande ja-kort / grå ruta).
   if (p.type === 'event' && $('ov-dilemma')?.classList.contains('open')) {
     const ev = sponsratVote?.event || {};
@@ -823,11 +840,11 @@ game.on('dilemmaResolved', p => run(async () => {
   $('dz-timer').className = 'dz-timer done'; $('dz-timer').textContent = '';
   if (!p.outcome) {   // OAVGJORT (dilemmaStrict): inget beslut → inga effekter.
     audio.play('ui_close');
-    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — INGET BESLUT (${p.aCount} A – ${p.bCount} B)`, 'lg-politik');
+    logg(`<span class="ri">${ico(ICON_IDS.includes(p.id) ? p.id : 'vag', 22)}</span><span class="rt">${d?.namn || 'Dilemma'}</span><span class="ro"><b class="fr">${p.aCount}–${p.bCount}</b></span>`, 'lr');
   } else {
     const a0 = (d && d.alternativ[p.outcome]) || {};
     audio.play('proposal_pass');
-    logg(`${ico('vag', 14)} <b>${d?.namn || 'Dilemma'}</b> — alternativ <b>${p.outcome}</b> genomförs: ${a0.namn || ''}`, 'lg-politik');
+    logg(`<span class="ri">${ico(ICON_IDS.includes(p.id) ? p.id : 'vag', 22)}</span><span class="rt">${d?.namn || 'Dilemma'}</span><span class="ro"><span class="ab">${p.outcome}</span></span>`, 'lr');
   }
   dilemmaVote = null; dilemmaPicked = null; dzResolved = true;
   // Som i politiken: de sista rösterna syns en kort stund, sedan resultat-popup där svaren visas ETT I TAGET (cirklar med A/B + lagnamn).
@@ -939,9 +956,9 @@ function renderMe() {
   $('me-pengar').textContent = t.pengar;
   $('me-material').textContent = t.material;
   const inc = [];
-  if (t.incP) inc.push(`＋${t.incP} ${ico('pengar', 15)}`);
-  if (t.incM) inc.push(`＋${t.incM} ${ico('material', 15)}`);
-  $('me-inc').innerHTML = inc.length ? inc.join('  ') + ' / år' : '';
+  if (t.incP) inc.push(`<b style="color:${curCol('pengar')}">+${t.incP}</b>${ico('pengar', 36)}`);
+  if (t.incM) inc.push(`<b style="color:${curCol('material')}">+${t.incM}</b>${ico('material', 36)}`);
+  $('me-inc').innerHTML = inc.length ? inc.join('<span class="sp"></span>') + '<span class="per">/ år</span>' : '';   // inkomsten är viktig → stor
   renderHandAfford();
   renderPropBtn();
 }
@@ -998,7 +1015,7 @@ function renderTeams() {
     const style = `--spine:var(--team-${t.id})`;
     const isBov = bov && t.id === bov.id && bov.skada < 0;
     const bytBtn = me ? `<span class="du-tag">DU</span>`
-                      : `<button class="byt" data-partner="${t.id}">${ico('byt', 16)} BYT</button>`;
+                      : `<button class="byt" data-partner="${t.id}">${ico('byt', 22)} BYT</button>`;
     if (i === 0) {
       const crown = rich.varde > 0 ? ' ' + ico('krona', 24, { badge: false }) : '';
       return `<div class="tl-row lead ${me ? 'me' : ''}" style="${style}">
@@ -1006,7 +1023,7 @@ function renderTeams() {
         <span class="tl-badge">${logoSVG(t.id, 46)}</span>
         <div class="tl-id"><div class="nm">${t.namn}${crown}</div><div class="tl-sub">LEDARE${me ? ' · DU' : ''}</div></div>
         <div class="tl-cap"><span class="cap-total">${t.pengar + t.material}</span><span class="cap-parts"><span class="c-p">${ico('pengar', 14)}${t.pengar}</span><span class="c-m">${ico('material', 14)}${t.material}</span></span></div>
-        ${me ? '' : `<button class="byt" data-partner="${t.id}">${ico('byt', 16)} BYT</button>`}
+        ${me ? '' : `<button class="byt" data-partner="${t.id}">${ico('byt', 22)} BYT</button>`}
       </div>`;
     }
     return `<div class="tl-row ${me ? 'me' : ''}" style="${style}">
@@ -1026,9 +1043,9 @@ function renderRegs() {
   if (!E()?.getState()) return;
   const bov = E().leaderboards().klimat[0];
   const body = bov && bov.skada < 0
-    ? `${ico('varning', 16, { badge: false })} <b>${bov.namn}</b> sänker ön mest <span class="n">${bov.skada}</span>`
-    : 'Ingen bov — ön andas ut';
-  $('reg-klimat-mirror').innerHTML = `<div class="km-head">${ico('industri', 15)} KLIMATREGISTRET <span style="margin-left:auto;color:var(--gold);font-weight:700">visa alla ›</span></div><div class="km-body">${body}</div>`;
+    ? `${ico('varning', 28, { badge: false })} <b>${bov.namn}</b> sänker ön mest <span class="n">${bov.skada}</span>`
+    : `${ico('tillvaxt', 30)} Ingen bov — ön andas ut`;
+  $('reg-klimat-mirror').innerHTML = `<div class="km-head">${ico('industri', 26)} KLIMATREGISTRET <span style="margin-left:auto;color:var(--gold);font-weight:700;font-size:17px;letter-spacing:1px">visa alla ›</span></div><div class="km-body">${body}</div>`;
 }
 
 function renderHand() {
@@ -1175,9 +1192,8 @@ let tradePartner = null, giveAmt = 10, getAmt = 10;
 function initSector() {
   mySector = AREAS.find(a => a.id === game.me).sektor;
   giveCur = mySector; getCur = mySector === 'material' ? 'pengar' : 'material';
-  $('me-sektor').innerHTML = mySector === 'material'
-    ? `Du gör <b>material ${ico('material', 16)}</b>.<br>Saknar <b>pengar ${ico('pengar', 16)}</b>? Byt med de andra.`
-    : `Du gör <b>pengar ${ico('pengar', 16)}</b>.<br>Saknar <b>material ${ico('material', 16)}</b>? Byt med de andra.`;
+  const annan = mySector === 'material' ? 'pengar' : 'material';
+  $('me-sektor').innerHTML = `<div class="gr"><span>DU GÖR</span>${ico(mySector, 40)}</div><div class="gr s"><span>DU SAKNAR</span>${ico(annan, 40)}</div>`;
   $('melogo').innerHTML = logoSVG(game.me, 64);
   $('mename').textContent = teamName(game.me);
 }
@@ -1193,7 +1209,7 @@ function openTrade(partnerId = null) {
   giveAmt = 10; getAmt = 10;
   renderTradeLabels();
   renderTradeModal();
-  const go = $('btn-trade-go'); go.classList.remove('sent'); go.textContent = 'FÖRESLÅ BYTET'; go.disabled = false;   // nollställ ev. "skickad"-låsning
+  const go = $('btn-trade-go'); go.disabled = false; tradeWaitUI(false);   // nollställ ev. väntläge
   audio.play('ui_open');
   $('ov-trade').classList.add('open');
 }
@@ -1201,27 +1217,30 @@ function openTrade(partnerId = null) {
 function renderTradeLabels() {
   $('trade-give-lbl').innerHTML = `${giveCur} ${curIco(giveCur, 16)}`;
   $('trade-get-lbl').innerHTML = `${getCur} ${curIco(getCur, 16)}`;
-  $('tb-give').innerHTML = `DU GER (${giveCur} ${curIco(giveCur, 14)})`;
-  $('tb-get').innerHTML = `DU FÅR (${getCur} ${curIco(getCur, 14)})`;
+  $('tb-give').innerHTML = `DU GER ${curIco(giveCur, 30)}`;
+  $('tb-get').innerHTML = `DU FÅR ${curIco(getCur, 30)}`;
+  $('trade-swap')?.classList.toggle('flip', giveCur === 'material');   // DU GER material → pilen vriden 180° (grå pilen överst, pekar bortåt)
 }
+const COL_PENGAR = '#E8C96A', COL_MATERIAL = '#C9D3DC';   // pengar = guld, material = silver (överallt i byten)
+const curCol = c => (c === 'pengar' ? COL_PENGAR : COL_MATERIAL);
 function renderTradeModal() {
   $('partners').innerHTML = tradePartnersByNeed().map((t, i) => `
-    <button class="${t.id === tradePartner ? 'sel' : ''} ${i === 0 ? 'top' : ''}" data-p="${t.id}">
-      ${i === 0 ? `<span class="most">MEST ${curIco(getCur, 13)}</span>` : ''}
-      ${logoSVG(t.id, i === 0 ? 54 : 40)}
-      <span class="pn">${t.namn}</span>
-      <small><span class="hot">${t[getCur]}${curIco(getCur, 13)}</span> · ${t[giveCur]}${curIco(giveCur, 13)}</small>
+    <button class="${t.id === tradePartner ? 'sel' : ''}" data-p="${t.id}">
+      ${i === 0 ? `<span class="most">MEST ${curIco(getCur, 22)}</span>` : ''}
+      <span class="plg">${logoSVG(t.id, 92)}</span>
+      <div class="pi"><div class="pn">${t.namn}</div>
+        <div class="st"><span style="color:${COL_PENGAR}">${t.pengar}</span>${ico('pengar', 30)}<i></i><span style="color:${COL_MATERIAL}">${t.material}</span>${ico('material', 30)}</div></div>
     </button>`).join('');
   document.querySelectorAll('#partners [data-p]').forEach(b =>
     b.addEventListener('click', () => { tradePartner = b.dataset.p; renderTradeModal(); }));
-  $('give-amt').textContent = giveAmt;
-  $('get-amt').textContent = getAmt;
+  $('give-amt').textContent = '−' + giveAmt; $('give-amt').style.color = curCol(giveCur);
+  $('get-amt').textContent = '+' + getAmt;   $('get-amt').style.color = curCol(getCur);
 }
 // ⇄ Byt håll: ge det du annars skulle få (och tvärtom). Partnerlistan rankas efter getCur → ritas om.
 $('trade-swap').addEventListener('click', () => {
   audio.play('ui_tap');
   [giveCur, getCur] = [getCur, giveCur];
-  renderTradeLabels(); renderTradeModal();
+  renderTradeLabels(); renderTradeModal();   // renderTradeLabels sätter pilens rotation efter nya giveCur
 });
 $('btn-trade').addEventListener('click', () => { audio.play('ui_tap'); openTrade(); });
 $('btn-trade-cancel').addEventListener('click', () => { audio.play('ui_close'); $('ov-trade').classList.remove('open'); });
@@ -1231,26 +1250,58 @@ $('give-minus').addEventListener('click', () => { giveAmt = Math.max(1, giveAmt 
 $('give-plus').addEventListener('click', () => { giveAmt = Math.min(E().team(game.me)[giveCur], giveAmt + 1); renderTradeModal(); });
 $('get-minus').addEventListener('click', () => { getAmt = Math.max(1, getAmt - 1); renderTradeModal(); });
 $('get-plus').addEventListener('click', () => { getAmt = getAmt + 1; renderTradeModal(); });
+// Väntläge efter förslag till MÄNSKLIGT lag: knapparna byts mot "VÄNTAR PÅ X" + pulserande prickar + AVBRYT.
+function tradeWaitUI(on, partnerId) {
+  $('trade-btns').style.display = on ? 'none' : 'flex';
+  $('trade-wait').style.display = on ? 'flex' : 'none';
+  if (on) {
+    $('trade-wait-logo').innerHTML = logoSVG(partnerId, 56);
+    $('trade-wait-txt').innerHTML = `VÄNTAR PÅ ${teamName(partnerId).toUpperCase()}<span class="dd"><i></i><i></i><i></i></span>`;
+  }
+}
+$('btn-trade-cancel2').addEventListener('click', () => { audio.play('ui_close'); $('ov-trade').classList.remove('open'); });
+// Stor resultatruta mitt på skärmen: grön BYTT! / röd NEJ TACK (ej under övningen — den har egna rutor).
+async function showTradeResult(ok, partnerId, why) {
+  const c = $('traderes-card');
+  c.className = 'modal res ' + (ok ? 'g' : 'r');
+  c.innerHTML = `<span>${logoSVG(partnerId, 140)}</span><div>` + (ok
+    ? `<div class="rh">${ico('ja', 110)} BYTT!</div><div class="rn"><b style="color:${curCol(giveCur)}">−${giveAmt}</b>${ico(giveCur, 90)}<span class="ar">→</span><b style="color:${curCol(getCur)}">+${getAmt}</b>${ico(getCur, 90)}</div>`
+    : `<div class="rh">${ico('nej', 110)} NEJ TACK</div>${why ? `<div class="rn sm">${why}</div>` : ''}`) + `</div>`;
+  $('ov-traderes').classList.add('open');
+  audio.play(ok ? 'ui_confirm' : 'ui_close');
+  await new Promise(res => { const t = setTimeout(done, 2600); function done() { clearTimeout(t); $('ov-traderes').onclick = null; res(); } $('ov-traderes').onclick = done; });
+  $('ov-traderes').classList.remove('open');
+}
 $('btn-trade-go').addEventListener('click', async () => {
   const go = $('btn-trade-go');
   go.disabled = true;
-  // Byte med ett MÄNSKLIGT lag → servern frågar dem, svaret kan dröja. Själva knappen blir gul och
-  // säger FÖRFRÅGAN SKICKAD (låst) så man inte trycker igen — AVBRYT går fortfarande. (Botar svarar
-  // direkt → ingen väntan.) Återställs när svaret kommit.
+  // Byte med ett MÄNSKLIGT lag → servern frågar dem, svaret kan dröja → väntrad med AVBRYT. (Botar svarar direkt.)
   const partnerHuman = ONLINE && lastLobby?.claims?.[tradePartner] === 'human';
-  if (partnerHuman) { go.classList.add('sent'); go.textContent = 'FÖRFRÅGAN SKICKAD'; }
+  if (partnerHuman) tradeWaitUI(true, tradePartner);
   const res = await game.trade(tradePartner, giveAmt, giveCur, getAmt, getCur);
-  go.classList.remove('sent'); go.textContent = 'FÖRESLÅ BYTET'; go.disabled = false;
-  if (!res.ok) { toast(`${ico('nej', 16)} ${res.why || 'bytet gick inte'}`, true); return; }
-  toast(`${ico('ja', 16)} Bytte ${giveAmt} ${CUR_ICON[giveCur]} mot ${getAmt} ${CUR_ICON[getCur]} med ${teamName(tradePartner)}`);
+  go.disabled = false; tradeWaitUI(false);
+  if (!res.ok) {
+    // Motpartens nej (bot som inte har råd/tycker det är snålt, människa som tackar nej) → stor NEJ TACK-ruta + stäng.
+    // Systemfel (paus, ej ansluten, egen täckning) är inget "nej" från laget → vanlig textrad, rutan blir kvar.
+    const why = res.why || '';
+    if (/täckning|paus|ansluten/i.test(why)) { toast(`${ico('nej', 16)} ${why || 'bytet gick inte'}`, true); return; }
+    $('ov-trade').classList.remove('open');
+    await showTradeResult(false, tradePartner, /funderar|inget svar/i.test(why) ? 'inget svar' : '');   // bara NEJ TACK (ingen lång förklaring)
+    return;
+  }
   flashRes(giveCur, -giveAmt); flashRes(getCur, getAmt);
   $('ov-trade').classList.remove('open');
   renderMe(); renderTeams();
+  await showTradeResult(true, tradePartner);                    // även i övningen: den stora BYTT!-rutan ersätter den gamla "Bytt! +X"-rutan
 });
 
 // Inkommande bytesförfrågan (online, människa → människa)
 function openTradeIncoming(m) {
-  $('tradein-tx').innerHTML = `<b>${teamName(m.from)}</b> vill ge dig <b>${m.give} ${CUR_ICON[m.giveCur]}</b><br>i utbyte mot <b>${m.get} ${CUR_ICON[m.getCur]}</b> från dig.`;
+  const f = AREAS.find(x => x.id === m.from)?.farg || 'var(--text)';
+  $('tradein-logo').innerHTML = logoSVG(m.from, 96);
+  $('tradein-name').textContent = teamName(m.from).toUpperCase();
+  $('tin-get').innerHTML = `${ico(m.giveCur, 72)}<b style="color:${curCol(m.giveCur)}">+${m.give}</b>`;   // Björnen ger → du FÅR
+  $('tin-give').innerHTML = `${ico(m.getCur, 72)}<b style="color:${curCol(m.getCur)}">−${m.get}</b>`;    // Björnen vill ha → du GER
   $('ov-tradein').classList.add('open');
   $('btn-tradein-ja').onclick = () => { game.tradeAnswer(m.offerId, true); $('ov-tradein').classList.remove('open'); };
   $('btn-tradein-nej').onclick = () => { game.tradeAnswer(m.offerId, false); $('ov-tradein').classList.remove('open'); };
@@ -1982,7 +2033,7 @@ function resetToLobbyUI() {
   trailerVisad = false;                         // BUGFIX: annars hoppas trailern över nästa parti efter "TILL LOBBYN" (nollades bara vid gameEnd)
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
   doljTrailer();
-  ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-roll', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
+  ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-roll', 'ov-intro', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
    'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus', 'ov-bot', 'ov-mission', 'ov-power', 'ov-result', 'ov-year'].forEach(id => $(id)?.classList.remove('open'));
   tutIdleSent = false;
   $('tutveil').style.display = 'none';
@@ -2135,6 +2186,160 @@ function tutFocus(sel) {
   document.querySelectorAll('.tut-focus').forEach(e => e.classList.remove('tut-focus'));
   if (sel) document.querySelector(sel)?.classList.add('tut-focus');
 }
+// ── Pekande coach-hand ─────────────────────────────────────────────────────────
+// Pekar ut knappen/byggnaden man ska trycka på. Scen-koordinater (1920×1080) som tutbox.
+// 10 s-nudge på GÖR-knappar + en scriptad bygg-info-demon (handen klickar en byggnad åt en).
+const TUT_TIP = { x: 41, y: 8 };                 // fingertoppens läge i hand-SVG:n (0–100)
+function _tutHand() { return $('tut-hand'); }
+function _tutStage() { const s = document.getElementById('stage'); const r = s.getBoundingClientRect(); return { r, scale: r.width / 1920 || 1 }; }
+function _tutHandFill() { const h = _tutHand(); const inner = h?.querySelector('.inner'); if (inner && !inner.dataset.filled) { inner.innerHTML = ico('hand', 92); inner.dataset.filled = '1'; } }
+// Elementets rektangel i scen-koordinater.
+function _tutScene(el) {
+  const { r, scale } = _tutStage(), e = el.getBoundingClientRect();
+  return { x: (e.left - r.left) / scale, y: (e.top - r.top) / scale, w: e.width / scale, h: e.height / scale,
+           cx: (e.left - r.left + e.width / 2) / scale, cy: (e.top - r.top + e.height / 2) / scale,
+           right: (e.right - r.left) / scale, bottom: (e.bottom - r.top) / scale };
+}
+// Placera handens fingertopp vid scen-punkt (x,y); dir 'up'|'down'|'left'; jump=true hoppar (ingen glid).
+function tutHandTip(x, y, dir = 'up', jump = false) {
+  const h = _tutHand(); if (!h) return; _tutHandFill();
+  h.classList.toggle('down', dir === 'down');
+  h.classList.toggle('left', dir === 'left');
+  if (jump) { h.style.transition = 'none'; }
+  h.style.display = 'block';
+  const hw = h.offsetWidth, hh = h.offsetHeight, X = TUT_TIP.x / 100, Y = TUT_TIP.y / 100;
+  let tx, ty;
+  if (dir === 'down')      { tx = hw * (1 - X); ty = hh * (1 - Y); }
+  else if (dir === 'left') { tx = hw * Y;       ty = hh * (1 - X); }   // rotation -90° om centrum (fingret pekar vänster)
+  else                     { tx = hw * X;       ty = hh * Y; }
+  h.style.left = (x - tx) + 'px'; h.style.top = (y - ty) + 'px';
+  if (jump) { void h.offsetWidth; h.style.transition = ''; }
+}
+// Peka på ett element (knapp): under + upp om i övre halvan, annars över + ned.
+function tutHandAtEl(sel, jump = false) {
+  const el = document.querySelector(sel); if (!el) { tutHandHide(); return; }
+  const s = _tutScene(el), dir = s.cy < 1080 * 0.55 ? 'up' : 'down';
+  if (dir === 'up') tutHandTip(s.cx, s.bottom + 6, 'up', jump);
+  else tutHandTip(s.cx, s.y - 6, 'down', jump);
+}
+// Peka åt VÄNSTER in på ett element → handen hamnar på HÖGER sida om det.
+function tutHandRightOfEl(sel, gap = 10, jump = false) {
+  const el = document.querySelector(sel); if (!el) { tutHandHide(); return; }
+  const s = _tutScene(el);
+  tutHandTip(s.right + gap, s.cy, 'left', jump);
+}
+function tutHandHide() { const h = _tutHand(); if (h) { h.style.display = 'none'; h.className = ''; } }
+function tutHandBob(on) { const h = _tutHand(); if (h) h.classList.toggle('bob', !!on); }
+// Knacket: fingret böjs; responsen (onContact) fyras vid BOTTEN av böjen (~160 ms) så svaret känns direkt.
+async function tutHandTap(onContact) { const h = _tutHand(); if (!h) return; h.classList.remove('tap'); void h.offsetWidth; h.classList.add('tap'); await delay(160); onContact?.(); await delay(220); h.classList.remove('tap'); }
+// Scriptad demo: handen visar att man kan klicka byggnaderna på kartan (efter bygge+byte).
+async function tutBuildingDemo() {
+  if (tutAbort) return;
+  const all = [...map.svg.querySelectorAll('g[data-building]')];
+  const blds = all.filter(b => b.style.cursor === 'pointer');   // bara byggnader med info-ruta (klickbara)
+  if (!blds.length) return;                      // inget klickbart byggt → hoppa säkert
+  const bld = blds[0], h = _tutHand();
+  const done = () => { tutHandHide(); $('tut-block').style.display = 'none'; tutFocus(null); };
+  tutFocus('.col-island');                        // lyft kartan ljus över slöjan
+  $('tut-block').style.display = 'block';         // ingen användarklick under demon
+  await Promise.race([delay(500), tutAbortP()]); if (tutAbort) return done();
+  let s = _tutScene(bld);
+  // dyker upp nära byggnaden (några cm bort), tonar in
+  h.classList.add('fade');
+  tutHandTip(s.cx + s.w * 0.7, s.cy + s.h * 0.9, 'up', true);
+  await delay(60); h.classList.remove('fade');
+  await Promise.race([delay(560), tutAbortP()]); if (tutAbort) return done();
+  // kort, långsam rörelse fram till byggnaden → knacka → info visas
+  s = _tutScene(bld); tutHandTip(s.cx, s.cy, 'up');
+  await Promise.race([delay(1050), tutAbortP()]); if (tutAbort) return done();
+  await tutHandTap(() => bld.dispatchEvent(new MouseEvent('click', { bubbles: true })));   // info visas vid trycket
+  await Promise.race([delay(1800), tutAbortP()]); if (tutAbort) return done();
+  // rörelse bredvid byggnaden → knacka → info stängs
+  s = _tutScene(bld); tutHandTip(Math.min(s.right + s.w * 0.5, s.cx + 260), s.cy + s.h * 0.15, 'up');
+  await Promise.race([delay(1000), tutAbortP()]); if (tutAbort) return done();
+  await tutHandTap(() => map.svg.dispatchEvent(new MouseEvent('click', { bubbles: true })));   // stänger vid trycket
+  await Promise.race([delay(600), tutAbortP()]); if (tutAbort) return done();
+  // handen försvinner
+  h.classList.add('fade');
+  await Promise.race([delay(480), tutAbortP()]);
+  done();
+}
+
+// ── FLASH-COACH ────────────────────────────────────────────────────────────────
+// Lätt coachning OVANPÅ det riktiga år 1 (inget övningsår): SAMMA rutor som Mellan-tutorialen.
+// Sekvens: "Bygg en byggnad" + hand på korten → (eget bygge) skärmen LÅSES, popup inkomst↑ sedan öhälsa↓
+//   → efter ~10 s: hand på BYT VALUTOR-knappen + "Byt", försvinner när knappen klickas. Resten körs fritt.
+// Gatas på att aktiva varianten har coach-tutorial (Flash). Rör inte Mellans runTutorial.
+const flashCoach = { phase: null };   // null | 'bygg' | 'konsekvens' | 'byt-vant' | 'byt' | 'done'
+function activeVariantId() { return (ONLINE ? realGame?.net?.variant?.selected : null) || E()?.cfg?.id || null; }
+function flashCoachOn() { const f = tutorialFor(activeVariantId()); return !!(f && f.mode === 'coach'); }
+let _coachTimer = null, _coachBytClick = null;
+// En coach-ruta vid ett ankare. Handen hanteras separat av anroparen (bredvid rutan, ej under).
+function coachBox(txt, anchorName, { ic = null } = {}) {
+  const b = $('tutbox'), anc = tutAnchor(anchorName);
+  $('tut-txt').innerHTML = txt;
+  setTutIc(ic);
+  $('tut-dots').style.display = 'none';                                // coach-rutor har inga beat-prickar
+  $('tut-next').style.display = 'none';
+  tutHandHide();                                                       // ev. tidigare hand bort; sätts om nedan
+  b.style.display = 'block';                                           // visa först så besidePos kan mäta
+  const pos = (anc.side && besidePos(anc.sel, anc.side)) || { x: anc.x ?? 960, y: anc.y ?? 540 };
+  b.style.left = pos.x + 'px'; b.style.top = pos.y + 'px';
+  audio.play('ui_tap');
+}
+function _coachHl(sel, on) { document.querySelectorAll(sel).forEach(el => el.classList.toggle('coach-hl', on)); }
+// Placera handen BREDVID tutrutan, pekande rakt ner (mot korten) — inte på ett enskilt kort.
+function tutHandByBox(side = 'right', gap = 20) {
+  const b = $('tutbox'); if (!b || b.style.display === 'none') return;
+  const { r: sr, scale } = _tutStage();
+  const br = b.getBoundingClientRect();
+  const bx = (br.left - sr.left) / scale, by = (br.top - sr.top) / scale, bw = br.width / scale, bh = br.height / scale;
+  const tipX = side === 'right' ? bx + bw + gap : bx - gap;
+  tutHandTip(tipX, by + bh + 8, 'down', true);   // fingertopp strax under rutan, bredvid den → pekar rakt ner
+}
+function coachClear() {
+  clearTimeout(_coachTimer);
+  if (_coachBytClick) { $('btn-trade')?.removeEventListener('click', _coachBytClick); _coachBytClick = null; }
+  _coachHl('#cards .card', false); _coachHl('#btn-trade', false);
+  const blk = $('tut-block'); blk.style.display = 'none'; blk.className = '';
+  $('tutbox').style.display = 'none'; tutHandHide();
+}
+// 1) Byggfas år 1 → "Bygg en byggnad". Korten lyser + pulserar; handen pekar uppifrån ner, BREDVID rutan.
+function flashCoachStart(round) {
+  if (!flashCoachOn() || round !== 1 || flashCoach.phase) return;       // bara Flash, bara år 1, en gång
+  flashCoach.phase = 'bygg';
+  coachBox('Bygg en byggnad', 'byggkort', { ic: 'bygge' });
+  _coachHl('#cards .card', true);                                       // de tre korten lyser i kanten + pulserar
+  tutHandByBox('right'); tutHandBob(true);                             // hand BREDVID rutan, pekar rakt ner (inte på ett enskilt kort)
+}
+// 2) Eget bygge → nedsläckt + oklickbar skärm, popup inkomst↑ sedan öns hälsa↓ (samma rutor som tutorialen).
+async function flashCoachOnBuild(p) {
+  if (flashCoach.phase !== 'bygg' || p.teamId !== game.me) return;
+  flashCoach.phase = 'konsekvens';
+  _coachHl('#cards .card', false);
+  const blk = $('tut-block'); blk.className = 'dim'; blk.style.display = 'block';   // nedsläckt + oklickbar under konsekvensen
+  const inc = mySector === 'pengar' ? p.card.gp : p.card.gm;            // inkomst i lagets egen valuta
+  coachBox(`<span class="lbl">Du tjänar</span> +${inc} ${curIco(mySector, 26)} <span class="per">/ år</span>`, 'prodBox');
+  await delay(3200); if (flashCoach.phase !== 'konsekvens') return;
+  const oh = p.card.oh, sign = oh > 0 ? '+' : '';
+  coachBox(`Men öns hälsa <b class="${oh < 0 ? 'neg' : 'pos'}">${sign}${oh}</b>`, 'topbar');
+  await delay(3600); if (flashCoach.phase !== 'konsekvens') return;
+  blk.style.display = 'none'; blk.className = ''; $('tutbox').style.display = 'none';   // lås upp, vila
+  flashCoach.phase = 'byt-vant';
+  _coachTimer = setTimeout(flashCoachShowByt, 10000);                   // ~10 s senare: BYT-prompten
+}
+// 3) "Byt" + BYT VALUTOR-knappen lyser/pulserar + handen pekar på den. Försvinner när knappen klickas.
+function flashCoachShowByt() {
+  if (flashCoach.phase !== 'byt-vant') return;
+  flashCoach.phase = 'byt';
+  coachBox('Byt', 'byt1', { ic: 'byt' });
+  _coachHl('#btn-trade', true);
+  tutHandRightOfEl('#btn-trade', 10, true); tutHandBob(true);           // hand på HÖGER sida om knappen, pekar vänster in på den
+  _coachBytClick = () => { flashCoach.phase = 'done'; coachClear(); };
+  $('btn-trade')?.addEventListener('click', _coachBytClick, { once: true });
+}
+function flashCoachStop() { if (flashCoach.phase && flashCoach.phase !== 'done') { flashCoach.phase = 'done'; coachClear(); } }
+
 // RUMS-FLÖDE: ett löfte som resolvar till 'abort' när spelledaren tar alla till lobbyn mitt i tutorialen.
 // Varje väntepunkt i tutorialen racear mot detta → tutorialen släpper direkt och runTutorial returnerar.
 function tutAbortP() { return new Promise(res => { if (tutAbort) res('abort'); else _tutAborters.push(res); }); }
@@ -2156,20 +2361,23 @@ function besidePos(sel, side) {
   y = Math.max(16, Math.min(1080 - boxH - 16, y));
   return { x, y };
 }
-async function tutBeat({ ix, txt, x, y, focus, until, autoDo, autoMs = 120000, beside, side }) {   // lång cool-down: gruppen hinner läsa + klicka utan att steget görs åt dem
+async function tutBeat({ ix, txt, ic, x, y, focus, until, autoDo, autoMs = 120000, beside, side, nudge: nudgeTo }) {   // lång cool-down: gruppen hinner läsa + klicka utan att steget görs åt dem
   if (tutAbort) return;                       // omstart under tutorialen → visa ingenting mer
   tutFocus(focus);
   const b = $('tutbox');
-  $('tut-txt').innerHTML = txt;
+  $('tut-txt').innerHTML = txt; setTutIc(ic);
   [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
   b.style.display = 'block';                   // visa först så vi kan mäta rutan innan vi placerar den
   const pos = (beside && besidePos(beside, side)) || { x, y };   // intill knappen om 'beside' anges, annars fasta x/y
   b.style.left = pos.x + 'px'; b.style.top = pos.y + 'px';
   audio.play('ui_tap');
+  // HAND-NUDGE: handen pekar på knappen först efter 10 s utan tryck (hjälp, inte direkt).
+  const nudgeSel = nudgeTo || beside || focus;
+  let nudge = nudgeSel ? setTimeout(() => { tutHandAtEl(nudgeSel, true); tutHandBob(true); }, 10000) : null;
   let tmo = null;
   const timeP = new Promise(res => { tmo = setTimeout(() => res('timeout'), autoMs); });   // inaktivitets-limit (ej snabb auto)
   const r = await Promise.race([until, timeP, tutAbortP()]);
-  clearTimeout(tmo);
+  clearTimeout(tmo); clearTimeout(nudge); tutHandHide();
   if (r === 'abort') { b.style.display = 'none'; tutFocus(null); return; }
   if (r === 'timeout') { await autoDo?.(); await Promise.race([until, delay(4000), tutAbortP()]); }  // inaktiv → handlingen görs åt en
   b.style.display = 'none';
@@ -2199,14 +2407,16 @@ async function tutBarrier(beat) {
   bar.style.display = 'none';
 }
 
+// Ikon-chip i övningsrutan (valfri; ic = ikon-id ur icons.js).
+function setTutIc(id) { const e = $('tut-ic'); if (!e) return; e.innerHTML = id ? ico(id, 64) : ''; e.style.display = id ? 'flex' : 'none'; }
 // Konsekvens-beat ("SE"): spelaren läser i egen takt och trycker NÄSTA för att gå vidare.
-function tutSay({ ix, txt, x, y, focus, hold }) {   // hold = ingen auto-timeout (info-rutor före tutorialen väntar på tryck)
+function tutSay({ ix, txt, ic, x, y, focus, hold }) {   // hold = ingen auto-timeout (info-rutor före tutorialen väntar på tryck)
   if (tutAbort) return Promise.resolve();      // omstart under tutorialen → visa ingenting mer
   return new Promise(res => {
     tutFocus(focus);
     const b = $('tutbox');
     b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.display = 'block';
-    $('tut-txt').innerHTML = txt;
+    $('tut-txt').innerHTML = txt; setTutIc(ic);
     [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= ix));
     const next = $('tut-next'); next.style.display = 'inline-block';
     audio.play('ui_tap');
@@ -2224,9 +2434,15 @@ function tutSay({ ix, txt, x, y, focus, hold }) {   // hold = ingen auto-timeout
 
 // Startceremoni: ÄR DU REDO? → (vänta in alla lag) → nedräkning 10→0 → RUNDA 1.
 // Riggen (LED-chase, riser-soundscape, vitt ljus 3 s) styrs av semantiska cues: ecoloco/rigg/ceremoni.
-async function startCeremony() {
+async function startCeremony(fromIntro = false) {
   tutInCeremony = true;                       // från och med nu konvergerar skärmen mot spelet (rebuildFromState)
   $('ov-ready').classList.add('open');
+  if (fromIntro) {                            // Flash: korsa från kontrollrummet (ov-intro) in i ÄR DU REDO — aldrig via ön
+    const ov = $('ov-intro');
+    ov.style.transition = 'opacity .9s ease'; ov.style.opacity = 0;   // ov-ready ligger under → tonas fram
+    await delay(950);
+    ov.classList.remove('open'); ov.innerHTML = ''; ov.style.opacity = 1;
+  }
   // "ÄR DU REDO?" visas en kort stund (tryck går fortare) → sedan vidare till väntläget automatiskt.
   await Promise.race([new Promise(res => { $('btn-ready').onclick = () => { audio.play('ui_confirm'); res(); }; }), delay(5000), tutAbortP()]);
   if (tutAbort) return;
@@ -2293,17 +2509,23 @@ function tutResolver(myLag) {
   const built = handFor(myLag).find(c => c.tier === picked) || handFor(myLag)[0] || {};
   const prodCur = mySector;
   const inc = prodCur === 'pengar' ? built.gp : built.gm;
+  const SZ_OH = 24, SZ_CUR = 28;   // öhälso-ikoner / pengar-material-ikoner (större i texten)
+  const tal = n => `<span style="color:${n > 0 ? 'var(--oh-green)' : n < 0 ? 'var(--oh-red)' : 'inherit'};font-weight:800">${n > 0 ? '+' + n : n}</span>`;   // +grön / −röd
+  // Siffror i övningsrutorna: öns hälsa = röd/grön, pengar = guld, material = silver (Klara 2026-11-25)
+  const colK = (n, cur) => `<b class="${cur === 'pengar' ? 'gld' : 'sil'}">${n > 0 ? '+' + n : n}</b>`;
   const konsekvens = built.oh < 0
-    ? `Men påverkar också <b>öhälsan ${built.oh}${ico('industri', 18)}</b> — som alla delar.`
-    : `Och lyfter <b>öhälsan +${built.oh}${ico('tillvaxt', 18)}</b> — som alla delar.`;
+    ? `<b class="neg">−${Math.abs(built.oh)}</b> ${ico('industri', 44)} <span class="per">öns hälsa</span><div class="sub">Alla delar notan</div>`
+    : `<b class="pos">+${built.oh}</b> ${ico('tillvaxt', 44)} <span class="per">öns hälsa</span><div class="sub">Alla delar nyttan</div>`;
   const map = {
     rounds: cfg.rounds, threshold: cfg.threshold,
     lagNamn: `<span style="color:${a.farg}">${(a.namn || '').toUpperCase()}</span>`,
     terrain: TUT_TERRAIN[myLag] || a.namn || '',
     sektorNamn: a.sektor === 'material' ? 'material' : 'pengar',
     sektorIco: ico(a.sektor === 'material' ? 'material' : 'pengar', 26),
-    inkomst: inc, prodIco: ico(prodCur === 'pengar' ? 'pengar' : 'material', 18),
-    konsekvens, bytIco: ico(getCur === 'pengar' ? 'pengar' : 'material', 18),
+    inkomst: tal(inc), inkomstK: colK(inc, prodCur), prodIco: ico(prodCur === 'pengar' ? 'pengar' : 'material', 44),
+    konsekvens, bytIco: ico(getCur === 'pengar' ? 'pengar' : 'material', 44), fickK: colK(tutFick, getCur),
+    saknarIco: ico(mySector === 'material' ? 'pengar' : 'material', 44),   // valutan du SAKNAR (motsatt din sektor)
+    fickBelopp: tal(tutFick),                                             // +grönt belopp från senaste bytet
   };
   return txt => (txt || '').replace(/\{(\w+)\}/g, (m, k) => (k in map ? map[k] : m));
 }
@@ -2313,6 +2535,15 @@ function tutUntil(name, myLag) {
     case 'build':     return tutOnce('build', p => p.teamId === myLag);
     case 'tradeOpen': return tutWaitP(() => $('ov-trade').classList.contains('open'));
     case 'tradeDone': return tutOnce('trade', p => p.from === myLag || p.to === myLag);
+    case 'buildingInfo': return new Promise(res => {          // klick på en byggnad → steget klart direkt (infon stängs efter 3,5 s)
+      const h = e => {
+        if (!e.target.closest?.('g[data-building]')) return;
+        map.svg.removeEventListener('click', h, true);
+        res();                                                  // rutan försvinner direkt vid tryck på byggnaden
+        setTimeout(() => map.svg.dispatchEvent(new MouseEvent('click', { bubbles: true })), 3500);   // infoRutan stängs av sig själv efter en stund
+      };
+      map.svg.addEventListener('click', h, true);
+    });
     case 'roundEnd':  return tutOnce('roundEnd');
     case 'settled':   return tutWaitP(() => !running);
     default:          return new Promise(() => {});   // okänt → aldrig klart (autoMs/abort räddar)
@@ -2328,6 +2559,7 @@ function tutAutoDo(name, myLag) {
     case 'oppnaByt':    return () => { if (!$('ov-trade').classList.contains('open')) openTrade(tutPartner(myLag)); };
     case 'bekraftaByt': return () => { if (!$('ov-trade').classList.contains('open')) openTrade(tutPartner(myLag)); $('btn-trade-go').click(); };
     case 'avslutaAr':   return () => $('btn-end').click();
+    case 'visaByggnad': return () => [...map.svg.querySelectorAll('g[data-building]')].find(b => b.style.cursor === 'pointer')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     default:            return undefined;
   }
 }
@@ -2359,16 +2591,76 @@ function tutSetup(name, myLag) {
     return;
   }
 }
+// ── INTRO efter introfilmen (Klara 2026-11-25; design/intro-uppdrag-skarmar-forslag.html) ──
+// Svart → tomt kontrollrum → krona på kartskärmen + CENTRALMAKTEN-meddelande → (rummet släcks) →
+// emblemvägg tänds → "DU ÄR [LAG]" → "ERT UPPDRAG" (Bygg/Handla/Påverka ön + antal år ur cfg.rounds).
+// Ersätter gamla ov-mission/ov-roll + årtals-/hälsa-pratbubblorna. Tryck (efter 2 s) hoppar över.
+const INTRO_TERR = { aker: 'Åkermark', skog: 'Skog', tundra: 'Tundra', stad: 'Stad' };
+async function runIntro(myLag, keepCover = false) {   // keepCover (Flash): tona INTE ut mot ön — lämna täckningen kvar så ceremonin kan korsa in
+  const ov = $('ov-intro');
+  const a = AREAS.find(x => x.id === myLag) || AREAS[0];
+  const rounds = E().cfg.rounds;
+  const sek = a.sektor === 'material' ? 'material' : 'pengar';
+  const step = (n, ic, namn) => `<div class="ln step"><span class="num">${n}</span><span class="sicon">${ico(ic, 70)}</span><span class="sname">${namn}</span></div>`;
+  ov.innerHTML =
+    `<div class="L" id="in-rw" style="opacity:0"><div class="L" style="background-image:url(assets/kontrollrum_neutral.jpg)"></div>` +
+      `<div class="L im" id="in-crl" style="background-image:url(assets/kontrollrum_krona.jpg)"></div></div>` +
+    `<div class="L im" id="in-wall" style="background-image:url(assets/vagg_mork.jpg)"></div>` +
+    `<div class="L im" id="in-lit" style="background-image:url(assets/vagg_${a.id}.jpg)"></div>` +
+    `<div class="L im dimw" id="in-dim"></div>` +
+    `<div id="in-st">` +
+      `<div class="ban pnl" id="in-r0" style="--acc:#C9A94F"><div class="bar"></div>` +
+        `<div class="mhead"><span class="seal">${ico('orad', 62)}</span><div><div class="m1">CENTRALMAKTEN</div><div class="m2">OFFICIELLT MEDDELANDE</div></div>` +
+        `<div class="prio"><i class="dot"></i>PRIORITET: HÖG</div></div>` +
+        `<div class="msub"><div class="rh">Ön behöver en ny borgmästare</div></div>` +
+        `<div class="rs">Fyra företag tävlar om makten.<br>Rikaste företaget tar över styret.</div></div>` +
+      `<div class="ban" id="in-b2" style="--acc:${a.farg}"><div class="bar"></div><div class="lg"><span class="halo"></span>${logoSVG(a.id, 200)}</div>` +
+        `<div class="info"><div class="tt">DU ÄR</div><div class="nm">${(a.namn || '').toUpperCase()}</div>` +
+        `<div class="brow"><span class="isl">${ico('on', 60)}</span><b class="terr" style="color:${a.farg}">${INTRO_TERR[a.id] || ''}</b>` +
+        `<span class="sy"><span class="rlab">${sek}</span>${ico(sek, 70)}</span></div></div></div>` +
+      `<div class="ban pnl" id="in-s3" style="--acc:#C9A94F"><div class="bar"></div>` +
+        `<div class="phead"><i class="dot"></i>ERT UPPDRAG<span class="yrs"><b>${rounds}</b> ÅR</span></div>` +
+        `<div class="steps">${step(1, 'bygge', 'Bygg')}${step(2, 'byt', 'Handla')}${step(3, 'rosta', 'Påverka ön')}</div></div>` +
+    `</div>`;
+  const q = id => ov.querySelector('#' + id);
+  const timers = [];
+  const at = (ms, f) => timers.push(setTimeout(f, ms));
+  const on = id => q(id).classList.add('on');
+  const off = id => q(id).classList.remove('on');
+  const fade = (id, ms, ease = 'ease-in-out') => { const e = q(id); e.style.transition = `opacity ${ms}ms ${ease}`; e.style.opacity = 1; };
+  ov.style.transition = 'none'; ov.style.opacity = 1; void ov.offsetWidth; ov.style.transition = '';
+  ov.classList.add('open');
+  audio.play('ui_open');
+  let klar; const slut = new Promise(res => { klar = res; });
+  // Tidslinje (ms): ~1,6 s helt svart → tomt rum → krona → meddelande (7 s) → rummet släcks → emblemvägg → "DU ÄR" → "ERT UPPDRAG"
+  at(2400, () => { q('in-rw').style.opacity = 1; });
+  at(5800, () => { q('in-crl').style.opacity = 1; });
+  at(8600, () => on('in-r0'));
+  at(15600, () => off('in-r0'));
+  at(16400, () => q('in-rw').classList.add('dip'));
+  at(17400, () => { fade('in-wall', 2200); q('in-dim').style.opacity = 1; });
+  at(20600, () => fade('in-lit', 1400));
+  at(21900, () => on('in-b2'));
+  at(27700, () => off('in-b2'));
+  at(28700, () => on('in-s3'));
+  [1300, 2400, 3500].forEach((d, i) => at(28700 + d, () => ov.querySelectorAll('#in-s3 .ln')[i]?.classList.add('on')));
+  at(36100, () => klar());
+  const ts = Date.now();
+  const hopp = () => { if (Date.now() - ts > 2000) klar(); };
+  ov.onclick = hopp;
+  await Promise.race([slut, tutAbortP()]);
+  ov.onclick = null; timers.forEach(clearTimeout);
+  if (keepCover) return;                      // Flash: behåll kontrollrummet som täckning → startCeremony korsar in i ÄR DU REDO
+  ov.style.opacity = 0;                       // tonas ut mot ön (Mellan: övningsåret tar vid)
+  await delay(950);
+  ov.classList.remove('open'); ov.innerHTML = ''; ov.style.opacity = 1;
+}
+
 // Kör ETT deklarativt steg.
 async function runTutStep(step, myLag) {
   const resolve = tutResolver(myLag);
   switch (step.typ) {
-    case 'mission': {
-      $('ov-mission').classList.add('open'); audio.play('ui_open');
-      await Promise.race([new Promise(res => { $('ov-mission').onclick = res; }), tutAbortP()]);
-      $('ov-mission').onclick = null; $('ov-mission').classList.remove('open');
-      return;
-    }
+    case 'mission': { await runIntro(myLag); return; }
     case 'roll': {
       const a = AREAS.find(x => x.id === myLag);
       if (!a) return;
@@ -2386,6 +2678,29 @@ async function runTutStep(step, myLag) {
     case 'pause':    await Promise.race([delay(step.ms || 400), tutAbortP()]); return;
     case 'barrier':  await tutBarrier(step.n); return;
     case 'ceremony': await startCeremony(); return;
+    case 'demo': {                                           // handen visar byggnads-klick; valfri liten ruta (ic + kort rad) visas under demon
+      if (step.demo !== 'byggnadsInfo') return;
+      const anc = step.ankare ? tutAnchor(step.ankare) : null;
+      if (step.txt && anc) {
+        const b = $('tutbox');
+        $('tut-txt').innerHTML = resolve(step.txt); setTutIc(step.ic);
+        [...$('tut-dots').children].forEach((d, i) => d.classList.toggle('on', i <= (step.ix || 0)));
+        $('tut-next').style.display = 'none';
+        b.style.left = anc.x + 'px'; b.style.top = anc.y + 'px'; b.style.display = 'block';
+      }
+      await tutBuildingDemo();
+      if (step.txt) $('tutbox').style.display = 'none';
+      return;
+    }
+    case 'gate': {                                           // TYST grind: vänta in handlingen — ingen ruta. Ankare valfritt (lyser i så fall upp det)
+      tutFocus(step.ankare ? tutAnchor(step.ankare).sel : null);
+      const timeP = new Promise(res => setTimeout(() => res('timeout'), 120000));
+      const r = await Promise.race([tutUntil(step.until, myLag), timeP, tutAbortP()]);
+      if (r === 'timeout') { await tutAutoDo(step.autoDo, myLag)?.(); await Promise.race([tutUntil(step.until, myLag), delay(4000), tutAbortP()]); }
+      if (step.until === 'tradeDone') { await Promise.race([delay(500), tutAbortP()]); await Promise.race([tutWaitP(() => !$('ov-traderes').classList.contains('open')), tutAbortP()]); }   // vänta ut den stora BYTT!-rutan
+      tutFocus(null);
+      return;
+    }
     case 'say': {
       if (step.hidden) {                                   // osynligt vänte-steg (vänta ut bokslut/priser)
         if (step.until === 'settled') await delay(1200);
@@ -2393,14 +2708,15 @@ async function runTutStep(step, myLag) {
         return;
       }
       const anc = tutAnchor(step.ankare);
-      await tutSay({ ix: step.ix || 0, txt: resolve(step.txt), x: anc.x, y: anc.y, focus: anc.sel, hold: !!step.hold });
+      await tutSay({ ix: step.ix || 0, txt: resolve(step.txt), ic: step.ic, x: anc.x, y: anc.y, focus: anc.sel, hold: !!step.hold });
       return;
     }
     case 'beat': {
       const anc = tutAnchor(step.ankare);
-      await tutBeat({ ix: step.ix || 0, txt: resolve(step.txt), x: anc.x, y: anc.y, focus: anc.sel,
+      await tutBeat({ ix: step.ix || 0, txt: resolve(step.txt), ic: step.ic, nudge: step.nudge, x: anc.x, y: anc.y, focus: anc.sel,
         beside: anc.side ? anc.sel : undefined, side: anc.side,
         until: tutUntil(step.until, myLag), autoDo: tutAutoDo(step.autoDo, myLag) });
+      if (step.after) await Promise.race([delay(step.after), tutAbortP()]);   // paus efter steget innan nästa ruta (t.ex. låt byggnadens info synas)
       return;
     }
   }
@@ -2419,19 +2735,30 @@ async function runTutorial() {
   const tut = makeTutorial(myLag, baseCfg);
   game.attach(tut);
   $('ov-start').classList.remove('open');
+  const flow = tutorialFor(sel) || TUTORIALS.mellan;
+  const coach = flow.mode === 'coach';
+  // COACH (Flash): lägg en svart täckning DIREKT (före startGame) så ön aldrig blinkar till mellan filmen och kontrollrummet.
+  if (coach) { const ov = $('ov-intro'); ov.style.transition = 'none'; ov.style.opacity = 1; ov.classList.add('open'); void ov.offsetWidth; ov.style.transition = ''; }
   $('tutveil').style.display = 'block';
   tut.startGame();
   await delay(500);
   if (tutAbort) return;
 
-  // Flöde ur data: variantens tutorial, annars Mellan-sekvensen (Skola ärver tills vidare).
-  // Coach-läge (Flash) byggs i nästa steg — tills dess kör sequence-flöden Mellan-stegen.
-  const flow = tutorialFor(sel) || TUTORIALS.mellan;
+  // COACH-läge (Flash): INGET övningsår — intro + ceremoni (samma som Mellan, {rounds}=4 ur Flash-configen),
+  // med korsfade kontrollrum → ÄR DU REDO (aldrig via ön). Sedan tar flashCoach vid på det RIKTIGA år 1.
+  if (coach) { await runCoachOnboarding(myLag); return; }
+  // Flöde ur data: variantens tutorial (sequence), annars Mellan-sekvensen (Skola ärver tills vidare).
   const steps = flow.mode === 'sequence' ? flow.steps : TUTORIALS.mellan.steps;
   for (const step of steps) {
     if (tutAbort) return;
     await runTutStep(step, myLag);
   }
+}
+// Flash-onboarding: intro (behåll täckning) → korsfade in i ÄR DU REDO → nedräkning → år 1. Ingen ö emellan.
+async function runCoachOnboarding(myLag) {
+  await runIntro(myLag, true);
+  if (tutAbort) return;
+  await startCeremony(true);
 }
 
 // Spelar-start = ALLTID utan spelledare (selfplay). Spelledar-läget styrs från spelledar-pulten

@@ -19,6 +19,7 @@
   }
   * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
   html, body { margin: 0; height: 100%; background: #0E0D0A; color: var(--text); font-family: var(--font-disp); overflow: hidden; }
+  button, input, select, textarea { font-family: inherit; }   /* knappar ärver Oxanium — aldrig systemtypsnitt (RAMVERK §Typsnitt) */
   /* Tekniska display-siffror (panel-/gauge-känsla) — Chakra Petch */
   .ohval, .resbox .v, .team .tr, .endtime, .stepper .amt, .ranktable .n, #me-pengar, #me-material, .chip span { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
@@ -26,7 +27,7 @@
   #stage { flex: none; width: 1920px; height: 1080px; transform-origin: center center; position: relative; background: var(--bg); display: flex; flex-direction: column; }
 
   /* ——— Toppbar ——— */
-  .topbar { min-height: 92px; display: flex; flex-direction: column; gap: 10px; padding: 12px 24px; background: var(--panel3); border-bottom: 3px solid var(--edge); }
+  .topbar { min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px 24px 10px; background: var(--panel3); border-bottom: 3px solid var(--edge); }
   .tb-top { display: flex; align-items: center; gap: 24px; }
   .hero-oh { flex: 1; display: flex; align-items: baseline; gap: 18px; }
   .hero-oh .hero-lbl { align-self: center; font-size: 13px; letter-spacing: 3px; color: var(--dim); font-weight: 800; text-transform: uppercase; }
@@ -50,7 +51,8 @@
   .ohdelta { font-size: 20px; font-weight: 800; padding: 6px 12px; border-radius: 8px; border: 2px solid var(--edge2); background: var(--panel2); min-width: 64px; text-align: center; transition: all .4s; }
   .ohdelta.neg { background: #3d2320; color: var(--led-red); border-color: #5e332c; }
   .ohdelta.pos { background: #20372a; color: var(--led-green); border-color: #2c5e3d; }
-  .modechip { font-size: 20px; }
+  .modechip { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 112px; height: 76px; padding: 6px 10px; font-size: 16px; }
+  .modechip small { white-space: nowrap; }
 
   /* ——— Kolumner ——— */
   .cols { flex: 1; display: flex; gap: 16px; padding: 16px 24px 8px; min-height: 0; }
@@ -62,22 +64,30 @@
   .panel h3 { margin: 0 0 10px; font-size: 14px; letter-spacing: 2.5px; color: var(--dim); text-transform: uppercase; }
 
   .melogo { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-  .melogo .nm { font-size: 26px; font-weight: 800; letter-spacing: 1px; }
-  .melogo .du { font-size: 13px; color: var(--gold); letter-spacing: 2px; font-weight: 800; }
-  .res { display: flex; gap: 10px; }
-  .resbox { flex: 1; background: var(--panel3); border: 2px solid var(--edge2); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; position: relative; }
-  .resbox .ic { font-size: 26px; }
-  .resbox .v { font-family: var(--font-num); font-size: 32px; font-weight: 700; color: var(--led); text-shadow: 0 0 10px rgba(255,179,92,.5); }
-  .resbox .lbl { font-size: 11px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; display: block; }
-  .resbox.cur-p .v { color: var(--pengar); }
-  .resbox.cur-m .v { color: var(--material); text-shadow: 0 0 10px rgba(143,179,196,.4); }
+  .melogo { gap: 18px; margin-bottom: 12px; }
+  .melogo #melogo svg { width: 100px; height: 100px; }
+  .melogo .nm { font-size: 46px; font-weight: 800; letter-spacing: 1px; }
+  .melogo .du { font-size: 18px; color: var(--gold); letter-spacing: 2px; font-weight: 800; }
+  .res { display: flex; gap: 12px; }
+  /* Vänsterpanelen (Klara 2026-11-25): stor ikon + stor färgad siffra; pengar guld, material silver */
+  .resbox { flex: 1; background: var(--panel3); border: 3px solid var(--edge); border-radius: 14px; padding: 8px 10px; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; }
+  .resbox .ic { display: flex; }
+  .resbox .v { font-family: var(--font-num); font-size: 48px; font-weight: 700; line-height: 1; color: var(--led); }
+  .resbox .lbl { display: none; }   /* ikonen säger vad det är */
+  .resbox.cur-p .v { color: #E8C96A; }
+  .resbox.cur-m .v { color: #C9D3DC; }
   .resbox.flash-up .v { color: var(--led-green); }
   .resbox.flash-down .v { color: var(--led-red); }
   .floatchip { position: absolute; right: 8px; top: -14px; font-size: 19px; font-weight: 800; pointer-events: none; animation: floatup 1.4s ease forwards; }
   @keyframes floatup { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-34px); } }
-  .inc { margin-top: 8px; font-size: 16px; color: var(--led-green); font-weight: 700; min-height: 22px; }
-  .sektor { margin-top: 10px; background: #23301F; border: 2px solid #3C5535; border-radius: 10px; padding: 10px 12px; font-size: 16px; line-height: 1.45; }
-  .sektor b { color: #BFE3A9; }
+  .inc { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--panel3); border: 3px solid var(--edge); border-radius: 14px; padding: 6px 12px; }
+  .inc b { font-family: var(--font-num); font-size: 46px; font-weight: 700; line-height: 1; }
+  .inc .per { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: 1px; }
+  .inc .sp { width: 10px; }
+  .inc:empty { display: none; }
+  .sektor { margin-top: 10px; background: var(--panel3); border: 3px solid var(--edge); border-radius: 14px; padding: 8px 10px; display: flex; gap: 6px; }
+  .sektor .gr { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 16px; font-weight: 800; letter-spacing: 2px; }
+  .sektor .gr.s { border-left: 2px solid var(--edge); }
   .bigbtn { display: block; width: 100%; margin-top: 12px; background: var(--panel2); color: var(--text); border: 3px solid var(--edge2); border-radius: 12px; padding: 14px; font: inherit; font-size: 19px; font-weight: 800; letter-spacing: 1px; cursor: pointer; }
   .bigbtn.gold { border-color: var(--gold); color: var(--gold); }
   .bigbtn:disabled { opacity: .4; cursor: default; }
@@ -106,17 +116,18 @@
   .tl-cap { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; flex: none; }
   .tl-cap .cap-total { font-family: var(--font-num); font-weight: 800; font-size: 22px; color: var(--gold); }
   .tl-cap.sm .cap-total { font-size: 18px; }
-  .tl-row.lead .tl-cap .cap-total { font-size: 30px; }
+  .tl-row.lead .tl-cap .cap-total { font-size: 26px; }
+  .tl-row.lead .byt { font-size: 14px; padding: 6px 10px; }
   .tl-cap .cap-parts { display: inline-flex; gap: 8px; font-family: var(--font-num); font-weight: 700; font-size: 12px; margin-top: 1px; }
   .tl-cap .cap-parts .c-p { color: var(--pengar); } .tl-cap .cap-parts .c-m { color: var(--material); }
   .tl-cap .cap-parts span { display: inline-flex; align-items: center; gap: 3px; }
   .du-tag { font-size: 12px; letter-spacing: 2px; color: var(--gold); font-weight: 800; padding: 6px 8px; flex: none; }
-  .tl-row .byt { background: transparent; border: 1px solid var(--edge); color: var(--dim); border-radius: 8px; font: inherit; font-size: 11px; font-weight: 700; padding: 5px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex: none; opacity: .8; }
+  .tl-row .byt { background: transparent; border: 2px solid var(--edge2); color: var(--text); border-radius: 10px; font: inherit; font-size: 16px; font-weight: 800; letter-spacing: 1px; padding: 8px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: none; opacity: 1; }
   .tl-row .byt:hover { border-color: var(--edge2); color: var(--text); opacity: 1; }
   .klimat-mirror { padding: 10px 14px; cursor: pointer; }
   .klimat-mirror:hover { border-color: var(--gold); }
-  .klimat-mirror .km-head { font-size: 11px; letter-spacing: 2px; color: var(--dim); font-weight: 800; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-  .klimat-mirror .km-body { font-size: 15px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .klimat-mirror .km-head { font-size: 19px; letter-spacing: 2px; color: var(--text); font-weight: 800; display: flex; align-items: center; gap: 10px; margin-bottom: 4px; white-space: nowrap; }
+  .klimat-mirror .km-body { font-size: 22px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
   .klimat-mirror .km-body .n { font-family: var(--font-num); color: var(--led-red); font-weight: 700; margin-left: auto; }
   .politik .politik-sub { font-size: 12px; color: var(--dim); text-align: center; margin-top: 8px; }
 
@@ -130,7 +141,7 @@
   .card.standard .band { background: var(--standard); }
   .card.gron .band { background: var(--gron); }
   .card .inner { flex: 1; display: flex; gap: 12px; padding: 10px 14px; align-items: center; }
-  .card img { width: 128px; height: 128px; object-fit: contain; }
+  .card img { width: 190px; height: 190px; object-fit: contain; }
   .card .info { flex: 1; }
   .card .nm { font-size: 20px; font-weight: 800; margin-bottom: 8px; line-height: 1.2; }
   .card .oh-badge { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
@@ -155,6 +166,7 @@
   .card .kop { margin: 0 14px 12px; background: var(--gold); color: #241E0F; border: 0; border-radius: 10px; font: inherit; font-size: 20px; font-weight: 800; letter-spacing: 2px; padding: 12px; cursor: pointer; display: none; }
   .card.expanded { border-color: var(--gold); transform: translateY(-6px); }
   .card.expanded .kop { display: block; }
+  .card.expanded img { width: 118px; height: 118px; }   /* krymp bilden när KÖP-knappen visas så hela "KÖP — BYGG PÅ ÖN" får plats */
   .card .saknas { position: absolute; top: 44px; right: 10px; background: #3d2320; border: 2px solid #5e332c; color: var(--led-red); font-size: 14px; font-weight: 800; border-radius: 8px; padding: 5px 9px; display: none; }
   .card.poor .saknas { display: block; }
   .card.banned { pointer-events: none; filter: grayscale(.6); }   /* förbjudet kort: ej klickbart, tydligt nedtonat */
@@ -199,7 +211,15 @@
   .panel.logg { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
   .panel.logg h3 { margin: 0; }
   .logglist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
+  .panel.logg h3 { font-size: 19px; letter-spacing: 2px; color: var(--text); display: flex; align-items: center; gap: 10px; }
   .loggrad { padding: 5px 9px; border-radius: 8px; background: var(--panel2); color: var(--text); font-size: 14px; line-height: 1.35; }
+  /* Loggens fasta radformat (Klara 2026-11-25): [laglogga] [typikon] [namn] [utfall] — inga meningar */
+  .loggrad.lr { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px; font-size: 16px; font-weight: 700; flex: none; }
+  .loggrad.lr .ri { display: flex; flex: none; } .loggrad.lr .rt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .loggrad.lr .ro { display: flex; align-items: center; gap: 6px; flex: none; }
+  .loggrad.lr .nolg { width: 26px; flex: none; }
+  .loggrad.lr b { font-family: var(--font-num); font-size: 20px; font-weight: 700; } .loggrad.lr .neg { color: var(--oh-red); } .loggrad.lr .pos { color: var(--oh-green); } .loggrad.lr .fr { font-size: 17px; }
+  .loggrad.lr .ab { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); color: #14110b; font-family: var(--font-num); font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; }
   .loggrad .lg-lag { font-weight: 800; }
   .loggrad.lg-politik { border-left: 3px solid var(--gold); }
   .loggrad.lg-kris { border-left: 3px solid var(--oh-red); }
@@ -291,23 +311,51 @@
   #ov-dilemma .resultcard.win.ja .ab { color: #35D97B; }
   #ov-dilemma .dz-tally .jav { color: #35D97B; } #ov-dilemma .dz-tally .nejv { color: #E04438; }
 
+  /* ——— Byten (Klara 2026-11-25; design/byten-popup-forslag.html): grå modal, stora lagrutor, ikon + stor siffra, grön/röd resultatruta ——— */
+  .modal.tm { width: 1040px; max-width: none; }
+  .tm .hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .tm h2 { margin: 0; font-size: 34px; justify-content: flex-start; }
+  .tm .sub { margin: 0; text-align: right; font-size: 22px; font-weight: 400; }
   .tradegrid { display: flex; align-items: center; gap: 22px; margin: 8px 0 20px; }
-  .tradebox { flex: 1; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 18px; text-align: center; }
-  .tradebox .who { font-size: 15px; color: var(--dim); letter-spacing: 1px; margin-bottom: 10px; }
-  .stepper { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .tradebox { flex: 1; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 16px 14px; text-align: center; }
+  .tradebox .who { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin-bottom: 8px; color: var(--text); }
+  .stepper { display: flex; align-items: center; justify-content: center; gap: 12px; }
   .stepper button { width: 58px; height: 58px; border-radius: 12px; background: var(--panel2); color: var(--text); border: 3px solid var(--edge2); font-size: 30px; font-weight: 800; cursor: pointer; }
-  .stepper .amt { font-family: var(--font-num); font-size: 40px; color: var(--led); min-width: 100px; }
-  .tradearrow { font-size: 36px; width: 74px; height: 74px; flex: none; border-radius: 14px; background: var(--panel2); color: var(--led); border: 3px solid var(--gold); cursor: pointer; line-height: 1; transition: transform .12s; }
-  .tradearrow:active { transform: scale(0.92) rotate(180deg); }
-  .partnerrow { display: flex; gap: 12px; margin: 10px 0 18px; align-items: stretch; }
-  .partnerrow button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 14px; font: inherit; color: var(--text); font-weight: 800; font-size: 17px; cursor: pointer; }
-  .partnerrow button.sel { border-color: var(--gold); }
-  .partnerrow button.top { transform: scale(1.05); background: linear-gradient(180deg, rgba(201,169,79,.14), var(--panel3)); }
-  .partnerrow .most { position: absolute; top: -11px; right: 8px; background: var(--gold); color: #241E0F; font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 3px 7px; border-radius: 8px; display: inline-flex; align-items: center; gap: 3px; }
-  .partnerrow .pn { font-weight: 800; }
-  .partnerrow small { font-family: var(--font-num); color: var(--led); font-weight: 400; display: inline-flex; align-items: center; gap: 4px; }
-  .partnerrow small .hot { font-weight: 800; font-size: 1.18em; color: var(--text); }
-
+  .stepper .amt { font-family: var(--font-num); font-size: 76px; font-weight: 700; line-height: 1; color: var(--led); min-width: 150px; }
+  .tradearrow { width: 74px; height: 74px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: var(--panel2); border: 3px solid var(--gold); cursor: pointer; transition: transform .35s cubic-bezier(.5,0,.3,1); }
+  .tradearrow.flip { transform: rotate(180deg); }   /* byt-ikonen (två pilar, guld+silver) roterar 180° → silverpilen överst när du ger material */
+  .tradearrow:active { filter: brightness(1.25); }
+  .partnerrow { display: flex; gap: 16px; margin: 10px 0 18px; }
+  .partnerrow button { position: relative; flex: 1; display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 20px; font: inherit; color: var(--text); cursor: pointer; text-align: left; }
+  .partnerrow button.sel { border-color: var(--gold); background: linear-gradient(180deg, rgba(201,169,79,.16), var(--panel3)); box-shadow: 0 0 24px rgba(201,169,79,.3); }
+  .partnerrow .most { position: absolute; top: -14px; right: 12px; display: flex; align-items: center; gap: 6px; background: var(--gold); color: #241E0F; font-size: 18px; font-weight: 800; letter-spacing: 2px; padding: 3px 10px; border-radius: 9px; }
+  .partnerrow .pn { font-size: 34px; font-weight: 800; }
+  .partnerrow .pi { display: flex; flex-direction: column; }
+  .partnerrow .st { display: flex; align-items: center; gap: 8px; font-family: var(--font-num); font-size: 30px; font-weight: 700; margin-top: 4px; }
+  .partnerrow .st i { width: 10px; }
+  .tm .votebtns button { font-size: 32px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .tradewait { display: none; align-items: center; gap: 20px; border: 3px solid var(--gold); border-radius: 14px; padding: 10px 18px; background: rgba(201,169,79,.12); }
+  .tradewait .wt { flex: 1; font-size: 32px; font-weight: 800; letter-spacing: 3px; }
+  .tradewait .wt .dd { display: inline-flex; gap: 8px; margin-left: 16px; }
+  .tradewait .wt .dd i { width: 12px; height: 12px; border-radius: 50%; background: var(--gold); display: inline-block; animation: wdot 1.2s ease-in-out infinite; }
+  .tradewait .wt .dd i:nth-child(2) { animation-delay: .2s; } .tradewait .wt .dd i:nth-child(3) { animation-delay: .4s; }
+  @keyframes wdot { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  .tradewait button { flex: none; font: inherit; font-size: 26px; font-weight: 800; letter-spacing: 2px; padding: 10px 24px; border-radius: 14px; cursor: pointer; border: 4px solid; display: flex; align-items: center; gap: 10px; }
+  .modal.tin { width: 760px; display: flex; flex-direction: column; gap: 24px; }
+  .tin .who2 { display: flex; align-items: center; gap: 30px; } .tin .tt { font-size: 22px; letter-spacing: 5px; font-weight: 700; } .tin .nm2 { font-size: 56px; font-weight: 800; line-height: 1.05; }
+  .tin .tswap { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--edge2); padding-top: 20px; }
+  .tin .side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel3); border: 3px solid var(--edge2); border-radius: 14px; padding: 14px 10px; }
+  .tin .sl { font-size: 26px; letter-spacing: 6px; font-weight: 800; } .tin .sv { display: flex; align-items: center; gap: 12px; } .tin .sv b { font-family: var(--font-num); font-size: 80px; line-height: 1; }
+  .votebtns.big button { font-size: 38px; padding: 24px 16px; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  #ov-traderes { z-index: 17; background: rgba(10,9,7,.55); }
+  .modal.res { width: 1100px; max-width: none; display: flex; align-items: center; gap: 44px; padding: 40px 56px; animation: rp-in .45s cubic-bezier(.2,.9,.25,1) both; }
+  .modal.res.g { border-color: #35D97B; box-shadow: 0 20px 80px rgba(0,0,0,.7), 0 0 50px rgba(53,217,123,.3); }
+  .modal.res.r { border-color: #E04438; box-shadow: 0 20px 80px rgba(0,0,0,.7), 0 0 50px rgba(224,68,56,.3); }
+  .res .rh { display: flex; align-items: center; gap: 22px; font-size: 124px; font-weight: 800; letter-spacing: 4px; line-height: 1; color: var(--text); }
+  .res .rn { display: flex; align-items: center; gap: 18px; margin-top: 18px; } .res .rn b { font-family: var(--font-num); font-size: 96px; line-height: 1; } .res .rn .ar { font-size: 80px; color: #8D8678; }
+  .res .rn.sm { font-size: 40px; font-weight: 700; }
+  .btn-trade-big, #btn-trade { font-size: 26px; }   /* BYT VALUTOR-knappen: större text */
+  .loggrad.lg-byte { justify-content: space-between; font-weight: 400; }
   .award { width: 280px; background: var(--panel3); border: 3px solid var(--gold); border-radius: 16px; padding: 24px 18px; text-align: center; }
   .award .em { font-size: 60px; }
   .award h4 { margin: 10px 0 12px; font-size: 17px; letter-spacing: 1px; line-height: 1.35; color: var(--dim); text-transform: uppercase; }
@@ -328,6 +376,64 @@
   #room-bg { position: absolute; inset: calc(-1 * var(--ey, 0px)) calc(-1 * var(--ex, 0px)); z-index: 9; pointer-events: none; background: linear-gradient(rgba(6,5,4,.38), rgba(6,5,4,.38)), #0b0a07 url('assets/kontrollrum_neutral.jpg') center / cover no-repeat;   /* grunddimning (38 %) inbyggd */ opacity: 0; visibility: hidden; transition: opacity .6s ease, visibility 0s .6s; }
   #room-bg.on { opacity: 1; visibility: visible; transition: opacity .8s ease; }   /* ö-vyn → mörkt kontrollrum: mjuk tonad övergång (0,8 s) */
   #room-bg.snabb { transition: opacity .25s ease, visibility 0s .25s; }   /* örådet klart → rummet rivs snabbt */
+  /* ── INTRO efter introfilmen (Klara 2026-11-25): uppdraget på kontrollrummets kartskärm → emblemvägg "DU ÄR" → "ERT UPPDRAG".
+        Design: design/intro-uppdrag-skarmar-forslag.html. Rutor ligger i #in-st (1920×1080 = scenen), lagren täcker hela skärmen. Bara fades. ── */
+  #ov-intro { inset: calc(-1 * var(--ey, 0px)) calc(-1 * var(--ex, 0px)); background: #000; z-index: 16; display: none; opacity: 1; transition: opacity .9s ease; }
+  #ov-intro.open { display: block; }
+  #ov-intro .L { position: absolute; inset: 0; background: center / cover no-repeat; }
+  #ov-intro .im { opacity: 0; transition: opacity 1.6s ease-in-out; }
+  #ov-intro #in-rw { position: absolute; inset: 0; opacity: 0; transition: opacity 2.4s ease-in-out; }
+  #ov-intro #in-crl { transition: opacity 2.2s ease-in-out; }
+  #ov-intro .dimw { background: rgba(6,5,4,.34); }
+  #ov-intro .dip { animation: indip 1s ease-in both; }
+  @keyframes indip { 0%{filter:brightness(1)} 10%{filter:brightness(.3)} 20%{filter:brightness(.95)} 32%{filter:brightness(.25)} 42%{filter:brightness(.65)} 100%{filter:brightness(0)} }
+  #ov-intro #in-st { position: absolute; left: var(--ex, 0px); top: var(--ey, 0px); width: 1920px; height: 1080px; }
+  #ov-intro svg { display: block; }
+  #ov-intro .ban { position: absolute; left: 50%; width: 1100px; top: 545px; transform: translateX(-50%) translateY(40px); opacity: 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 36px; padding: 26px 52px 26px 40px; border: 3px solid var(--acc); border-radius: 28px; background: linear-gradient(90deg, rgba(14,12,8,.97), rgba(24,21,15,.96) 60%, rgba(14,12,8,.97)); box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 50px color-mix(in srgb, var(--acc) 26%, transparent); transition: opacity .7s, transform .7s cubic-bezier(.2,.9,.25,1); color: var(--text); }
+  #ov-intro .ban.on { opacity: 1; transform: translateX(-50%); }
+  #ov-intro .ban .bar { position: absolute; left: 24px; right: 24px; top: -3px; height: 6px; border-radius: 0 0 6px 6px; background: var(--acc); box-shadow: 0 0 20px var(--acc); }
+  #ov-intro .lg { position: relative; display: flex; }
+  #ov-intro .lg .halo { position: absolute; inset: -18%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--acc) 42%, transparent), transparent 66%); }
+  #ov-intro .lg svg { width: 190px; height: auto; position: relative; }
+  #ov-intro .info { display: flex; flex-direction: column; gap: 10px; }
+  #ov-intro .tt { font-size: 26px; letter-spacing: 8px; color: var(--dim); font-weight: 700; }
+  #ov-intro .nm { font-size: 104px; font-weight: 800; line-height: 1; letter-spacing: 1px; }
+  #ov-intro .brow { display: flex; align-items: center; gap: 22px; font-size: 46px; font-weight: 600; border-top: 2px solid color-mix(in srgb, var(--acc) 45%, transparent); padding-top: 12px; margin-top: 4px; }
+  #ov-intro .brow svg { width: 60px; height: 60px; }
+  #ov-intro .brow .isl { display: flex; }
+  #ov-intro .brow .terr { font-weight: 800; letter-spacing: 1px; }
+  #ov-intro .brow .sy { display: flex; align-items: center; margin-left: auto; padding-left: 26px; border-left: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); }
+  #ov-intro .brow .sy svg { width: 70px; height: 70px; }
+  #ov-intro .brow .rlab { font-size: 46px; font-weight: 800; letter-spacing: 1px; margin-right: 18px; text-transform: uppercase; color: var(--text); }
+  #ov-intro .ban.pnl { display: flex; flex-direction: column; align-items: stretch; transform: translate(-50%, 0) translateY(40px); }
+  #ov-intro .ban.pnl.on { transform: translate(-50%, 0); }
+  #ov-intro #in-r0 { width: 1240px; top: 480px; padding: 26px 48px 30px; gap: 14px; text-align: left; }
+  #ov-intro .mhead { display: flex; align-items: center; gap: 26px; padding-bottom: 16px; border-bottom: 2px solid rgba(201,169,79,.45); }
+  #ov-intro .seal { flex: none; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; border: 3px solid var(--gold); border-radius: 50%; background: rgba(201,169,79,.12); }
+  #ov-intro .seal svg { width: 62px; height: 62px; }
+  #ov-intro .m1 { font-size: 46px; font-weight: 800; letter-spacing: 8px; color: var(--gold); line-height: 1; }
+  #ov-intro .m2 { font-size: 22px; letter-spacing: 6px; color: var(--dim); margin-top: 6px; }
+  #ov-intro .prio { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 24px; letter-spacing: 4px; font-weight: 700; color: #F0564B; border: 2px solid #F0564B; border-radius: 12px; padding: 8px 18px; }
+  #ov-intro .prio .dot, #ov-intro .phead .dot { width: 14px; height: 14px; border-radius: 50%; background: #F0564B; box-shadow: 0 0 12px #F0564B; display: inline-block; animation: inblink 1.3s ease-in-out infinite; }   /* röd lampa som blinkar mjukt */
+  #ov-intro .phead .dot { width: 26px; height: 26px; box-shadow: 0 0 18px #F0564B; }
+  @keyframes inblink { 0%, 100% { opacity: 1; box-shadow: 0 0 16px 2px #F0564B; } 50% { opacity: .35; box-shadow: 0 0 4px #F0564B; } }
+  #ov-intro .msub { display: flex; align-items: center; padding-top: 6px; }
+  #ov-intro .rh { font-size: 70px; font-weight: 600; line-height: 1.05; margin: 0; }
+  #ov-intro .rs { font-size: 46px; font-weight: 400; line-height: 1.25; margin: 0; }
+  #ov-intro #in-s3 { width: 1100px; top: 540px; transform: translate(-50%, -50%) translateY(40px); padding: 24px 48px 30px; gap: 12px; }
+  #ov-intro #in-s3.on { transform: translate(-50%, -50%); }
+  #ov-intro .phead { display: flex; align-items: center; gap: 14px; font-size: 60px; letter-spacing: 10px; color: var(--text); font-weight: 700; }
+  #ov-intro .phead .yrs { margin-left: auto; font-size: 52px; letter-spacing: 6px; color: var(--text); border: 4px solid var(--gold); border-radius: 20px; padding: 8px 40px 8px 34px; background: rgba(201,169,79,.26); box-shadow: 0 0 40px rgba(201,169,79,.6); display: flex; align-items: baseline; gap: 12px; }
+  #ov-intro .phead .yrs b { font-family: var(--font-num); font-size: 128px; line-height: 1; color: var(--gold); margin-right: 14px; }
+  #ov-intro .steps { display: flex; flex-direction: column; gap: 14px; border-top: 2px solid rgba(201,169,79,.35); padding-top: 18px; }
+  #ov-intro .step { display: flex; align-items: center; gap: 36px; padding: 14px 40px 14px 22px; border-radius: 22px; background: rgba(255,255,255,.07); }
+  #ov-intro .step .num { flex: none; width: 76px; height: 76px; border-radius: 50%; background: var(--gold); color: #14110b; font-family: var(--font-num); font-weight: 700; font-size: 48px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 22px rgba(201,169,79,.55); }
+  #ov-intro .step .sicon { flex: none; width: 104px; height: 104px; display: flex; align-items: center; justify-content: center; border-radius: 22px; background: rgba(201,169,79,.16); }
+  #ov-intro .step .sicon svg { width: 70px; height: 70px; }
+  #ov-intro .step .sname { font-size: 88px; font-weight: 600; letter-spacing: 2px; line-height: 1; }
+  #ov-intro .ln { opacity: 0; transform: translateY(16px); transition: opacity 1s ease, transform 1s ease; }
+  #ov-intro .ln.on { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { #ov-intro .dip { animation: none; filter: brightness(0); } #ov-intro .prio .dot, #ov-intro .phead .dot { animation: none; } #ov-intro .ban, #ov-intro .ln { transition: opacity .7s; } }
   /* Under omröstning (dilemma/politik) ligger kontrollrummet kvar men MYCKET mörkare/tonat (Klara 2026-11-23),
      så röst-UI:t förblir läsbart. Justera de två alfa-värdena för mörkare/ljusare. */
   #ov-vote, #ov-choose { background: linear-gradient(rgba(6,5,4,.80), rgba(6,5,4,.88)); }   /* "X har ordet" tonas redan till röstnivån → mjuk ihållande mörkning genom förslag → omröstning */
@@ -346,7 +452,7 @@
   /* PRISUTDELNING (varje år) = P3 (Klara 2026-11-23): prisbilden fyller HELA skärmen + centrerad grå
      popup med text/ikoner. .prize gör kortet fullskärm (öråd-popupen ovan opåverkad).
      FINJUSTERING: aw-pop top/min-width/max-width/padding nedan är reglagen för storlek+placering. */
-  #ov-award .awardcard.prize { position: absolute; inset: calc(-1 * var(--ey, 0px)) calc(-1 * var(--ex, 0px)); width: auto; height: auto; background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: hidden; display: block; }
+  #ov-award .awardcard.prize { position: absolute; inset: 0; width: auto; height: auto;   /* OBS inset 0: #ov-award är redan utsträckt över hela skärmen (--ex/--ey) → extra negativ inset här gjorde prisbilden större än #room-bg = "zoom" på skärmar som inte är 16:9 */ background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: hidden; display: block; }
   #ov-award .awardcard.prize.ingen { background: transparent; }   /* ingen bov → svart ersätts av kontrollrummet (overlay-bakgrunden) bakom popupen */
   /* Prisbilden fyller skärmen (byts per pris → "rummet byter färg"). Centrerad grå text-popup ovanpå.
      FINJUSTERING: .aw-pop top/min-width/max-width är reglagen för storlek+placering. */
@@ -406,28 +512,30 @@
   /* ═══ "X HAR ORDET" (Klara 2026-11-23): kontrollrummet → helt mörk emblemvägg → upplyst emblem → banderoll. ═══ */
   #ov-power { background: transparent; overflow: hidden; }   /* samma dimning som prisutdelningen → ingen ljusstyrke-hopp när den lämnas */
   #ov-power .pw-wall { position: absolute; inset: 0; background: center / cover no-repeat; }
-  /* Ren tonad övergång (ingen zoom): kontrollrummet tonas ut medan den mörka väggen tonas upp. */
-  #ov-power .pw-room { animation: pw-room-out .9s ease both; }
-  #ov-power .pw-mork { opacity: 0; animation: pw-mork-in .9s ease both; }
-  @keyframes pw-room-out { from { opacity: 1; } to { opacity: 0; } }
-  @keyframes pw-mork-in { from { opacity: 0; } to { opacity: 1; } }
-  #ov-power .pw-lit { opacity: 0; animation: awfade 1.1s .9s ease both; }
+  /* Skärmarna släcks (ett mjukt dopp) → kort svart → mörka väggen tonas upp (rummet tänds) → kort paus → lagets emblem tonas upp.
+     Bara toningar, ingen zoom, ingen blinkning (Klara 2026-11-25). Tider: dopp 0–1,0 s · svart ~0,4 s · vägg 1,0–3,2 s · paus · emblem 3,7–5,1 s. */
+  #ov-power { background: #000; }
+  #ov-power .pw-room { animation: pw-room-dip 1s ease-in both; }
+  @keyframes pw-room-dip { 0% { filter: brightness(1); } 10% { filter: brightness(.3); } 20% { filter: brightness(.95); } 32% { filter: brightness(.25); } 42% { filter: brightness(.65); } 100% { filter: brightness(0); } }   /* två tydliga blinkningar, sedan släckt */
+  #ov-power .pw-mork { opacity: 0; animation: pw-fade 2.2s 1s ease-in-out both; }
+  @keyframes pw-fade { from { opacity: 0; } to { opacity: 1; } }
+  #ov-power .pw-lit { opacity: 0; animation: pw-fade 1.4s 3.7s ease-in-out both; }
   #ov-power .pw-dim { position: absolute; inset: 0; background: rgba(6,5,4,.34); }
   #ov-power.out { animation: pwout .5s ease both; pointer-events: none; }
   @keyframes pwout { from { opacity: 1; } to { opacity: 0; } }
   #ov-power .pw-ban { position: absolute; left: 50%; bottom: 150px; width: 1000px; transform: translateX(-50%); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 34px; padding: 26px 50px 26px 36px; border: 3px solid var(--acc); border-radius: 26px; text-align: left;
-    background: linear-gradient(90deg, rgba(14,12,8,.97), rgba(24,21,15,.96) 60%, rgba(14,12,8,.97)); box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 50px color-mix(in srgb, var(--acc) 26%, transparent); opacity: 0; animation: pwb-in .55s 1.3s cubic-bezier(.2,.9,.25,1) both; }
-  .pw-ban .bar { position: absolute; left: 24px; right: 24px; top: -3px; height: 6px; border-radius: 0 0 6px 6px; background: var(--acc); box-shadow: 0 0 20px var(--acc); transform-origin: left; animation: awb-bar .6s 1.5s cubic-bezier(.3,.8,.3,1) both; }
+    background: linear-gradient(90deg, rgba(14,12,8,.97), rgba(24,21,15,.96) 60%, rgba(14,12,8,.97)); box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 50px color-mix(in srgb, var(--acc) 26%, transparent); opacity: 0; animation: pwb-in .55s 4.1s cubic-bezier(.2,.9,.25,1) both; }
+  .pw-ban .bar { position: absolute; left: 24px; right: 24px; top: -3px; height: 6px; border-radius: 0 0 6px 6px; background: var(--acc); box-shadow: 0 0 20px var(--acc); transform-origin: left; animation: awb-bar .6s 4.3s cubic-bezier(.3,.8,.3,1) both; }
   .pw-ban .lg { position: relative; display: flex; }
-  .pw-ban .lg svg { position: relative; display: block; animation: awb-logo .5s 1.55s ease-out both; }
-  .pw-ban .lg .halo { position: absolute; inset: -18%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--acc) 42%, transparent), transparent 66%); animation: awb-halo 1s 1.6s ease-out both; }
+  .pw-ban .lg svg { position: relative; display: block; animation: awb-logo .5s 4.35s ease-out both; }
+  .pw-ban .lg .halo { position: absolute; inset: -18%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--acc) 42%, transparent), transparent 66%); animation: awb-halo 1s 4.4s ease-out both; }
   .pw-ban .info { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-  .pw-ban .tt { display: flex; flex-flow: row nowrap; align-items: center; gap: 14px; line-height: 1; color: var(--dim); animation: awb-up .45s 1.8s ease-out both; }
+  .pw-ban .tt { display: flex; flex-flow: row nowrap; align-items: center; gap: 14px; line-height: 1; color: var(--dim); animation: awb-up .45s 4.6s ease-out both; }
   .pw-ban .tt .ic { display: flex; flex: none; color: var(--acc); }
   .pw-ban .tt .t { font-size: 26px; letter-spacing: 2px; font-weight: 700; white-space: nowrap; }
-  .pw-ban .nm { font-size: 92px; font-weight: 800; line-height: 1.05; letter-spacing: .5px; animation: awb-name .55s 1.9s cubic-bezier(.2,.9,.3,1) both; }
-  .pw-ban .vl { display: flex; align-items: center; color: var(--acc); padding-left: 42px; border-left: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); animation: awb-up .45s 2.1s ease-out both; }
-  .pw-ban .you { display: inline-flex; align-items: center; gap: 12px; background: var(--acc); color: #14110b; font-weight: 800; font-size: 28px; letter-spacing: 3px; padding: 8px 22px; border-radius: 999px; align-self: flex-start; white-space: nowrap; animation: awb-up .45s 2.25s ease-out both; }
+  .pw-ban .nm { font-size: 92px; font-weight: 800; line-height: 1.05; letter-spacing: .5px; animation: awb-name .55s 4.7s cubic-bezier(.2,.9,.3,1) both; }
+  .pw-ban .vl { display: flex; align-items: center; color: var(--acc); padding-left: 42px; border-left: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); animation: awb-up .45s 4.9s ease-out both; }
+  .pw-ban .you { display: inline-flex; align-items: center; gap: 12px; background: var(--acc); color: #14110b; font-weight: 800; font-size: 28px; letter-spacing: 3px; padding: 8px 22px; border-radius: 999px; align-self: flex-start; white-space: nowrap; animation: awb-up .45s 5.05s ease-out both; }
   @keyframes pwb-in { from { opacity: 0; transform: translate(-50%, 46px); } to { opacity: 1; transform: translate(-50%, 0); } }
   @media (prefers-reduced-motion: reduce) { #ov-power .pw-room { display: none; } #ov-power .pw-mork, #ov-power .pw-lit, #ov-power .pw-ban, #ov-power .pw-ban * { animation: none !important; opacity: 1; } }
   /* Röstprickar: runda cirklar med lagnamn under (utan emblem), poppar till när rösten kommer */
@@ -441,7 +549,7 @@
   #ov-choose .propcard.pick { border-color: var(--gold); box-shadow: 0 0 30px rgba(201,169,79,.35); transform: scale(1.02); opacity: 1; filter: none; }
   #ov-choose .propcard.fade { opacity: .25; filter: grayscale(.8); }
   /* "Ring och påverka!" i har-ordet-banderollen */
-  .pw-ban .ring { font-size: 38px; font-weight: 700; letter-spacing: 2px; color: var(--acc); margin-top: -2px; animation: awb-up .45s 2.1s ease-out both; }
+  .pw-ban .ring { font-size: 38px; font-weight: 700; letter-spacing: 2px; color: var(--acc); margin-top: -2px; animation: awb-up .45s 4.9s ease-out both; }
   /* Resultat-popup */
   #ov-result { background: linear-gradient(rgba(6,5,4,.80), rgba(6,5,4,.88)); }
   #ov-result .rp { width: 1000px; padding: 34px 44px; border: 4px solid var(--acc); border-radius: 26px; background: linear-gradient(90deg, rgba(14,12,8,.97), rgba(24,21,15,.96)); box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 60px color-mix(in srgb, var(--acc) 30%, transparent); display: flex; flex-direction: column; gap: 26px; align-items: center; animation: rp-in .5s cubic-bezier(.2,.9,.25,1) both; }
@@ -612,21 +720,56 @@
   #tutveil { position: absolute; inset: 0; background: rgba(10, 9, 7, .72); z-index: 8; display: none; }
   .tut-focus { position: relative; z-index: 9; }
   .hand-locked .card.tut-vagg { opacity: 1; }
-  #tutbox { position: absolute; z-index: 13; display: none; max-width: 560px; background: var(--panel);
-      border: 4px solid var(--gold); border-radius: 18px; padding: 20px 24px; box-shadow: 0 10px 50px rgba(0,0,0,.7);
-      animation: tutpulse 1.9s ease-in-out infinite; }
-  @keyframes tutpulse { 0%,100% { box-shadow: 0 10px 50px rgba(0,0,0,.7), 0 0 0 0 rgba(201,169,79,0); } 50% { box-shadow: 0 10px 50px rgba(0,0,0,.7), 0 0 26px 3px rgba(201,169,79,.55); } }
-  #tutbox .txt { font-size: 30px; font-weight: 800; line-height: 1.35; }
-  #tutbox .footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+  #tutbox { position: absolute; z-index: 13; display: none; max-width: 620px; background: #2E2A1F;
+      border: 4px solid var(--gold); border-radius: 18px; padding: 20px 24px 16px; box-shadow: 0 10px 50px rgba(0,0,0,.7), 0 0 26px 3px rgba(201,169,79,.5); }
+  /* Övningsrutor (Klara 2026-11-25; design/tutorial-rutor-forslag.html): ikon + kort rad, vit text, räknare med guldprickar */
+  #tutbox .tb-row { display: flex; align-items: center; gap: 20px; }
+  #tutbox .ichip { flex: none; width: 76px; height: 76px; border-radius: 16px; background: rgba(201,169,79,.2); display: none; align-items: center; justify-content: center; }
+  #tutbox .txt { font-size: 36px; font-weight: 800; line-height: 1.25; color: var(--text); }
+  #tutbox .txt svg { width: 44px; height: 44px; vertical-align: middle; margin: 0 2px; }
+  #tutbox .txt b { font-family: var(--font-num); font-weight: 700; font-size: 52px; vertical-align: middle; }
+  #tutbox .txt .lbl { color: var(--gold); letter-spacing: 3px; text-transform: uppercase; font-size: 26px; margin-right: 8px; }
+  #tutbox .txt .per { font-size: 28px; color: var(--text); }
+  #tutbox .txt .sub { font-size: 28px; color: var(--text); margin-top: 4px; }
+  #tutbox .txt .arr { color: var(--gold); }
+  #tutbox .txt .neg { color: var(--led-red); } #tutbox .txt .pos { color: var(--led-green); }
+  #tutbox .txt .gld { color: #E8C96A; } #tutbox .txt .sil { color: #C9D3DC; }
+  #tutbox .footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 24px; }
   #tutbox .beatdots { display: flex; gap: 10px; }
-  #tutbox .beatdots i { width: 13px; height: 13px; border-radius: 50%; background: var(--panel2); border: 2px solid var(--edge2); }
-  #tutbox .beatdots i.on { background: var(--gold); border-color: var(--gold); }
-  #tutbox .skip { background: none; border: none; color: var(--dim); font: inherit; font-size: 15px;
-      font-weight: 800; letter-spacing: 1px; cursor: pointer; text-decoration: underline; }
+  #tutbox .beatdots i { width: 14px; height: 14px; border-radius: 50%; background: #1D1A13; border: 2px solid #6B5F3C; }
+  #tutbox .beatdots i.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 8px rgba(201,169,79,.7); }
   #tutbox .fbtns { display: flex; align-items: center; gap: 16px; }
-  #tutbox .tut-next { display: none; background: var(--gold); color: #241E0F; border: 0; border-radius: 10px;
-      font: inherit; font-size: 20px; font-weight: 800; letter-spacing: 1px; padding: 12px 26px; cursor: pointer; }
-  #tutbox .tut-next:active { transform: scale(0.96); }
+  #tutbox .tut-next { display: none; background: none; border: 0; color: var(--gold); font: inherit; font-size: 54px; font-weight: 800; line-height: 1; letter-spacing: -4px; padding: 0 4px; cursor: pointer; }   /* dubbelpil ››, stillastående (rörelse distraherar) */
+  #tutbox .tut-next:active { transform: scale(0.94); }
+  .endwrap.tut-focus .btn { animation: pulse 1.1s ease-in-out infinite; }   /* AVSLUTA ÅR lyser upp när övningsrutan pekar på den */
+  /* Pekande coach-hand i tutorialen (pekar på knapp/byggnad man ska trycka på). Scen-koordinater. */
+  #tut-block { position: absolute; inset: 0; z-index: 10; display: none; }   /* fångar användarklick under bygg-demon */
+  #tut-block.dim { background: rgba(10, 9, 7, .55); }                         /* Flash-konsekvens: nedsläckt + oklickbar */
+  /* Flash-coach: markera korten / BYT-knappen (lyser i kanten + pulserar) */
+  .coach-hl { animation: coach-hl 1.15s ease-in-out infinite; border-radius: 12px; position: relative; z-index: 9; }
+  @keyframes coach-hl {
+    0%, 100% { box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(201, 169, 79, .45); }
+    50%      { box-shadow: 0 0 0 3px var(--gold), 0 0 24px rgba(201, 169, 79, .85); }
+  }
+  @media (prefers-reduced-motion: reduce) { .coach-hl { animation: none; box-shadow: 0 0 0 3px var(--gold); } }
+  #tut-hand { position: absolute; z-index: 13; width: 92px; display: none; pointer-events: none;   /* över tutrutan (z13) via DOM-ordning → täcks inte av rutan */
+      transition: left .95s cubic-bezier(.4,0,.2,1), top .95s cubic-bezier(.4,0,.2,1), opacity .5s; }
+  #tut-hand .inner { display: block; width: 100%; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); }
+  #tut-hand .inner svg { display: block; width: 100%; height: auto; }
+  #tut-hand .inner svg .finger { transform-box: fill-box; transform-origin: 50% 100%; }   /* pivå vid knogen */
+  #tut-hand.down .inner { transform: rotate(180deg); }
+  #tut-hand.left .inner { transform: rotate(-90deg); }   /* fingret pekar åt vänster */
+  #tut-hand.fade { opacity: 0; }
+  /* KLICK = pekfingret böjs ~24% (kortas mot knogen), inte hela handen */
+  #tut-hand.tap .inner svg .finger { animation: tuthand-bend .36s ease; }
+  #tut-hand.bob .inner      { animation: tuthand-bob 1.1s ease-in-out infinite; }
+  #tut-hand.down.bob .inner { animation: tuthand-bob-d 1.1s ease-in-out infinite; }
+  #tut-hand.left.bob .inner { animation: tuthand-bob-l 1.1s ease-in-out infinite; }
+  @keyframes tuthand-bend   { 0%,100% { transform: scaleY(1); }                       45% { transform: scaleY(0.76); } }
+  @keyframes tuthand-bob    { 0%,100% { transform: translateY(12px); }                 50% { transform: translateY(0); } }
+  @keyframes tuthand-bob-d  { 0%,100% { transform: rotate(180deg) translateY(12px); }  50% { transform: rotate(180deg) translateY(0); } }
+  @keyframes tuthand-bob-l  { 0%,100% { transform: rotate(-90deg) translateY(12px); }  50% { transform: rotate(-90deg) translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { #tut-hand .inner, #tut-hand .inner svg .finger { animation: none !important; } #tut-hand { transition: none !important; } }
   #tutbarrier { position: absolute; inset: 0; background: rgba(10, 9, 7, .85); z-index: 14; display: none;
       align-items: center; justify-content: center; flex-direction: column; gap: 18px; }
   #tutbarrier .t { font-size: 34px; font-weight: 800; letter-spacing: 2px; }
@@ -778,8 +921,8 @@
       <div class="panel">
         <div class="melogo"><span id="melogo"></span><div><div class="nm" id="mename">—</div><div class="du">DITT LAG</div></div></div>
         <div class="res">
-          <div class="resbox cur-p" id="box-pengar"><span class="ic"></span><div><span class="lbl">Pengar</span><span class="v" id="me-pengar">0</span></div></div>
-          <div class="resbox cur-m" id="box-material"><span class="ic"></span><div><span class="lbl">Material</span><span class="v" id="me-material">0</span></div></div>
+          <div class="resbox cur-p" id="box-pengar"><span class="lbl">PENGAR</span><span class="ic"></span><span class="v" id="me-pengar">0</span></div>
+          <div class="resbox cur-m" id="box-material"><span class="lbl">MATERIAL</span><span class="ic"></span><span class="v" id="me-material">0</span></div>
         </div>
         <div class="inc" id="me-inc"></div>
         <div class="sektor" id="me-sektor"></div>
@@ -793,7 +936,7 @@
     <aside class="col-others">
       <div class="panel toplist"><h3 id="toplist-h">TOPPLISTA</h3><div id="toplist"></div></div>
       <div class="panel klimat-mirror"><div id="reg-klimat-mirror"></div></div>
-      <div class="panel logg"><h3>📜 HÄNDELSER PÅ ÖN</h3><div id="logg" class="logglist"></div></div>
+      <div class="panel logg"><h3 id="logg-h">HÄNDELSER PÅ ÖN</h3><div id="logg" class="logglist"></div></div>
     </aside>
   </div>
 
@@ -832,6 +975,8 @@
     <div id="roll-du" style="font-size:40px;font-weight:800;letter-spacing:2px;color:#EFE8D6"></div>
     <div id="roll-tx" style="font-size:26px;color:var(--text);max-width:720px;line-height:1.5"></div>
   </div>
+  <!-- INTRO efter introfilmen: kartskärm → emblemvägg "DU ÄR" → "ERT UPPDRAG" (fylls av runIntro i src/ui.js) -->
+  <div class="overlay" id="ov-intro"></div>
   <!-- Mål-skärm (tutorial-intro ruta 1): bli borgmästare -->
   <div class="overlay" id="ov-mission" style="background:rgba(8,7,5,.95);z-index:16;flex-direction:column;gap:16px;text-align:center">
     <img src="assets/intro/borgmastare.png" alt="" style="width:min(680px,72vw);height:auto;border-radius:16px;border:3px solid var(--edge2);box-shadow:0 10px 40px #000">
@@ -878,18 +1023,19 @@
   </div></div>
 
   <!-- Byteshandel -->
-  <div class="overlay" id="ov-trade"><div class="modal" style="width:820px">
-    <h2><span data-ico="byt" data-sz="22"></span> BYT VALUTOR</h2>
-    <div class="sub">Du ger <span id="trade-give-lbl"></span> och får <span id="trade-get-lbl"></span> — välj lag och mängd</div>
+  <div class="overlay" id="ov-trade"><div class="modal tm">
+    <div class="hd"><h2><span data-ico="byt" data-sz="40"></span> BYT VALUTOR</h2><div class="sub">1 · Välj lag &nbsp;&nbsp; 2 · Välj mängd</div></div>
+    <span id="trade-give-lbl" hidden></span><span id="trade-get-lbl" hidden></span>
     <div class="partnerrow" id="partners"></div>
     <div class="tradegrid">
       <div class="tradebox"><div class="who" id="tb-give">DU GER</div>
         <div class="stepper"><button id="give-minus">−</button><span class="amt" id="give-amt">10</span><button id="give-plus">＋</button></div></div>
-      <button class="tradearrow" id="trade-swap" title="Byt håll">⇄</button>
+      <button class="tradearrow" id="trade-swap" title="Byt håll"><span data-ico="byt" data-sz="40"></span></button>
       <div class="tradebox"><div class="who" id="tb-get">DU FÅR</div>
         <div class="stepper"><button id="get-minus">−</button><span class="amt" id="get-amt">10</span><button id="get-plus">＋</button></div></div>
     </div>
-    <div class="votebtns"><button class="ja" id="btn-trade-go">FÖRESLÅ BYTET</button><button class="nej" id="btn-trade-cancel">AVBRYT</button></div>
+    <div class="votebtns" id="trade-btns"><button class="ja" id="btn-trade-go"></button><button class="nej" id="btn-trade-cancel"></button></div>
+    <div class="tradewait" id="trade-wait"><span id="trade-wait-logo"></span><div class="wt" id="trade-wait-txt"></div><button class="nej" id="btn-trade-cancel2"></button></div>
   </div></div>
 
   <!-- Välj förslag -->
@@ -943,11 +1089,13 @@
   </div></div>
 
   <!-- Inkommande bytesförfrågan (online) -->
-  <div class="overlay" id="ov-tradein"><div class="modal" style="width:680px">
-    <h2><span data-ico="byt" data-sz="22"></span> BYTESFÖRFRÅGAN</h2>
-    <div class="propcard"><div class="pic" data-ico="byt" data-sz="56"></div><div class="tx" id="tradein-tx"></div></div>
-    <div class="votebtns"><button class="ja" id="btn-tradein-ja">ACCEPTERA</button><button class="nej" id="btn-tradein-nej">TACKA NEJ</button></div>
+  <div class="overlay" id="ov-tradein"><div class="modal tin">
+    <div class="who2"><span id="tradein-logo"></span><div><div class="tt">BYTESFÖRFRÅGAN FRÅN</div><div class="nm2" id="tradein-name"></div></div></div>
+    <div class="tswap"><div class="side"><div class="sl">DU FÅR</div><div class="sv" id="tin-get"></div></div><span class="mid" id="tin-mid"></span><div class="side"><div class="sl">DU GER</div><div class="sv" id="tin-give"></div></div></div>
+    <div class="votebtns big"><button class="ja" id="btn-tradein-ja"></button><button class="nej" id="btn-tradein-nej"></button></div>
   </div></div>
+  <!-- Resultat av bytesförfrågan: stor BYTT!/NEJ TACK-ruta mitt på skärmen -->
+  <div class="overlay" id="ov-traderes"><div class="modal res" id="traderes-card"></div></div>
 
   <!-- Register -->
   <div class="slideover" id="ov-register">
@@ -959,14 +1107,16 @@
   <!-- Runda 0: tutorial-lagret -->
   <div id="tutveil"></div>
   <div id="tutbox">
-    <div class="txt" id="tut-txt"></div>
+    <div class="tb-row"><span class="ichip" id="tut-ic"></span><div class="txt" id="tut-txt"></div></div>
     <div class="footer">
       <div class="beatdots" id="tut-dots"><i></i><i></i><i></i><i></i></div>
       <div class="fbtns">
-        <button class="tut-next" id="tut-next">NÄSTA ›</button>
+        <button class="tut-next" id="tut-next" aria-label="Nästa">››</button>
       </div>
     </div>
   </div>
+  <div id="tut-block"></div>
+  <div id="tut-hand"><div class="inner"></div></div>
   <div id="tutbarrier">
     <div class="t">VÄNTAR PÅ DE ANDRA…</div>
     <div class="pdots" id="tutbarrier-dots" style="display:flex"></div>
