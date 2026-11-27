@@ -289,6 +289,7 @@ let vantarLag = false;        // väntläge efter tutorial: visar "X/Y lag klara
 let lastTutReady = null;      // senaste tutReadyUpdate {klara, humans} från servern
 const _tutAborters = [];      // väntare som väcks när tutorialen ska avbrytas
 let tutFick = 0;              // tutorial: belopp spelaren FICK i sitt senaste byte (→ "Du fick +N" i övningen)
+let tutOhShown = null;        // tutorial: öhälso-värdet som konsekvens-rutan redan animerat baren till (så bokslutet inte dubbel-animerar)
 // Obemannad skärm i tutorialen: mäts PÅ skärmen (ingen beröring alls på 90 s) eftersom servern knappt får
 // meddelanden under tutorialen. Når gränsen → berätta för servern, som gör laget till bot så gruppens
 // nedräkning inte blockeras. Bara i drift (ONLINE); solo/lokalt behöver det inte.
@@ -399,6 +400,8 @@ game.on('income', p => run(async () => {
 }));
 
 game.on('ohalsa', p => run(async () => {
+  // TUTORIAL-ONLY: konsekvens-rutan har redan sänkt baren till detta värde → bokslutet ska inte animera om det.
+  if (tutRunning && tutOhShown != null && p.value === tutOhShown) { tutOhShown = null; return; }
   updateOh(p);
   if (resolving) await delay(1300);
 }));
@@ -2544,18 +2547,32 @@ function tutResolver(myLag) {
   };
   return txt => (txt || '').replace(/\{(\w+)\}/g, (m, k) => (k in map ? map[k] : m));
 }
+// TUTORIAL-ONLY: sänk öhälsobaren med det byggda kortets oh PRECIS när konsekvens-rutan poppar upp.
+// (I övningsåret finns bara ett bygge + inga händelser → värdet = bokslutets. Bokslutets ohalsa-event
+//  med samma värde suppas i ohalsa-handlern så baren aldrig faller två gånger.) Rör inte riktiga spelet.
+function tutRevealOh(myLag) {
+  const built = handFor(myLag).find(c => c.tier === picked) || handFor(myLag)[0];
+  if (!built || typeof built.oh !== 'number') return;
+  const target = (E().getState().oh || 0) + built.oh;
+  tutOhShown = target;
+  updateOh({ value: target, mode: ohMode(target), delta: built.oh });
+}
 // until-villkor (namn → löfte som resolvar när villkoret uppfylls).
 function tutUntil(name, myLag) {
   switch (name) {
     case 'build':     return tutOnce('build', p => p.teamId === myLag);
     case 'tradeOpen': return tutWaitP(() => $('ov-trade').classList.contains('open'));
     case 'tradeDone': return tutOnce('trade', p => p.from === myLag || p.to === myLag);
-    case 'buildingInfo': return new Promise(res => {          // klick på en byggnad → steget klart direkt (infon stängs efter 3,5 s)
+    case 'buildingInfo': return new Promise(res => {          // klick på en byggnad → info-rutan syns UPPLYST ~2 s, sedan mörk + stängs + nästa steg
       const h = e => {
         if (!e.target.closest?.('g[data-building]')) return;
         map.svg.removeEventListener('click', h, true);
-        res();                                                  // rutan försvinner direkt vid tryck på byggnaden
-        setTimeout(() => map.svg.dispatchEvent(new MouseEvent('click', { bubbles: true })), 3500);   // infoRutan stängs av sig själv efter en stund
+        // Släck INTE skärmen direkt: låt info-rutan synas ~2 s medan kartan fortfarande är upplyst,
+        // stäng den sedan och resolva → skärmen dimmar och "Ring de andra lagen" tar vid.
+        setTimeout(() => {
+          map.svg.dispatchEvent(new MouseEvent('click', { bubbles: true }));   // stäng info-rutan
+          res();                                                                // → nästa steg (telefon) dimmar skärmen
+        }, 2000);
       };
       map.svg.addEventListener('click', h, true);
     });
@@ -2723,6 +2740,7 @@ async function runTutStep(step, myLag) {
         return;
       }
       const anc = tutAnchor(step.ankare);
+      if (step.ohReveal) tutRevealOh(myLag);                    // baren sjunker i takt med att konsekvens-rutan poppar upp
       await tutSay({ ix: step.ix || 0, txt: resolve(step.txt), ic: step.ic, x: anc.x, y: anc.y, focus: anc.sel, hold: !!step.hold });
       return;
     }
@@ -2739,7 +2757,7 @@ async function runTutStep(step, myLag) {
 
 async function runTutorial() {
   if (tutRunning) return;                      // redan igång (late-join/claim kan trigga dubbelt)
-  tutRunning = true; tutAbort = false; tutInCeremony = false; _tutAborters.length = 0;
+  tutRunning = true; tutAbort = false; tutInCeremony = false; _tutAborters.length = 0; tutOhShown = null;
   startTutIdleWatch();                          // obemannad skärm (90 s utan beröring) → bot, så gruppen inte fastnar
   game.enterTutorial?.();                       // RUMS-FLÖDE: markera tutorial-fasen för sent anslutna
   const myLag = ONLINE ? realGame.me : (manifest.config?.humanTeam || 'aker');

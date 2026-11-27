@@ -112,7 +112,7 @@ export const TUTORIALS = {
       // 2) SE KONSEKVENSEN
       { typ: 'say', ix: 0, ankare: 'prodBox',
         txt: '<span class="lbl">Byggt!</span> {inkomstK} {prodIco} <span class="per">/ år</span>' },
-      { typ: 'say', ix: 0, ankare: 'topbar',
+      { typ: 'say', ix: 0, ankare: 'topbar', ohReveal: true,     // TUTORIAL-ONLY: baren sjunker NÄR den här rutan poppar (ej vid bokslutet)
         txt: '{konsekvens}' },                                  // tolken bygger siffra + ikon + "Alla delar…" ur byggt kort
 
       { typ: 'barrier', n: 1 },
@@ -129,7 +129,7 @@ export const TUTORIALS = {
       { typ: 'pause', ms: 500 },
       // Ingen automatisk handrörelse: ruta med handikon som väntar på att man trycker på en byggnad. Handen pekar först efter 10 s utan tryck (som övriga steg).
       { typ: 'beat', ix: 1, ankare: 'karta', ic: 'hand', txt: 'Tryck på en byggnad',
-        until: 'buildingInfo', autoDo: 'visaByggnad', after: 3000, nudge: 'g[data-building][style*="pointer"]' },
+        until: 'buildingInfo', autoDo: 'visaByggnad', nudge: 'g[data-building][style*="pointer"]' },   // 2 s upplyst info-ruta sköts i buildingInfo
       { typ: 'say', ix: 2, ankare: 'telefon', ic: 'telefon',
         txt: 'Ring de andra lagen' },
 
