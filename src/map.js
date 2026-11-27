@@ -142,14 +142,15 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   world.appendChild(buildLayer);
 
   // — Lag-markörer i havet (badge + namn) —
+  const MARK = 156;   // större företagsikon vid kartans kanter (var 88 → 124 → 156)
   for (const [id, [x, y]] of Object.entries(TEAM_MARKERS)) {
     const g = el('g');
-    g.innerHTML = logoSVG(id, 88);
+    g.innerHTML = logoSVG(id, MARK);
     const badge = g.firstElementChild;
-    badge.setAttribute('x', x - 44);
-    badge.setAttribute('y', y - 44);
+    badge.setAttribute('x', x - MARK / 2);
+    badge.setAttribute('y', y - MARK / 2);
     const t = el('text', {
-      x, y: y + 70, 'text-anchor': 'middle', 'font-size': 23, 'font-weight': 800,
+      x, y: y + MARK / 2 + 26, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 800,
       fill: '#EFE8D6', 'letter-spacing': '2',
       style: 'paint-order: stroke; stroke: #1C4E60; stroke-width: 6px;',
     });
