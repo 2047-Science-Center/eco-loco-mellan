@@ -85,6 +85,12 @@ export function attachRigg(engine, opts = {}) {
   // Händelse-ljud (auto) + förslags-/frestelse-ljud (rost) på centralhögtalaren.
   engine.on('event',        p => cue(p.ljud));
   engine.on('proposalOpened', p => cue(p.event?.ljud || 'proposal_open'));
+  // Beslut att fatta (sponsrat / dilemma) → varm guldpuls så länge frågan är öppen.
+  const beslut = (id, on) => P('ecoloco/rigg/handelse', { id, ljus: on ? 'val' : 'av', lag: [] });
+  engine.on('proposalOpened',   p => { if (p.type === 'event') beslut(p.event?.id, true); });
+  engine.on('proposalResolved', p => { if (p.type === 'event') beslut(p.event?.id, false); });
+  engine.on('dilemmaOpened',    p => beslut(p.id || p.dilemma?.id, true));
+  engine.on('dilemmaResolved',  p => beslut(p.id || p.dilemma?.id, false));
 
   // Mappning: skärmens pris-typ → riggens award-typ (färg/sida sätts av hjärnan/Blocks).
   const RIG_TYP = { led: 'foretagare', eld: 'eldsjal', sab: 'sabotor' };

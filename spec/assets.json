@@ -337,6 +337,32 @@
       }
     ]
   },
+  "handelser": {
+    "_readme": "Ljud + riggljus per händelse-id. ljud = filnamn (utan .mp3) i assets/audio/rigg/. ljus = stor | liten | hela | eko | bra. Alla händelseljud spelas på centralhögtalaren.",
+    "aker_major": { "ljud": "event_storm", "ljus": "stor" },
+    "aker_minor": { "ljud": "event_torka", "ljus": "liten" },
+    "skog_major": { "ljud": "event_storm", "ljus": "stor" },
+    "skog_minor": { "ljud": "event_torka", "ljus": "liten" },
+    "tundra_major": { "ljud": "event_storm", "ljus": "stor" },
+    "tundra_minor": { "ljud": "event_torka", "ljus": "liten" },
+    "stad_major": { "ljud": "event_storm", "ljus": "stor" },
+    "stad_minor": { "ljud": "event_torka", "ljus": "liten" },
+    "storm": { "ljud": "event_storm", "ljus": "hela" },
+    "varmebolja": { "ljud": "event_torka", "ljus": "hela" },
+    "resursbrist": { "ljud": "happening", "ljus": "hela" },
+    "uppror": { "ljud": "event_uppror", "ljus": "hela" },
+    "naturenblomstrar": { "ljud": "event_godskord", "ljus": "bra" },
+    "miljolyft": { "ljud": "event_gronafonden", "ljus": "bra" },
+    "gm_marknadskrasch": { "ljud": "event_marknadskrasch", "ljus": "eko" },
+    "gm_leveransstopp": { "ljud": "event_marknadskrasch", "ljus": "eko" },
+    "gm_braskord": { "ljud": "event_godskord", "ljus": "bra" },
+    "gm_ekonomisktstod": { "ljud": "event_godskord", "ljus": "bra" },
+    "gronafonden": { "ljud": "event_gronafonden", "ljus": "bra" },
+    "gronomstallning": { "ljud": "event_gronafonden", "ljus": "bra" },
+    "framtidsvisionar": { "ljud": "event_gronafonden", "ljus": "bra" },
+    "expansion": { "ljud": "event_godskord", "ljus": "bra" },
+    "gemensamsatsning": { "ljud": "event_godskord", "ljus": "bra" }
+  },
   "audio": {
     "_readme": "Skärm-ljud (assets/audio/) = torr interaktions-/feedback-ljud som spelas i webbläsaren. Central-ljud (assets/audio/rigg/) = all 'show'-ljudbild; spelas INTE på skärmen utan på centralhögtalaren av tools/hjarna-stubb.py (via rigg-cues). Mp3-filerna genereras separat.",
     "build_smutsig": "assets/audio/build_smutsig.mp3",

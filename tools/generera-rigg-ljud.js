@@ -72,9 +72,36 @@ const SPEC = [
   ['event_sponsrat',      'the two-note authority ident chime, then a smooth slightly too-polished corporate jingle motif with a shimmer of coins over a low uneasy drone, seductive and uncanny, no full resolution', 6, false],
   ['event_gronafonden',   'the two-note authority ident chime, then a gentle rising three-note ceremonial tone with a soft shimmer and a quiet wind-turbine hum, dignified hopeful calm, slow graceful fade', 5, false],
   ['event_marknadskrasch','the two-note authority ident chime, then a rapid telegraph clatter accelerating and collapsing into a flat falling tone, an institutional buzzer and a descending sub-drone, cold bureaucratic dread, abrupt soft end', 6, false],
+
+  // ——— Omgjorda händelseljud 2026-11-27 (ett per händelse-id). Generera BARA dem:  --bara=ev_
+  // När filerna finns: byt "ljud" i spec/assets.json → handelser till ev_<id>.
+  ['ev_aker_major', 'a dry hot wind over cracked soil, brittle crops snapping, a deep drone sinking, serious and dark, short fade out', 5, false],
+  ['ev_aker_minor', 'the last drops from an empty water pipe, hollow gurgle fading into dry wind, serious and dark, short fade out', 4, false],
+  ['ev_skog_major', 'a large forest fire roaring and crackling, heavy timber falling, one distant warning bell, serious and dark, short fade out', 6, false],
+  ['ev_skog_minor', 'a dense swarm of insects droning, gnawing and ticking inside dry wood, uneasy, serious and dark, short fade out', 4, false],
+  ['ev_tundra_major', 'a heavy landslide, frozen ground cracking, rocks tumbling, a deep earth rumble, serious and dark, short fade out', 6, false],
+  ['ev_tundra_minor', 'thick oil leaking and bubbling from a rusty pipe, low hollow metal groan, serious and dark, short fade out', 4, false],
+  ['ev_stad_major', 'a city power failure, large generators whining down into silence, heavy relay clunk, serious and dark, short fade out', 5, false],
+  ['ev_stad_minor', 'an overloaded transformer humming louder, electric sparks and crackle, serious and dark, short fade out', 4, false],
+  ['ev_storm', 'violent coastal storm, howling wind gusts, heavy rain and close rolling thunder, serious and dark, short fade out', 6, false],
+  ['ev_varmebolja', 'oppressive heatwave, shimmering high drone, slow cicadas and creaking metal, serious and dark, short fade out', 5, false],
+  ['ev_resursbrist', 'heavy machinery slowing and stopping, hollow empty silo resonance, low drone, serious and dark, short fade out', 4, false],
+  ['ev_uppror', 'a large angry crowd far away, fists banging on metal, restrained and dark, serious and dark, short fade out', 6, false],
+  ['ev_naturenblomstrar', 'calm sea waves, fish splashing, distant gulls over a warm low drone, serious and dark, short fade out', 5, false],
+  ['ev_miljolyft', 'fresh wind through leaves, birdsong returning, a slow warm low swell, serious and dark, short fade out', 5, false],
+  ['ev_gm_marknadskrasch', 'frantic ticker tape clatter collapsing into a long falling low tone, serious and dark, short fade out', 5, false],
+  ['ev_gm_leveransstopp', 'truck brakes screeching to a halt, heavy cargo door slamming shut, low drone, serious and dark, short fade out', 4, false],
+  ['ev_gm_braskord', 'full grain pouring into a wooden silo, warm bell, soft wind, serious and dark, short fade out', 5, false],
+  ['ev_gm_ekonomisktstod', 'heavy coins dropped on a desk and a firm rubber stamp, warm low swell, serious and dark, short fade out', 4, false],
+  ['ev_gronafonden', 'a wind turbine whooshing, soft coins, a warm low rising swell, serious and dark, short fade out', 4, false],
+  ['ev_gronomstallning', 'old engine shutting off, replaced by quiet turbine hum and birds, serious and dark, short fade out', 5, false],
+  ['ev_framtidsvisionar', 'slow hopeful low swell opening into airy shimmer, dignified, serious and dark, short fade out', 4, false],
+  ['ev_expansion', 'construction hammering and a crane winch, a firm warm low swell, serious and dark, short fade out', 4, false],
+  ['ev_gemensamsatsning', 'four workers hammering in unison, resolving into one warm low chord swell, serious and dark, short fade out', 5, false],
 ];
 
-const LJUD = SPEC.map(([namn, desc, dur, loop]) => [namn, `${desc}, ${PREFIX}`, dur, loop]);
+const BARA = (process.argv.find(a => a.startsWith('--bara=')) || '').slice(7);
+const LJUD = SPEC.filter(([n]) => n.startsWith(BARA)).map(([namn, desc, dur, loop]) => [namn, `${desc}, ${PREFIX}`, dur, loop]);
 
 // Guard: ElevenLabs tar max 450 tecken/prompt.
 console.log(`PREFIX (${PREFIX.length} tecken)`);

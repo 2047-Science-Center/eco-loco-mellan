@@ -116,6 +116,12 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
 - **Loggen** (`logg()` i `src/ui.js`, rad `.loggrad.lr`): fast radformat `[laglogga] [typikon] [namn] [utfall]`, 52 px, inga meningar. Bygge = logga + bygg-ikon + namn + öns hälsa
   (röd/grön + ikon); byte = logga −X ikon ⇄ +Y ikon logga; förslag/dilemma = **ingen laglogga**, bara förslagets egen ikon + namn + ✓/✕ och röster (A/B-cirkel för dilemma).
   Vänsterpanelen: stora pengar/material-rutor (ikon 64 px, guld/silver) + "DU GÖR / DU SAKNAR"-rader med ikon.
+- **Film → intro:** vid `trailerDone` ligger filmens sista bild kvar (`doljTrailer` river efter 1,7 s) medan `runIntro` tonar in svart ovanpå (1,6 s) och sedan tonar fram kontrollrummet.
+  Utan intro (Flash) tonar filmen i stället ut (1,4 s). Klipp aldrig tvärt mellan film och spel.
+- **Händelsernas ljud + ljus** styrs av tabellen `handelser` i `spec/assets.json`. Servern sänder `ecoloco/rigg/handelse` {id, ljus, lag} + ljudet på `rigg/ljud`;
+  alltid centralt. Gäller händelsen ett lag lyser lagets sida och pilen pekar mot den bänken. Rött/blandare = endast öhälsokrisen (områdeskriser går i orange).
+- **Introts ljud:** bänken spelar `relief` ("DU ÄR"), `ui_tick` per uppdragssteg och `round_start` in i övningsåret; centralt (`ecoloco/rigg/intro` 1/0/vanta):
+  `intro_badd.mp3` + `event_ident` vid kronan, `soundscape_1` medan man väntar på de andra. Nedräkningen är oförändrad.
 - Händelse-/dilemma-bilder: `assets/event_<id>.png` (16:9) + `assets/dilemma/<id>.png`; stilguide `design/HANDELSE-VISUELL-STILGUIDE.md`.
 
 ### Karta/seating

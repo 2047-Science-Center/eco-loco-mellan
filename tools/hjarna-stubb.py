@@ -7,7 +7,7 @@
 # Noll pip-beroenden: mosquitto_sub/pub (installerat) + afplay (macOS).
 #   BROKER=localhost ./tools/hjarna-stubb.py
 
-import subprocess, json, os, threading, time, sys, shutil
+import subprocess, json, os, threading, time, sys, shutil, itertools
 
 BROKER = os.environ.get("BROKER", "localhost")
 PORT   = os.environ.get("PORT", "1883")
@@ -208,7 +208,7 @@ def apply_ohalsa(payload):
     global cur_mode, last_oh
     last_oh = payload
     m = oh_mode(payload)
-    if not crisis_active and not round_flourish_active:   # KRIS/NY-RUNDA-puls äger LED-listen → rör ej looken (ohalsa kommer direkt efter scen='runda')
+    if not crisis_active and not round_flourish_active and not event_active:   # KRIS/NY-RUNDA/HÄNDELSE äger LED-listen → rör ej looken (ohalsa kommer direkt efter scen='runda')
         set_fx("none"); set_all(MODE_LOOK[m]); spots_off()
     set_ambience(amb_manual or AMB_FILE.get(m))  # manuell preset vinner; annars följ öhälso-läget (loopar vidare även i kris)
     if m != cur_mode:
@@ -229,14 +229,14 @@ def start_round_flourish():
     set_fx("none"); spots_off(); set_all(OFF)
     # FAS 2 (+0,6 s): NY RUNDA → ljud + guldljus (sweep/puls)
     def _fas_ny_runda():
-        if crisis_active: return
+        if crisis_active or event_active: return
         play("round_start")                     # ett enda round_start-ljud, vid RÄTT tillfälle (ej längre från rigg.js roundStart)
         set_fx("sweep", speed=70); set_all(ROUND_GOLD)   # Blocks sveper guld; stubben pulsar guld
     # FAS 3 (+1,8 s): TILLBAKA TILL ÖHÄLSA → rundans vanliga look
     def _fas_ohalsa():
         global round_flourish_active
         round_flourish_active = False
-        if crisis_active: return
+        if crisis_active or event_active: return
         set_fx("none")
         if last_oh is not None: apply_ohalsa(last_oh)
         else: set_all(MODE_LOOK["neutralt"])
@@ -250,6 +250,7 @@ def start_round_flourish():
 
 def apply_scen(payload):
     global cur_mode, amb_manual
+    event_stop(); intro_stop()
     if payload == "attract":
         cur_mode = None; amb_manual = None; set_ambience("musik_attract.mp3")   # attract-MUSIK (ny grupp startar rent)
         if not crisis_active: set_fx("none"); set_all(ATTRACT_LOOK); spots_off()
@@ -272,6 +273,7 @@ def apply_scen(payload):
 def apply_kris(payload):
     global crisis_active, crisis_timer
     if payload == "1":
+        event_stop()
         crisis_active = True
         set_blandare(True)
         set_fx("none"); set_all(KRIS_LOOK); spots_off()
@@ -294,6 +296,7 @@ def apply_kris(payload):
 def apply_paus(payload):
     global prev_sides, prev_spots
     if payload == "1":
+        event_stop()
         prev_sides = dict(last_sides); prev_spots = dict(last_spots)   # spara exakt vad som visas nu (pris/runda)
         set_all(PAUS_LOOK); set_fx("wave", 15); spots_off(); play("paus")
     else:
@@ -314,6 +317,7 @@ def apply_paus(payload):
 # Håller tills nästa scen-cue (slutdel/attract). Spelar i BÅDA lägena (ej gatad).
 def apply_final(payload):
     global crisis_active, round_flourish_active
+    event_stop(); intro_stop()
     crisis_active = False                     # ev. kvarvarande kris släpper → finalen äger LED-listen
     round_flourish_active = False             # avbryt ev. pågående rund-sekvens
     try:
@@ -358,6 +362,7 @@ def apply_award(payload):
 def reset_to_auto():
     global master, crisis_active, crisis_timer, amb_manual
     master = False
+    event_stop(); intro_stop()
     crisis_active = False
     if crisis_timer is not None:
         crisis_timer.cancel(); crisis_timer = None
@@ -399,6 +404,7 @@ def _chase_worker():
             if ceremoni_stop.wait(0.33): return
 def apply_ceremoni(payload):
     global ceremoni_stop
+    if payload == "countdown": intro_stop()
     if payload == "countdown":        # spelstart: dramatisk nedräkning (tickande klocka + riser) + LED-chase (kulminerar i climax)
         stop_ambience(); play("countdown_start")   # mer dramatisk än gamla "spanning"; spanning.mp3 ligger kvar som reserv
         ceremoni_stop = threading.Event()
@@ -409,6 +415,92 @@ def apply_ceremoni(payload):
         threading.Timer(3.0, lambda: apply_scen("runda")).start()
     elif payload == "runda1":         # skärmen bytte till runda 1 — säkra att chase är stoppad (vita ljuset hålls av climax-timern)
         ceremoni_stop.set()
+
+# ---- HÄNDELSER (ecoloco/rigg/handelse {id, ljus, lag}) — ljusmönstren Blocks sen implementerar ----
+# stor = lagets sida blinkar djup orange + spot · liten = lagets sida pulserar gulorange · hela = kallt blåvitt
+# flimmer · eko = sidorna tappar ljuset i tur och ordning · bra = grönt (lagets sida, annars våg runt alla) ·
+# val = varm guldpuls tills "av". Rött är reserverat för öhälsokrisen (apply_kris).
+event_active = False
+event_stopflag = threading.Event()
+EVENT_SEK = {"stor": 8, "liten": 4, "hela": 6, "eko": 6, "bra": 6, "val": 90}   # val: släcks av "av" (90 s = nödstopp)
+
+def event_stop(restore=False):
+    global event_active
+    if not event_active: return
+    event_stopflag.set(); event_active = False
+    set_fx("none"); spots_off()
+    if restore and last_oh is not None: apply_ohalsa(last_oh)
+
+def _event_worker(ljus, sidor, stop):
+    def led(n, look):
+        if not stop.is_set(): set_side(n, look)
+    hit = sidor or [1, 2, 3, 4]
+    slut = time.time() + EVENT_SEK[ljus]
+    if ljus in ("stor", "liten"):
+        look = {"h": 18, "s": 100, "v": 100, "blink": 70} if ljus == "stor" else {"h": 38, "s": 100, "v": 90, "puls": 55}
+        for n in (1, 2, 3, 4):
+            led(n, look if n in hit else {"h": look["h"], "s": 90, "v": 8})
+            if sidor and not stop.is_set(): set_spot(n, n in hit)
+    elif ljus == "bra":
+        for n in (1, 2, 3, 4):
+            led(n, {"h": 130, "s": 100, "v": 100, "puls": 55} if n in hit else {"h": 130, "s": 70, "v": 12})
+        if len(hit) == 4: set_fx("wave", 35)
+        elif len(hit) == 1: set_spot(hit[0], True)      # pilen pekar ut vinnarens bänk
+    elif ljus == "val":
+        for n in (1, 2, 3, 4): led(n, {"h": 45, "s": 70, "v": 75, "puls": 30})
+    elif ljus == "hela":
+        for v in itertools.cycle((100, 18, 70, 15, 25, 90, 20, 20)):
+            for n in (1, 2, 3, 4): led(n, {"h": 215, "s": 30 if v > 50 else 70, "v": v})
+            if time.time() >= slut or stop.wait(0.22): break
+    elif ljus == "eko":
+        pa, av = {"h": 45, "s": 85, "v": 80}, {"h": 45, "s": 85, "v": 6}
+        for n in (1, 2, 3, 4): led(n, pa)
+        for look in itertools.cycle((av, pa)):
+            for n in (1, 2, 3, 4):
+                if time.time() >= slut or stop.wait(0.4): break
+                led(n, look)
+            if time.time() >= slut or stop.is_set(): break
+    if not stop.wait(max(0, slut - time.time())): event_stop(restore=True)
+
+def apply_handelse(payload):
+    global event_active, event_stopflag, round_flourish_active
+    d = json.loads(payload); ljus = d.get("ljus")
+    if ljus == "av": event_stop(restore=True); return
+    if ljus not in EVENT_SEK or crisis_active: return
+    event_stop()
+    for t in round_flourish_timer: t.cancel()
+    round_flourish_active = False
+    event_active = True; event_stopflag = threading.Event()
+    set_fx("none"); spots_off()
+    sidor = [LAG_SIDE[l] for l in (d.get("lag") or []) if l in LAG_SIDE]
+    if ljus in ("hela", "eko", "val"): sidor = []
+    threading.Thread(target=_event_worker, args=(ljus, sidor, event_stopflag), daemon=True).start()
+
+# ---- INTRO (ecoloco/rigg/intro): "1" = musikbädd (intro_badd.mp3, tonar ut själv) + signaturen vid kronan ·
+# "0" = stoppa · "vanta" = låg mörk bädd medan man väntar på de andra lagen (stoppas av nedräkningen) ----
+intro_proc = None
+intro_timer = None
+intro_vantar = False
+def intro_stop():
+    global intro_proc, intro_timer, intro_vantar
+    if intro_timer: intro_timer.cancel(); intro_timer = None
+    if intro_proc and intro_proc.poll() is None:
+        try: intro_proc.terminate()
+        except Exception: pass
+    intro_proc = None
+    if intro_vantar: intro_vantar = False; stop_ambience()
+
+def apply_intro(payload):
+    global intro_proc, intro_timer, intro_vantar
+    p = str(payload).strip()
+    intro_stop()
+    if p == "1":
+        stop_ambience()
+        path = resolve("intro_badd.mp3"); cmd = _oneshot_cmd(path) if path else None
+        if cmd: intro_proc = subprocess.Popen(cmd)
+        intro_timer = threading.Timer(5.8, lambda: play("event_ident.mp3")); intro_timer.daemon = True; intro_timer.start()
+    elif p == "vanta":
+        intro_vantar = True; set_ambience("soundscape_1.mp3")
 
 def on_semantic(topic, payload):
     print(f"[hjarna] {topic}  {payload}")
@@ -422,6 +514,8 @@ def on_semantic(topic, payload):
         play_trailer(payload); return
     if topic == "ecoloco/rigg/final":      # vinst/förlust-finale (systemceremoni) — spelar i båda lägena
         apply_final(payload); return
+    if topic == "ecoloco/rigg/intro":      # introts centralljud (systemceremoni, gäller alltid)
+        apply_intro(payload); return
     if master:
         return                      # GM har tagit över — ignorera spelets cues
     if   topic == "ecoloco/rigg/ohalsa":    apply_ohalsa(payload)
@@ -430,6 +524,7 @@ def on_semantic(topic, payload):
     elif topic == "ecoloco/rigg/ljud":      play(payload)   # central "show"-ljud: round_start/win/lose/relief/proposal_open/event_*
     elif topic == "ecoloco/rigg/wave":      set_fx("wave" if payload == "1" else "none")
     elif topic == "ecoloco/rigg/kris":      apply_kris(payload)
+    elif topic == "ecoloco/rigg/handelse":  apply_handelse(payload)
     elif topic == "ecoloco/rigg/blandare":  set_blandare(payload == "1")
     elif topic == "ecoloco/rigg/countdown":
         if payload == "1":
@@ -441,7 +536,7 @@ def on_semantic(topic, payload):
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
               "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
-              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/trailer", "ecoloco/rigg/final", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/trailer", "ecoloco/rigg/final", "ecoloco/rigg/handelse", "ecoloco/rigg/intro", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")

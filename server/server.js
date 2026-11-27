@@ -53,34 +53,18 @@ const riggSend = (t, m) => {
 const AMBIENT_TOPICS = new Set(['ecoloco/rigg/ohalsa', 'ecoloco/rigg/scen', 'ecoloco/rigg/award']);
 const riggPublish = (t, m) => { if (riggSilent && !AMBIENT_TOPICS.has(t)) return; riggSend(t, m); };
 
-// ─── Rigg-cues vid spelledarens händelser (§7: spelet sänder BETYDELSE, riggen tolkar) ───
-// Samma semantiska cues som spelledarpultens RIGG-knappar, men avfyrade från servern så en
-// händelse kan trigga ljus+ljud innan den visas på skärmarna. Ungated (riggSend) = som pultens
-// egna knappar, spelar även "med spelledare". Lägg till fler namn här vid behov.
 const R_ = 'ecoloco/rigg/';
-function fireRiggCue(cue) {
-  switch (cue) {
-    case 'kris':          riggSend(R_ + 'gm/ljud', 'larm'); riggSend(R_ + 'kris', '1'); break;
-    case 'fanfar':        riggSend(R_ + 'gm/ljud', 'win'); riggSend(R_ + 'gm/alla_grona', '1'); break;
-    case 'nedrakning':    riggSend(R_ + 'countdown', '1'); setTimeout(() => riggSend(R_ + 'countdown', '0'), 10000); break;
-    case 'startceremoni': riggSend(R_ + 'ceremoni', 'countdown'); setTimeout(() => riggSend(R_ + 'ceremoni', 'climax'), 3000); break;
-    case 'happening':
-    default:              riggSend(R_ + 'ljud', 'happening'); riggSend(R_ + 'wave', '1'); setTimeout(() => riggSend(R_ + 'wave', '0'), 3000); break;
-  }
+// Händelsernas ljud + ljus: tabellen "handelser" i spec/assets.json (se rigghandelse nedan). Spelet sänder
+// BETYDELSE (ecoloco/rigg/handelse = {id, ljus, lag}); hjärnan/Blocks översätter till ljus. Rött/blandare
+// är reserverat för öhälsokrisen (ecoloco/rigg/kris) — områdeskriser går i orange på lagets sida.
+function rigghandelse(p) {
+  const h = manifest.handelser?.[p.id] || { ljud: 'happening', ljus: 'hela' };
+  const lag = (p.teams?.length ? p.teams.map(r => r.teamId) : [p.teamId]).filter(Boolean);
+  // områdeskriser bär ingen teamId om effekten är tom → regionen står i id:t (aker_/skog_/tundra_/stad_)
+  const region = TEAMS.find(t => String(p.id).startsWith(t + '_'));
+  riggPublish(R_ + 'handelse', JSON.stringify({ id: p.id, ljus: h.ljus, lag: region ? [region] : lag }));
+  riggPublish(R_ + 'ljud', h.ljud + '.mp3');   // alla händelseljud centralt
 }
-// Rigg-cue per händelse-id. Det gamla fullt slumpade systemets cues är OMPEKADE till de nya
-// händelserna (company-crises/-events, ohalsa-events, gm-events) 2026-11-19 — t.ex. gamla
-// skogsbrand → company-crisis `skog_major`, torka → `aker_major`. Fyras av companyEvent-handlern när
-// händelsen visas. Default (ej i listan) = 'happening' (självslocknande wave + ljud). Specialcues
-// 'kris'/'fanfar' latchar sina topics (ecoloco/rigg/kris, .../gm/alla_grona) → companyEvent-handlern
-// återställer dem till sanningen efter pausen. Tilldela fler här efter hand.
-const EVENT_RIGG_CUE = {
-  // Stora katastrofer (de gamla auto-katastrofernas arvtagare) → larm/kris-puls.
-  aker_major: 'kris', skog_major: 'kris', tundra_major: 'kris', stad_major: 'kris',
-  uppror: 'kris',                                         // "folket har fått nog" (oförändrad specialcue)
-  // Stora positiva vändningar → fanfar.
-  naturenblomstrar: 'fanfar', miljolyft: 'fanfar', gronafonden: 'fanfar',
-};
 // Bänkarnas kontrollbord: src/mqtt.js (attachMqtt) bygger topics/innehåll per bänk
 // (ecoloco/<benchId>/money|resources|winner|looser). Här kopplar vi den mot SAMMA broker,
 // RETAINED (-r) så en bänk som startar om / ansluter sent direkt får senaste värdet.
@@ -223,6 +207,10 @@ let startWindowInt = null, startWindowLeft = null;
 // (eller spelledarens TVINGA START, eller en lång failsafe mot en död bänk), kör EN nedräkning
 // åt alla, och startar sedan runda 1 EN gång. Ingen skärm startar spelet själv längre.
 let tutReady = new Set();            // lag som rapporterat "tutorial klar / redo" (Gate 3)
+// Introts centralljud (ecoloco/rigg/intro): '1' när första skärmen börjar introt, '0' när sista är klar,
+// 'vanta' när någon är redo och väntar på de andra. Systemceremoni (riggSend, ej gatad).
+let introSkarmar = new Set(), introSpelat = false;
+function introRensa() { if (introSkarmar.size) riggSend('ecoloco/rigg/intro', '0'); introSkarmar = new Set(); introSpelat = false; }
 let tutReadyFailsafe = null;         // lång failsafe: en död/seg bänk ska aldrig låsa rummet
 const TUT_READY_FAILSAFE_MS = 60000; // 60 s från första "redo" → tvinga gemensam countdown
 let startCountdownInt = null, startCountdownLeft = null;   // Gate 4: gemensam 10→0 (synkad på alla skärmar)
@@ -414,6 +402,7 @@ function beginGame() {
   cancelStartWindow(true);
   cancelStartCountdown(true);
   clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
+  introSkarmar = new Set(); introSpelat = false;
   stopTrailer(); trailerPlayedAuto = false;
   for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
   started = true;
@@ -433,6 +422,7 @@ function resetToLobby() {
   cancelStartCountdown(true);
   tutReady = new Set();
   clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
+  introRensa();
   stopTrailer();
   broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
   stopTimer();
@@ -486,15 +476,7 @@ function newEngine() {
     autoPaused = true;
     eventDismissed = new Set();   // ny händelse → nollställ vilka skärmar som klickat bort den
     broadcastPause();   // auto=true → klienten fryser/blockerar men visar INGEN paus-overlay (bara händelserutan)
-    // RIGG-CUE: varje visad händelse ger en cue (ompekade från det gamla systemet, se EVENT_RIGG_CUE).
-    // Gatas av riggSilent (spelledarläge = operatören driver riggen själv). Latchande specialcues
-    // (kris/fanfar) återställs till sanningen efter pausen så en transient händelse inte låser riggen.
-    if (!riggSilent) {
-      const cue = EVENT_RIGG_CUE[p.id] || 'happening';
-      fireRiggCue(cue);
-      if (cue === 'kris') setTimeout(() => { if (engine) riggSend(R_ + 'kris', engine.getState()?.inCrisis ? '1' : '0'); }, EVENT_PAUSE_MS);
-      else if (cue === 'fanfar') setTimeout(() => riggSend(R_ + 'gm/alla_grona', '0'), EVENT_PAUSE_MS);
-    }
+    rigghandelse(p);   // ljud + ljus (gatas av riggPublish i spelledarläge)
     clearTimeout(crisisTimer);
     crisisTimer = setTimeout(afterEventShow, EVENT_PAUSE_MS);
   });
@@ -1089,6 +1071,14 @@ wss.on('connection', ws => {
         beginGame();
         break;
       }
+      case 'tutIntro': {
+        if (!lag || started) break;
+        if (m.on) {
+          introSkarmar.add(lag);
+          if (!introSpelat) { introSpelat = true; riggSend('ecoloco/rigg/intro', '1'); }
+        } else if (introSkarmar.delete(lag) && !introSkarmar.size) riggSend('ecoloco/rigg/intro', '0');
+        break;
+      }
       case 'tutReady': {
         // Gate 3: den här skärmens tutorial är klar. Nedräkningen startar FÖRST när ALLA levande
         // människor är redo — ingen blank tids-tvång (den startade spelet i förtid medan långsamma
@@ -1100,6 +1090,7 @@ wss.on('connection', ws => {
           broadcast({ type: 'tutReadyUpdate', klara: [...tutReady], humans: liveHumanIds().length });
           maybeStartCountdown();
         }
+        if (!startCountdownInt && !started && !introSkarmar.size) riggSend('ecoloco/rigg/intro', 'vanta');   // låg bädd medan man väntar på de andra
         break;
       }
       case 'tutIdle': {

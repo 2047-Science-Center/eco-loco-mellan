@@ -88,6 +88,7 @@ export class ServerNet {
   awardsKlara() { this._send({ type: 'awardsKlara' }); }
   eventDismiss() { this._send({ type: 'eventDismiss' }); }   // valfri skärm klickar bort händelse-popupen → servern löser den
 
+  intro(on) { this._send({ type: 'tutIntro', on: !!on }); }              // introt startar/slutar på den här skärmen → centralljud
   tutBeat(beat) { this._send({ type: 'tutBeat', beat }); }
   podiumAnswer(questionId, option) { this._send({ type: 'podiumAnswer', questionId, option }); }   // slutdelen
   rigCue(phase) { this._send({ type: 'rigCue', phase }); }   // startceremonin → rigg (hjärnan)

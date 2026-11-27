@@ -1921,19 +1921,33 @@ function oppnaNarrativ() {
 // centralt via hjärnan, ljus-cuesen fyras från servern (EN källa), aldrig härifrån. Döljs vid
 // 'trailerDone' — och senast efter dur (failsafe) så flödet (tutorial/spel) ALDRIG fastnar.
 // En äldre .mp4-src spelas fortfarande i <video> (bakåtkompatibelt).
-let trailerFailsafe = null;
+let trailerFailsafe = null, trailerRiv = null;
+// Mjuk övergång efter filmen (Klara 2026-11-27): filmens sista bild ligger KVAR medan introt tonar in svart ovanpå
+// (runIntro), sedan tonar det tomma kontrollrummet fram. Utan intro (t.ex. Flash) tonar filmen i stället ut.
+const TRAILER_UTTONING_MS = 1700;
 function doljTrailer() {
   clearTimeout(trailerFailsafe); trailerFailsafe = null;
+  const ov = $('ov-trailer');
+  if (!ov.classList.contains('open') || trailerRiv) return;
+  const introFoljer = effMode() === 'tutorial' && gamePhase() === 'lobby' && !!game.me;
+  if (!introFoljer) { ov.style.transition = 'opacity 1.4s ease-in-out'; ov.style.opacity = 0; }
+  trailerRiv = setTimeout(rivTrailer, TRAILER_UTTONING_MS);
+}
+function rivTrailer() {
+  clearTimeout(trailerRiv); trailerRiv = null;
   const v = $('trailer-video');
   try { v.pause?.(); } catch {}
   const ram = $('trailer-ram');
   if (ram) { ram.removeAttribute('src'); ram.style.display = 'none'; }   // stoppa HTML-filmen helt
-  $('ov-trailer').classList.remove('open');
+  const ov = $('ov-trailer');
+  ov.classList.remove('open'); ov.style.transition = ''; ov.style.opacity = '';
 }
 game.on('trailer', p => {
   trailerVisad = true;   // denna skärm har sett trailern → STARTA ska inte trigga en ny
   const src = p?.src || '';
   const dur = (p && p.dur) ? p.dur : 30;
+  clearTimeout(trailerRiv); trailerRiv = null;                          // ev. pågående uttoning får inte riva den nya filmen
+  $('ov-trailer').style.transition = ''; $('ov-trailer').style.opacity = '';
   $('ov-trailer').classList.add('open');
   if (/\.html(\?|$)/.test(src) && $('trailer-ram')) {
     const ram = $('trailer-ram');
@@ -2050,7 +2064,7 @@ function resetToLobbyUI() {
   efterTrailer = null;
   trailerVisad = false;                         // BUGFIX: annars hoppas trailern över nästa parti efter "TILL LOBBYN" (nollades bara vid gameEnd)
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;
-  doljTrailer();
+  rivTrailer();
   ['ov-attract', 'ov-narrativ', 'ov-trailer', 'ov-roll', 'ov-intro', 'ov-ready', 'ov-countdown', 'ov-slut', 'ov-slutdel',
    'ov-award', 'ov-event', 'ov-vote', 'ov-choose', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-paus', 'ov-bot', 'ov-mission', 'ov-power', 'ov-result', 'ov-year'].forEach(id => $(id)?.classList.remove('open'));
   tutIdleSent = false;
@@ -2660,9 +2674,12 @@ async function runIntro(myLag, keepCover = false) {   // keepCover (Flash): tona
   const on = id => q(id).classList.add('on');
   const off = id => q(id).classList.remove('on');
   const fade = (id, ms, ease = 'ease-in-out') => { const e = q(id); e.style.transition = `opacity ${ms}ms ${ease}`; e.style.opacity = 1; };
-  ov.style.transition = 'none'; ov.style.opacity = 1; void ov.offsetWidth; ov.style.transition = '';
-  ov.classList.add('open');
-  audio.play('ui_open');
+  const efterFilm = $('ov-trailer').classList.contains('open');   // filmens sista bild ligger kvar under → tona mjukt till svart
+  ov.style.transition = 'none'; ov.style.opacity = efterFilm ? 0 : 1;
+  ov.classList.add('open'); void ov.offsetWidth;
+  if (efterFilm) { ov.style.transition = 'opacity 1.6s ease-in-out'; ov.style.opacity = 1; }
+  else ov.style.transition = '';
+  realGame?.net?.intro?.(true);   // centralhögtalaren: musikbädd + myndighetssignatur (hjärnan tajmar)
   let klar; const slut = new Promise(res => { klar = res; });
   // Tidslinje (ms): ~1,6 s helt svart → tomt rum → krona → meddelande (7 s) → rummet släcks → emblemvägg → "DU ÄR" → "ERT UPPDRAG"
   at(2400, () => { q('in-rw').style.opacity = 1; });
@@ -2672,18 +2689,20 @@ async function runIntro(myLag, keepCover = false) {   // keepCover (Flash): tona
   at(16400, () => q('in-rw').classList.add('dip'));
   at(17400, () => { fade('in-wall', 2200); q('in-dim').style.opacity = 1; });
   at(20600, () => fade('in-lit', 1400));
-  at(21900, () => on('in-b2'));
+  at(21900, () => { on('in-b2'); audio.play('relief'); });   // mjukt ljud i egna bänken vid "DU ÄR"
   at(27700, () => off('in-b2'));
   at(28700, () => on('in-s3'));
-  [1300, 2400, 3500].forEach((d, i) => at(28700 + d, () => ov.querySelectorAll('#in-s3 .ln')[i]?.classList.add('on')));
+  [1300, 2400, 3500].forEach((d, i) => at(28700 + d, () => { ov.querySelectorAll('#in-s3 .ln')[i]?.classList.add('on'); audio.play('ui_tick'); }));
   at(36100, () => klar());
   const ts = Date.now();
   const hopp = () => { if (Date.now() - ts > 2000) klar(); };
   ov.onclick = hopp;
   await Promise.race([slut, tutAbortP()]);
   ov.onclick = null; timers.forEach(clearTimeout);
+  realGame?.net?.intro?.(false);
+  if (!keepCover && !tutAbort) audio.play('round_start');   // in i övningsåret
   if (keepCover) return;                      // Flash: behåll kontrollrummet som täckning → startCeremony korsar in i ÄR DU REDO
-  ov.style.opacity = 0;                       // tonas ut mot ön (Mellan: övningsåret tar vid)
+  ov.style.transition = ''; ov.style.opacity = 0;   // tonas ut mot ön (Mellan: övningsåret tar vid)
   await delay(950);
   ov.classList.remove('open'); ov.innerHTML = ''; ov.style.opacity = 1;
 }
