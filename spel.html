@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="eco-build" content="__ECOBUILD__">
 <title>Maktspelet</title>
 <link rel="stylesheet" href="./assets/fonts/fonts.css">
 <style>
@@ -142,6 +143,10 @@
   .card.gron .band { background: var(--gron); }
   .card .inner { flex: 1; display: flex; gap: 12px; padding: 10px 14px; align-items: center; }
   .card img { width: 190px; height: 190px; object-fit: contain; }
+  /* Byggnadsväljarens komposition i kortet: byggnad på flytande markunderlag (separata lager). */
+  .card .bv-card { position: relative; width: 198px; height: 198px; flex: none; }
+  .card .bv-ground { position: absolute; left: 50%; top: 50%; width: 100%; height: auto; transform: translate(-50%, -50%); filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
+  .card .bv-bldg { position: absolute; height: auto; }   /* width/left/top/transform sätts inline per byggnad (src/bygg.js) */
   .card .info { flex: 1; }
   .card .nm { font-size: 20px; font-weight: 800; margin-bottom: 8px; line-height: 1.2; }
   .card .oh-badge { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }

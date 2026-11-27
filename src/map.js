@@ -1,20 +1,26 @@
-// map.js — Eco Loco (Mellan): AI-genererad ö-bild som terräng (assets/karta.png, frilagd PNG),
-// med hav, lag-markörer, slots, byggnadslager och öhälso-overlay ritade i kod ovanpå/bakom.
-// (Vald väg efter avstämning med Josef: genererad bild i assetsens stil i stället för kodritad terräng.
-//  Den kodritade isometriska versionen finns i git-historik/tidigare fil om den behövs igen.)
+// map.js — Maktspelet (Mellan): AI-genererad ö-bild som terräng (assets/karta-kandidat-4.png, frilagd PNG),
+// med hav, lag-markörer, byggnadslager och öhälso-overlay ritade i kod ovanpå/bakom.
 //
-// Återanvänds i fas 3: vyn anropar placeBuilding() på motorns 'build'-event
-// och setOhalsaMode() på 'ohalsa'-eventet.
+// NY KARTA + DYNAMISK PLACERING (2026-11-27): kartbilden segmenteras i webbläsaren (src/placering.js)
+// och byggplatserna RÄKNAS FRAM dynamiskt per område i stället för fasta slots i assets.json. Positionerna
+// förberäknas EN gång vid kartladdning (stabila → byggnader hoppar aldrig) och fylls i spridd ordning.
+// Byggnaderna är de beskurna stickersen (assets/bygg/<id>.png) med per-typ-ankare/proportion (src/bygg.js).
+// Kompositionen i KORTEN (markunderlag) är skild från detta — ändringar här rör inte korten.
 //
-// Koordinatsystem: kartbildens pixlar, 0–1536 × 0–1024 (samma som spec/assets.json → slots).
-// SVG:ns viewBox är något större så havet + lag-markörerna får plats runt bilden.
+// MEDVETET ORÖRT (per Klara 2026-11-27): TEAM_MARKERS och händelsebilder. Markörvärdena ligger kvar i den
+// GAMLA geografin (stad/tundra-hörnen är inte omkastade för nya kartan) — det är dokumenterat följdarbete (beslut.md).
+//
+// Koordinatsystem: kartbildens pixlar, 0–1448 × 0–1086. SVG:ns viewBox är något större för hav + markörer.
 
 import { logoSVG } from './logos.js';
 import { AREAS } from '../spec/engine.js';   // lag-metadata (namn, sektor) för klickbara företags-ikoner
+import { segment, placeForLoad } from './placering.js';
+import { GEO, buildingSrc } from './bygg.js';
 
-export const VIEW = { w: 1536, h: 1024 };                 // kartbildens mått
-const VB = { x: -130, y: -60, w: 1796, h: 1170 };          // viewBox med havsmarginal
-export const MAP_IMAGE = 'assets/Karta%201.2.png';
+export const VIEW = { w: 1448, h: 1086 };                  // nya kartbildens mått
+const VB = { x: -150, y: -70, w: 1760, h: 1230 };          // viewBox med havsmarginal (rymmer markörerna)
+export const MAP_IMAGE = 'assets/karta-kandidat-4.png';
+const N_FIXED = 12;                                        // antal förberäknade byggplatser per område
 
 export const AREA_COLORS = {
   aker: '#E7C24C', skog: '#3F8F4A', tundra: '#D98A3C', stad: '#8A8F96',
@@ -24,15 +30,14 @@ const AREA_DARK = {
 };
 export const AREA_NAMES = { aker: 'Åkermark', skog: 'Skog', tundra: 'Tundra', stad: 'Stad' };
 
-// Grov silhuett av ön i bilden (för öhälso-overlay, rök/gnistor och svallring).
+// Silhuett av nya ön (för öhälso-overlay, rök/gnistor och svallring). Framräknad ur bildens alfakanal.
 const OUTLINE = [
-  [200, 300], [420, 90], [700, 55], [880, 60], [1240, 70], [1440, 230],
-  [1480, 420], [1440, 600], [1380, 760], [1150, 850], [900, 900], [620, 950],
-  [420, 900], [230, 780], [120, 650], [80, 480],
+  [1419,575],[1431,720],[1379,856],[1274,958],[1148,1021],[999,1011],[890,1016],[798,1064],[695,1068],[591,1054],
+  [467,1060],[340,1027],[190,979],[85,869],[19,730],[51,575],[50,427],[162,315],[281,236],[396,185],
+  [497,142],[597,115],[697,101],[799,74],[922,35],[1049,52],[1167,108],[1313,163],[1390,288],[1424,431],
 ];
 
-// Lag-markörer i havet vid respektive hörn (badge + namn). Zonerna i karta.png:
-// gul=NV, grön=NÖ, grå=SÖ, orange=SV.
+// Lag-markörer i havet vid respektive hörn (badge + namn). ORÖRT per Klara (gamla geografin).
 const TEAM_MARKERS = {
   aker: [-20, 130], skog: [1590, 170], stad: [1600, 800], tundra: [-20, 760],
 };
@@ -52,8 +57,8 @@ const ISLAND_CENTROID = (() => {
   return [s[0] / OUTLINE.length, s[1] / OUTLINE.length];
 })();
 const SHRUNK = OUTLINE.map(([x, y]) => [
-  ISLAND_CENTROID[0] + (x - ISLAND_CENTROID[0]) * 0.86,
-  ISLAND_CENTROID[1] + (y - ISLAND_CENTROID[1]) * 0.86,
+  ISLAND_CENTROID[0] + (x - ISLAND_CENTROID[0]) * 0.9,
+  ISLAND_CENTROID[1] + (y - ISLAND_CENTROID[1]) * 0.9,
 ]);
 function pointInPoly(px, py, poly) {
   let inside = false;
@@ -63,15 +68,36 @@ function pointInPoly(px, py, poly) {
   }
   return inside;
 }
-// Rör inte slots som redan ligger på ön; dra bara in sådana som hamnat i havet.
 function clampToIsland(x, y) {
   if (pointInPoly(x, y, OUTLINE)) return { x, y };
-  for (let t = 0.08; t <= 1; t += 0.08) {
+  for (let t = 0.06; t <= 1; t += 0.06) {
     const nx = x + (ISLAND_CENTROID[0] - x) * t;
     const ny = y + (ISLAND_CENTROID[1] - y) * t;
     if (pointInPoly(nx, ny, SHRUNK)) return { x: nx, y: ny };
   }
   return { x: ISLAND_CENTROID[0], y: ISLAND_CENTROID[1] };
+}
+
+// Ordna punkter i SPRIDD sekvens (greedy farthest-first) → även få byggnader fördelas över ytan.
+function spreadOrder(points) {
+  if (points.length <= 2) return points.map(p => ({ x: p[0], y: p[1] }));
+  const P = points.map(p => ({ x: p[0], y: p[1] }));
+  let cx = 0, cy = 0; for (const p of P) { cx += p.x; cy += p.y; } cx /= P.length; cy /= P.length;
+  let start = 0, bd = Infinity;
+  P.forEach((p, i) => { const d = (p.x - cx) ** 2 + (p.y - cy) ** 2; if (d < bd) { bd = d; start = i; } });
+  const used = new Array(P.length).fill(false), order = [start]; used[start] = true;
+  const mind = P.map(() => Infinity);
+  while (order.length < P.length) {
+    const last = P[order[order.length - 1]]; let pick = -1, pd = -1;
+    for (let i = 0; i < P.length; i++) {
+      if (used[i]) continue;
+      const d = (P[i].x - last.x) ** 2 + (P[i].y - last.y) ** 2;
+      if (d < mind[i]) mind[i] = d;
+      if (mind[i] > pd) { pd = mind[i]; pick = i; }
+    }
+    used[pick] = true; order.push(pick);
+  }
+  return order.map(i => P[i]);
 }
 
 const pts = p => p.map(q => q.join(',')).join(' ');
@@ -82,9 +108,7 @@ function el(tag, attrs = {}) {
   return e;
 }
 
-// Ritar hela kartan i `container`. slots = assets.json → slots (läses live av anroparen).
-// Returnerar ett handle: { setOhalsaMode, placeBuilding, showSlots, clearBuildings, svg }.
-export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage = MAP_IMAGE } = {}) {
+export function renderMap(container, { mode = 'neutralt', mapImage = MAP_IMAGE } = {}) {
   const svg = el('svg', { viewBox: `${VB.x} ${VB.y} ${VB.w} ${VB.h}`, role: 'img' });
   svg.classList.add('ecoloco-map');
 
@@ -115,34 +139,17 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     preserveAspectRatio: 'xMidYMid meet',
   }));
 
-  // — Slots (visas i fas 1 / debug; döljs i spel tills byggnad droppar) —
+  // — Byggplats-debug (döljs i spel; fylls när positionerna är framräknade) —
   const slotLayer = el('g');
+  slotLayer.style.display = 'none';
   world.appendChild(slotLayer);
-  for (const [area, list] of Object.entries(slots)) {
-    if (!Array.isArray(list)) continue;
-    for (const s of list) {
-      const g = el('g', { 'data-slot': `${area}-${s.index}` });
-      g.appendChild(el('ellipse', {
-        cx: s.x, cy: s.y, rx: 40, ry: 20,
-        fill: AREA_DARK[area] || '#555', opacity: 0.45,
-        stroke: '#fff', 'stroke-width': 2, 'stroke-dasharray': '6 6',
-      }));
-      const t = el('text', {
-        x: s.x, y: s.y + 6, 'text-anchor': 'middle',
-        'font-size': 17, 'font-weight': 700, fill: '#fff', opacity: 0.85,
-      });
-      t.textContent = s.index + 1;
-      g.appendChild(t);
-      slotLayer.appendChild(g);
-    }
-  }
 
   // — Byggnadslager (fylls via placeBuilding; målas i y-ordning) —
   const buildLayer = el('g');
   world.appendChild(buildLayer);
 
-  // — Lag-markörer i havet (badge + namn) —
-  const MARK = 156;   // större företagsikon vid kartans kanter (var 88 → 124 → 156)
+  // — Lag-markörer i havet (badge + namn) — ORÖRT —
+  const MARK = 156;
   for (const [id, [x, y]] of Object.entries(TEAM_MARKERS)) {
     const g = el('g');
     g.innerHTML = logoSVG(id, MARK);
@@ -156,7 +163,6 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     });
     t.textContent = AREA_NAMES[id].toUpperCase();
     g.appendChild(t);
-    // Klickbar företags-ikon → info: lag, vad de tillverkar (sektor) och område de ansvarar för.
     const area = AREAS.find(a => a.id === id);
     g.style.cursor = 'pointer';
     g.addEventListener('click', ev => { ev.stopPropagation(); showTip({ x, y: y + 44 }, [
@@ -212,12 +218,11 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   svg.appendChild(tipLayer);
   let activeTip = null;
   function hideTip() { if (activeTip) { activeTip.remove(); activeTip = null; } }
-  // Info-ruta med en lista rader [{t,size,weight,fill}] — används av både byggnader och lag-ikoner.
   function showTip(foot, lines) {
     hideTip();
     const w = 400, pad = 18, lineH = 44, h = pad * 2 + lines.length * lineH;
     let x = foot.x - w / 2; x = Math.max(VB.x + 12, Math.min(x, VB.x + VB.w - w - 12));
-    let y = foot.y - 150 - h; if (y < VB.y + 12) y = foot.y + 44;   // under ikonen om det inte får plats ovanför
+    let y = foot.y - 150 - h; if (y < VB.y + 12) y = foot.y + 44;
     const g = el('g', { style: 'pointer-events:none' });
     g.appendChild(el('rect', { x, y, width: w, height: h, rx: 18, fill: '#14120E', opacity: 0.96, stroke: '#4A443A', 'stroke-width': 2 }));
     lines.forEach((ln, i) => {
@@ -233,7 +238,6 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
     { t: `${info.oh > 0 ? '+' : ''}${info.oh} öhälsa`, size: 28, weight: 700, fill: info.oh > 0 ? '#3DD68C' : info.oh < 0 ? '#F0564B' : '#C9BfA6' },
     { t: info.lagNamn, size: 25, weight: 700, fill: '#C9A94F' },
   ];
-  // Klick på tom karta/hav → stäng ev. öppen info-ruta (byggnads-klick stoppar bubblingen).
   svg.addEventListener('click', hideTip);
 
   container.appendChild(svg);
@@ -248,35 +252,66 @@ export function renderMap(container, { slots = {}, mode = 'neutralt', mapImage =
   }
   setOhalsaMode(mode);
 
-  // Byggnad droppar på slot. size i kartbildens pixlar (~135 ≈ assetsens naturliga skala här).
-  function placeBuilding(area, slotIndex, href, size = 135, info = null) {
-    const s = (slots[area] || [])[slotIndex];
-    if (!s) return null;
-    const foot = clampToIsland(s.x, s.y);
+  // ── Dynamiska byggplatser: segmentera kartbilden EN gång → positioner + bredd per område ──
+  let POS = null, WS = null;                 // POS[area] = [{x,y}…] (spridd ordning), WS[area] = sprite-bredd (px)
+  const pending = [];                        // byggen som anropades innan positionerna var klara
+  const segImg = new Image(); segImg.crossOrigin = 'anonymous';
+  segImg.onload = () => {
+    try {
+      const W = segImg.naturalWidth, H = segImg.naturalHeight;
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const cx = c.getContext('2d', { willReadFrequently: true }); cx.drawImage(segImg, 0, 0);
+      const seg = segment(cx.getImageData(0, 0, W, H).data, W, H);
+      const wMin = Math.round(0.055 * W), wMax = Math.round(0.130 * W);
+      const pl = placeForLoad(seg, N_FIXED, wMin, wMax);
+      POS = {}; WS = {};
+      for (const area of ['aker', 'skog', 'tundra', 'stad']) {
+        POS[area] = spreadOrder(pl.foots[area] || []);
+        WS[area] = pl.Ws[area];
+      }
+      for (const b of pending) drawBuilding(b.area, b.slotIndex, b.assetId, b.info);
+      pending.length = 0;
+    } catch (e) { console.warn('[map] dynamisk placering misslyckades:', e); }
+  };
+  segImg.src = MAP_IMAGE;
+
+  // Ritar en byggnad på en förberäknad position (beskuren sticker, per-typ-ankare/proportion).
+  function drawBuilding(area, slotIndex, assetId, info) {
+    const list = POS[area] || [];
+    const p = list[slotIndex] || list[list.length - 1];      // fler byggen än platser → sista platsen
+    if (!p) return null;
+    const foot = clampToIsland(p.x, p.y);
     const g = el('g', { 'data-building': `${area}-${slotIndex}`, 'data-y': foot.y });
-    // Klickbar byggnad → visa info-ruta (namn · öhälso-effekt · vilket lag som byggde).
     if (info) {
       g.style.cursor = 'pointer';
       g.addEventListener('click', ev => { ev.stopPropagation(); showTip(foot, buildingLines(info)); });
     }
-    // kontaktskugga: grundar den grövre tilen mot den (nu texturerade) ytan
+    const w = WS[area] || 150;
+    const geo = GEO[assetId] || { ay: 0.84, aspect: 1.1 };
+    const h = w / geo.aspect;
+    // kontaktskugga under motivets markkontakt
     g.appendChild(el('ellipse', {
-      cx: foot.x, cy: foot.y + size * 0.06, rx: size * 0.34, ry: size * 0.14,
-      fill: '#000', opacity: 0.3, filter: 'url(#bshadow)',
+      cx: foot.x, cy: foot.y + w * 0.04, rx: w * 0.30, ry: w * 0.12,
+      fill: '#000', opacity: 0.28, filter: 'url(#bshadow)',
     }));
     g.appendChild(el('image', {
-      href, x: foot.x - size / 2, y: foot.y - size * 0.82, width: size, height: size,
-      class: 'ecoloco-drop',
+      href: buildingSrc(assetId), x: foot.x - w / 2, y: foot.y - geo.ay * h, width: w, height: h,
+      class: 'ecoloco-drop', preserveAspectRatio: 'xMidYMid meet',
     }));
-    // måla i y-ordning så främre byggnader hamnar över bakre
     const after = [...buildLayer.children].find(c => +c.getAttribute('data-y') > foot.y);
     buildLayer.insertBefore(g, after || null);
     return g;
   }
 
+  // Publikt API: köar om positionerna inte hunnit räknas fram än.
+  function placeBuilding(area, slotIndex, assetId, info = null) {
+    if (!POS) { pending.push({ area, slotIndex, assetId, info }); return null; }
+    return drawBuilding(area, slotIndex, assetId, info);
+  }
+
   return {
     svg, setOhalsaMode, placeBuilding,
     showSlots(v) { slotLayer.style.display = v ? '' : 'none'; },
-    clearBuildings() { hideTip(); buildLayer.replaceChildren(); },
+    clearBuildings() { hideTip(); buildLayer.replaceChildren(); pending.length = 0; },
   };
 }

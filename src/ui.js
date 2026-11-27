@@ -11,6 +11,7 @@
 // Events spelas alltid genom en seriell kö — under bokslutet ('resolveStart') tar
 // stegen sina scenpauser, annars kör de direkt.
 
+window.__ECO_BUILD = '__ECOBUILD__';   // serverinjicerad build-stämpel vid serve-time → identifierar FAKTISKT laddad JS (versionsdiagnostik)
 import { EcoLoco, AREAS, handFor, ohMode, timerSecFor } from '../spec/engine.js';
 import { mockOpponentsAct, mockOpponentsVote } from '../spec/mock-opponents.js';
 import { botPickProposal } from '../spec/bot-policy.js';
@@ -18,6 +19,7 @@ import { dilemmaById } from '../spec/content/dilemmas.js';
 import { VARIANTS } from '../spec/config/variants/index.js';
 import { TUTORIALS, ANCHORS, tutorialFor, helpById } from '../spec/content/tutorial.js';
 import { renderMap } from './map.js';
+import { compositeHTML } from './bygg.js';   // byggnadsväljarens komposition (byggnad + markunderlag)
 import { logoSVG } from './logos.js';
 import { GameAudio } from './audio.js';
 import { ServerNet } from './net.js';
@@ -366,8 +368,7 @@ function logg(html, cls = '') {
 }
 
 game.on('build', p => run(async () => {
-  const b = manifest.buildings[p.card.asset];
-  map.placeBuilding(p.area, p.slotIndex, b.file, 135, { namn: p.card.namn, oh: p.card.oh, lagNamn: teamName(p.teamId) });
+  map.placeBuilding(p.area, p.slotIndex, p.card.asset, { namn: p.card.namn, oh: p.card.oh, lagNamn: teamName(p.teamId) });
   audio.play(`build_${p.card.tier}`);
   if (p.teamId === game.me && p.cost) {                        // kostnaden syns som röd minussiffra på pengar/material (Klara 2026-11-25)
     if (p.cost.pengar) flashRes('pengar', -p.cost.pengar);
@@ -1100,7 +1101,7 @@ function renderHand() {
     <div class="card ${c.tier} ${banAll ? 'byggstopp' : dirtyBan ? 'banned' : ''}" data-tier="${c.tier}">
       <div class="band">${TIER_LABEL[c.tier]}</div>
       <div class="inner">
-        <img src="${manifest.buildings[c.asset].file}" alt="">
+        <div class="bv-card">${compositeHTML(c.asset)}</div>
         <div class="info">
           <div class="nm">${c.namn}</div>
           <div class="gain-badge ${gerCur}">${ico(gerCur, 32)}<span class="gain-num">+${gerNum}</span><span class="gain-lbl">/ år</span></div>
@@ -1848,7 +1849,7 @@ function rebuildFromState(S) {
   map.clearBuildings();
   for (const t of S.teams) t.slots.forEach((b, i) => {
     const c = handFor(t.id).find(x => x.tier === b.tier);   // härled namn + öhälso-effekt för info-rutan
-    map.placeBuilding(t.id, i, manifest.buildings[b.asset].file, 135, c ? { namn: c.namn, oh: c.oh, lagNamn: teamName(t.id) } : null);
+    map.placeBuilding(t.id, i, b.asset, c ? { namn: c.namn, oh: c.oh, lagNamn: teamName(t.id) } : null);
   });
   updateOh({ value: S.oh, mode: ohMode(S.oh), delta: S.lastDelta });
   $('krisglow').classList.toggle('on', !!S.inCrisis);   // kris-glöden följer statet (återanslutning/övertag/omspel)
