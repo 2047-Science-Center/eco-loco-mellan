@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Eco Loco trailer · bänkskärm</title>
+<!--
+  STATIONSSKÄRM för trailern ("Inflyttningsakten"). Visar HTML-tidslinjen (spel.html) via HyperFrames-spelaren
+  och håller den på den gemensamma klockan. Ljudet spelas INTE här — det är master i
+  centralhögtalaren (regi, audio/trailer.mp3). Serveras av regi på /film/trailer/.
+
+  Parametrar:
+    ?start_at=<epoch-ms>   när filmen startar, på regi-värdens klocka (krävs i drift)
+    ?tid=<url>             klock-endpoint (default /time, samma origin = regi)
+    ?demo                  starta själv om 2 s (lokal klocka) — för test utan server
+    ?sprak=sv|no           undertextspråk (default sv)
+    ?debug                 visa klocka/drift i hörnet
+  Kan också startas om utan omladdning: window.postMessage({type:'film:start', start_at})
+  eller {type:'film:stop'} från förälderfönstret (t.ex. stationens overlay).
+-->
+<script src="vendor/hyperframes-player.global.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: #121009; overflow: hidden; }
+  hyperframes-player { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #dbg { position: fixed; right: 10px; bottom: 10px; z-index: 9; font: 14px ui-monospace, Menlo, monospace; color: #ff9500;
+    background: rgba(0,0,0,0.7); padding: 6px 10px; border-radius: 6px; display: none; white-space: pre; }
+</style>
+</head>
+<body>
+<hyperframes-player id="spelare" muted></hyperframes-player>
+<div id="dbg"></div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const spelare = document.getElementById('spelare');
+  const SPRAK = (q.get('sprak') || 'sv').replace(/[^a-z]/g, '');
+  spelare.setAttribute('src', `spel-${SPRAK}.html`);
+  const dbg = document.getElementById('dbg');
+  if (q.has('debug')) dbg.style.display = 'block';
+
+  const TID_URL = q.get('tid') || '/time';
+  const DRIFT_MAX = 0.04;          // s — spola om spelaren glider mer än så (~1 bildruta)
+  const KONTROLL_MS = 250;         // hur ofta drift kontrolleras
+
+  let offset = 0;                  // serverklocka − lokal klocka (ms)
+  let startAt = q.has('start_at') ? Number(q.get('start_at')) : null;
+  let duration = null;
+  let redo = false;
+
+  // --- Klocka: mät offset mot reveal-servern (bästa av 6 rundor = lägst RTT) ---
+  async function synkaKlocka() {
+    let bast = null;
+    for (let i = 0; i < 6; i++) {
+      try {
+        const t0 = Date.now();
+        const r = await fetch(TID_URL + (TID_URL.includes('?') ? '&' : '?') + 'n=' + i, { cache: 'no-store' });
+        const t1 = Date.now();
+        const { now_ms } = await r.json();
+        const rtt = t1 - t0;
+        const off = now_ms + rtt / 2 - t1;
+        if (!bast || rtt < bast.rtt) bast = { rtt, off };
+      } catch (e) { /* ingen server (demo/test) → offset 0 */ }
+    }
+    if (bast) offset = bast.off;
+    return bast;
+  }
+  const serverNu = () => Date.now() + offset;
+
+  // --- Spelaren ---
+  function vantaPa(ev) { return new Promise(res => spelare.addEventListener(ev, res, { once: true })); }
+  async function forbered() {
+    if (!spelare.ready) await vantaPa('ready');
+    if (!spelare.assetsReady) await Promise.race([vantaPa('assetsready'), new Promise(r => setTimeout(r, 8000))]);
+    duration = spelare.duration;
+    spelare.seek(0);
+    redo = true;
+  }
+
+  function tick() {
+    if (!redo) return;
+    if (startAt == null) { if (!spelare.paused) spelare.pause(); return; }
+    const t = (serverNu() - startAt) / 1000;
+    if (t < 0) {                                  // väntar på start: håll första bildrutan
+      if (!spelare.paused) spelare.pause();
+      if (spelare.currentTime !== 0) spelare.seek(0);
+    } else if (duration && t >= duration) {       // slut: håll sista bildrutan
+      if (!spelare.paused) spelare.pause();
+      if (Math.abs(spelare.currentTime - duration) > 0.01) spelare.seek(duration - 0.001);
+    } else {
+      if (spelare.paused) { spelare.seek(t); spelare.play(); }
+      else if (Math.abs(spelare.currentTime - t) > DRIFT_MAX) spelare.seek(t), spelare.play();
+    }
+    if (q.has('debug')) dbg.textContent =
+      `klocka-offset ${offset.toFixed(0)} ms\nfilmtid ${t.toFixed(2)} s\nspelare ${spelare.currentTime.toFixed(2)} s\ndrift ${((spelare.currentTime - t) * 1000).toFixed(0)} ms`;
+  }
+
+  // --- Styrning från förälder (reveal-appen) ---
+  window.addEventListener('message', (e) => {
+    const m = e.data || {};
+    if (m.type === 'film:start' && Number.isFinite(m.start_at)) startAt = m.start_at;
+    if (m.type === 'film:stop') { startAt = null; spelare.pause(); spelare.seek(0); }
+  });
+
+  (async () => {
+    if (q.has('demo')) { startAt = Date.now() + 2000; }
+    else await synkaKlocka();
+    await forbered();
+    setInterval(tick, KONTROLL_MS);
+    tick();
+    setInterval(synkaKlocka, 60000);   // följ eventuell klockglidning
+  })();
+})();
+</script>
+</body>
+</html>

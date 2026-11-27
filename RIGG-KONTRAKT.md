@@ -28,6 +28,7 @@ Migration A→B och Python→Blocks är osynlig nedåt: båda lagren nedan är f
 | `ecoloco/rigg/ljud` | central "show"-ljud (ej på skärmen) | ljud-id/filnamn, t.ex. `round_start`, `win`, `lose`, `relief`, `proposal_open`, `event_storm.mp3` | nej |
 | `ecoloco/rigg/kris` | KRIS på/av. Latchas av `crisis`-event (öh ≤ krisZon). En visad företags-/öhälsohändelse med special-cue `kris` pulsar larm och återställer sedan topicen till sanningen (`inCrisis`) efter händelsepausen. | `1` = på, `0` = av | nej |
 | `ecoloco/rigg/gm/alla_grona` | special-cue `fanfar` (stora positiva vändningar) → "allt grönt"-look. Återställs till `0` efter händelsepausen. | `1`/`0` | nej |
+| `ecoloco/rigg/trailer` | intro-trailern (systemceremoni, alltid, även i spelledarläge). Servern skickar `1` på filmens `start_at` (samma klocka som skärmarna) och `0` vid filmens slut, skip och avbrott | exakt `1` = hjärnan spelar `assets/audio/rigg/trailer.mp3` i centralhögtalaren (tystar attract-ambiencen); allt annat = stopp. **Aldrig JSON** (tolkas som stopp) | nej |
 | `ecoloco/rigg/final` | KRÖNING efter sista prisutdelningen (sista steget klickat) | `{"result":"win"\|"lose","lag":"aker\|skog\|tundra\|stad"\|null}` (ren sträng `win`/`lose` accepteras också) → hjärnan: mörker → kort paus → ljus + fanfar (vinnarsidan tänds vid vinst) | nej |
 
 Retur-kanal (spelledarpanel → server, icke-retained): `ecoloco/spel/gm`
@@ -54,8 +55,8 @@ GM (master, bryter spelet): `ecoloco/rigg/gm/<kommando>`
 | Topic | Payload | Firmware gör |
 |-------|---------|--------------|
 | `ecoloco/rigg/out/led/<1-4>` | `{"h":0-360,"s":0-100,"v":0-100,"puls":0-100,"blink":0-100}` | sätter sida N:s grundfärg + puls/blink-takt (lokalt) |
-| `ecoloco/rigg/out/fx` | `{"fx":"none\|wave\|countdown","speed":0-100}` | helslinge-overlay (tombola-wave / vit nedräkningspuls) |
-| `ecoloco/rigg/out/spot/<1-4>` | `0` / `1` | relä av/på (aktiv-låg-flagga i firmware) |
+| `ecoloco/rigg/out/fx` | `{"fx":"none\|wave\|countdown\|chase","speed":0-100}` | helslinge-overlay (tombola-wave / vit nedräkningspuls / `chase` = ljusband som sveper ca 28 LED/s från godtycklig startpunkt, rigg_arduino.ino rad 97–113) |
+| `ecoloco/rigg/out/spot/<1-4>` | `0` / `1` | relä av/på (aktiv-låg-flagga i firmware) **och** i `rigg_arduino.ino` pil-segment N (ljusvåg mot spetsen, pekar mot bänk N) |
 | `ecoloco/rigg/out/blandare` | `0` / `1` | saftblandar-relä av/på (egen aktiv-låg-flagga, boot-säker i firmware) |
 
 Sida→punktintervall är en **konstant i firmwaren** (t.ex. `LAG_A = 0..34`), bytbar när antal punkter ändras.
@@ -96,3 +97,27 @@ GM `alla_grona` = alla sidor h120 v90, spots släckta. GM master-flagga → hjä
 `hjarna-stubb.py` = paho-mqtt + mappnings-tabellerna ovan + pygame för ljud + master-flagga.
 Blocks = samma tabeller som Tasks + variabler; MQTT som Network Device; ljud som media-spot; GM som kontrollyta.
 Tabellerna ovan ÄR specen Blocks översätter. IN/UT-kontrakten är frusna → bytet är osynligt för spel och firmware.
+
+---
+
+## Intro-trailern (v2, 2026-11-25)
+
+Filmen är ett HTML-paket i `assets/trailer-film/` (HyperFrames, 69,3 s). Skärmarna spelar det **tyst** i en iframe
+(`skarm.html?start_at=<epoch-ms>`), synkat mot serverns klocka på `GET /time`. Masterljudet spelas centralt av
+hjärnan (`ecoloco/rigg/trailer` = `1`, filen `assets/audio/rigg/trailer.mp3`).
+
+**Ljus-cuesen** fyras av servern (`playTrailer`) ur filmens egen cue-fil `assets/trailer-film/rigg-cues.json`
+(genereras ur filmens tidslinje i källprojektet `ecoloco-produktion/trailer-film`, `verktyg/bygg-rigg-cues.py`).
+Servern skickar dem som lager 2 direkt (förbi hjärnans översättning), som tidigare trailern. Servern släpper bara
+igenom de topics och format firmwaren hanterar:
+- `out/led/1–4` med JSON-objekt;
+- `out/fx` med `none`, `wave`, `countdown` eller `chase`;
+- `out/spot/1–4` och `out/blandare` med `0` eller `1`;
+- `ecoloco/rigg/trailer` med exakt `1` eller `0`.
+
+Allt annat avvisas med en varning.
+
+**Säker släckning:** vid filmslut (cue c20), skip och avbrott (`stopTrailer`) sätts blandaren, fx, pilarna och
+alla sidor till av.
+
+Längden (`film.json` → `duration_s`) styr skärmens och flödets failsafes (`trailerDone` kommer vid filmens slut + 0,3 s).

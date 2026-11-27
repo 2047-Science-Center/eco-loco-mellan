@@ -95,9 +95,13 @@ const basename = s => String(s).split('/').pop();   // 'assets/audio/rigg/x.mp3'
 // ——— Statiska filer (så iPad/NUC bara behöver en URL) ———
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.css': 'text/css',
-  '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm' };
+  '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm', '.woff2': 'font/woff2' };
 const httpServer = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (p === '/time') {   // serverklockan: trailer-skärmarna (assets/trailer-film/skarm.html) synkar mot den
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ now_ms: Date.now() })); return;
+  }
   if (p === '/') p = '/spel.html';
   const file = join(ROOT, normalize(p).replace(/^([.][.][/\\])+/, ''));
   if (!file.startsWith(ROOT) || !existsSync(file) || !statSync(file).isFile()) {
@@ -253,67 +257,85 @@ function lobbyMsg() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KOPPLING 2 — intro-trailer. Servern äger ljuset: skärmarna spelar bara videon,
-// ljus-cuesen fyras EN gång härifrån (ej 4× från fyra skärmar). TRAILER_CUES
-// speglar EXAKT trailer.html:s CUES (samma tider + out/*-payloads; led/* = samma
-// payload till /1../4; lagfärgerna = trailer.html:s TEAM-HSV). riggSend String():ar
-// payloaden, så objekt JSON.stringify:as här (strängar '1'/'0' skickas som de är).
+// KOPPLING 2 — intro-trailer (v2, 2026-11-25). Filmen är ett HTML-paket (assets/trailer-film/, HyperFrames)
+// som skärmarna spelar TYST och synkat mot serverns klocka (skarm.html?start_at=<epoch-ms>, klockan på /time).
+// Masterljudet spelas centralt av hjärnan på ecoloco/rigg/trailer = "1" (assets/audio/rigg/trailer.mp3).
+// Ljus-cuesen läses ur filmens EGEN cue-fil (assets/trailer-film/rigg-cues.json, genererad ur filmens
+// tidslinje) — en källa, ingen hårdkodad lista. Längden ur assets/trailer-film/film.json.
+// Bara topics/format som firmwaren (rigg_arduino.ino) och hjärnan hanterar släpps igenom (se trailerCmdOk).
 // ─────────────────────────────────────────────────────────────────────────────
+const TRAILER_DIR = join(ROOT, 'assets', 'trailer-film');
+const TRAILER_LEDTID_MS = parseInt(process.env.TRAILER_LEDTID_MS) || 1500;   // start_at = nu + ledtid (skärmarna hinner ladda)
 const TR = 'ecoloco/rigg/out/';
-// Lagfärger (HSV) ur motorns AREAS: 1 åker gul · 2 skog grön · 3 tundra orange · 4 stad grå
-const TR_TEAM = { 1: { h: 46, s: 67, v: 91 }, 2: { h: 128, s: 56, v: 56 }, 3: { h: 30, s: 72, v: 85 }, 4: { h: 215, s: 8, v: 59 } };
-const trLed  = v  => [1, 2, 3, 4].map(n => ({ topic: TR + 'led/' + n, payload: v }));
-const trTeam = () => [1, 2, 3, 4].map(n => ({ topic: TR + 'led/' + n, payload: TR_TEAM[n] }));
-const trFx   = v  => [{ topic: TR + 'fx', payload: v }];
-const trBl   = v  => [{ topic: TR + 'blandare', payload: v }];
-const TRAILER_CUES = [
-  { t: 0.0,  label: 'Kall blå bas',             cmds: trLed({ h: 210, s: 70, v: 18, puls: 20 }) },
-  { t: 12.0, label: 'Chase-svep in',            cmds: [...trLed({ h: 210, s: 60, v: 28 }), ...trFx({ fx: 'chase', speed: 32 })] },
-  { t: 16.0, label: 'FYRA LAGEN i lagfärg',     cmds: [...trFx({ fx: 'none' }), ...trTeam()] },
-  { t: 20.2, label: 'Guld-puls',                cmds: trLed({ h: 46, s: 90, v: 60, puls: 45 }) },
-  { t: 24.0, label: 'KRIS — rött + blandare',   cmds: [...trLed({ h: 0, s: 100, v: 100, blink: 80 }), ...trBl('1')] },
-  { t: 27.0, label: 'Vitt climax',              cmds: [...trBl('0'), ...trLed({ h: 0, s: 0, v: 100 })] },
-  { t: 29.5, label: 'Släck',                    cmds: [...trFx({ fx: 'none' }), ...trLed({ h: 0, s: 0, v: 0 })] },
+function trailerCmdOk(topic, payload) {
+  if (topic === 'ecoloco/rigg/trailer') return payload === '1' || payload === '0';   // hjärnan: exakt "1"/"0", aldrig JSON
+  if (/^ecoloco\/rigg\/out\/led\/[1-4]$/.test(topic)) return typeof payload === 'object' && payload !== null;
+  if (topic === TR + 'fx') return typeof payload === 'object' && ['none', 'wave', 'countdown', 'chase'].includes(payload?.fx);
+  if (/^ecoloco\/rigg\/out\/spot\/[1-4]$/.test(topic) || topic === TR + 'blandare') return payload === '0' || payload === '1';
+  return false;
+}
+function lasTrailer() {
+  try {
+    const film = JSON.parse(readFileSync(join(TRAILER_DIR, 'film.json')));
+    const fil = JSON.parse(readFileSync(join(TRAILER_DIR, 'rigg-cues.json')));
+    let bort = 0;
+    const cues = (fil.cues || []).map(c => ({ t: Math.max(0, Number(c.t) || 0), id: c.id, label: c.vad || c.id,
+      cmds: (c.cmds || []).filter(m => trailerCmdOk(m.topic, m.payload) || (bort++, false)) }))
+      .sort((a, b) => a.t - b.t);
+    if (bort) console.warn(`[trailer] ${bort} kommandon i rigg-cues.json avvisade (topic/format som firmwaren inte hanterar)`);
+    return { dur: Number(film.duration_s) || 30, cues, saker: (fil.saker_slackning?.cmds || []).filter(m => trailerCmdOk(m.topic, m.payload)) };
+  } catch (e) {
+    console.warn(`[trailer] kunde inte läsa assets/trailer-film/{film,rigg-cues}.json (${e.message}) — trailern spelas utan ljus-cues`);
+    return { dur: 30, cues: [], saker: [] };
+  }
+}
+const TRAILER = lasTrailer();
+const TRAILER_DUR = TRAILER.dur;   // filmens längd (s) → skärmens och flödets failsafes
+// Säker släckning (skip/avbrott/slut): blandaren av, pilar av, fx av, alla sidor svarta.
+const TRAILER_SLACK = [
+  { topic: TR + 'blandare', payload: '0' }, { topic: TR + 'fx', payload: { fx: 'none', speed: 50 } },
+  ...[1, 2, 3, 4].map(n => ({ topic: TR + 'spot/' + n, payload: '0' })),
+  ...[1, 2, 3, 4].map(n => ({ topic: TR + 'led/' + n, payload: { h: 0, s: 0, v: 0 } })),
 ];
-const TRAILER_DUR = 30;   // skärmens failsafe-längd (payload.dur) — flödet fastnar aldrig
 
 function fireTrailerCue(cmds) {
   for (const c of cmds) {
-    const payload = (c.payload && typeof c.payload === 'object') ? JSON.stringify(c.payload) : c.payload;
+    const payload = (c.payload && typeof c.payload === 'object') ? JSON.stringify(c.payload) : String(c.payload);
     riggSend(c.topic, payload);   // lågnivå, ungated — trailern är en systemceremoni (som paus)
   }
 }
 function clearTrailerTimers() { for (const t of trailerTimers) clearTimeout(t); trailerTimers = []; }
 function stopTrailer() {
+  const korde = trailerPlaying;
   clearTrailerTimers();
   trailerPlaying = false;
   riggSend('ecoloco/rigg/trailer', '0');   // stoppa ev. centralt trailer-ljud (hjärnan)
+  if (korde) fireTrailerCue(TRAILER_SLACK);  // avbruten mitt i: säker blackout (c17 kan ha satt blandaren på)
 }
-// playTrailer: broadcasta 'trailer' till skärmarna, schemalägg varje ljus-cue vid sin tid,
-// och efter sista cuen broadcasta 'trailerDone'. Fas-gardat (en flagga) + rör aldrig motorn.
+// playTrailer: broadcasta 'trailer' (med start_at) till skärmarna, starta ljudet och ljus-cuesen på start_at,
+// och vid filmens slut broadcasta 'trailerDone'. Fas-gardat (en flagga) + rör aldrig motorn.
 function playTrailer() {
   if (trailerPlaying) return;              // kör aldrig två trailrar samtidigt
   trailerPlaying = true;
   phase = 'intro';                         // trailern/introt rullar → late-join hoppar in i introt
   trailerPlayedAuto = true;                // auto-vägen fyrar bara en gång per lobby-cykel
   const src = manifest.onboarding?.trailer || '';
-  console.log(`[trailer] start — ${TRAILER_CUES.length} ljus-cues från servern (EN källa)`);
-  broadcast({ type: 'event', event: 'trailer', payload: { src, dur: TRAILER_DUR } });
-  // Skärmarna spelar videon TYST — trailer-ljudet går CENTRALT via hjärnan (navet → centralhögtalaren).
-  clearTrailerTimers();                    // rensa ev. gamla timers UTAN att röra ljud-topicen (undvik 0→1-race)
-  trailerPlaying = true;
-  riggSend('ecoloco/rigg/trailer', '1');   // starta centralt trailer-ljud (ren 0→1 — topicen nollas vid trailerns slut)
-  trailerTimers = TRAILER_CUES.map(cue => setTimeout(() => {
+  const startAt = Date.now() + TRAILER_LEDTID_MS;
+  console.log(`[trailer] start om ${TRAILER_LEDTID_MS} ms — ${TRAILER.cues.length} ljus-cues ur rigg-cues.json, ${TRAILER_DUR} s`);
+  broadcast({ type: 'event', event: 'trailer', payload: { src, dur: TRAILER_DUR, start_at: startAt } });
+  clearTrailerTimers();                    // rensa ev. gamla timers UTAN att röra ljud-topicen (ingen 0→1-race)
+  const vid = t => Math.max(0, startAt + Math.round(t * 1000) - Date.now());
+  // Masterljudet: c00 i cue-filen skickar ecoloco/rigg/trailer = "1" vid t = 0 (= start_at), som skärmarna.
+  trailerTimers = TRAILER.cues.map(cue => setTimeout(() => {
     fireTrailerCue(cue.cmds);
-    console.log(`[trailer] cue ${cue.t.toFixed(1)}s · ${cue.label}`);
-  }, Math.round(cue.t * 1000)));
-  const endMs = Math.round((TRAILER_CUES[TRAILER_CUES.length - 1].t + 1) * 1000);
+    console.log(`[trailer] cue ${cue.id} ${cue.t.toFixed(2)}s · ${cue.label}`);
+  }, vid(cue.t)));
   trailerTimers.push(setTimeout(() => {
     trailerPlaying = false;
-    riggSend('ecoloco/rigg/trailer', '0');   // trailern slut → nollställ ljud-topicen, annars står den kvar som "körd" och nästa trailer triggar inte om
+    riggSend('ecoloco/rigg/trailer', '0');   // trailern slut → nollställ ljud-topicen (nästa "1" startar om rent)
     broadcast({ type: 'event', event: 'trailerDone' });
     console.log('[trailer] klar');
-  }, endMs));
+  }, vid(TRAILER_DUR + 0.3)));
 }
 // AUTO: alla fyra lag MÄNNISKO-claimade i lobbyn, spelet ej startat, trailern ej körd → en gång.
 // Konservativ: kräver fyra LEVANDE människo-anslutningar. Command-vägen ({cmd:'trailer'}) är huvudväg.

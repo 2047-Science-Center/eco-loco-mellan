@@ -1,0 +1,1079 @@
+{
+ "_info": "Rigg-cue-spår för Eco Loco-trailern. GENERERAS av verktyg/bygg-rigg-cues.py: redigera där, inte här. t = filmtid i s (0 = master-ljudets 0:00). Payload-objekt skickas som JSON-sträng (som server.js riggSend). c00 skickas av servern FÖRE filmstart.",
+ "status": "godkänd av Josef 2026-11-25, driftsatt i eco-loco-mellan (gren trailer-v2; servern läser cue-filen assets/trailer-film/rigg-cues.json, en kopia av manus/rigg-cues.json)",
+ "tidskalla": "manus/ord.json (inlagd röst)",
+ "tider_uppskattade": false,
+ "tider_not": "Tider ur Josefs VO.",
+ "T": 69.307,
+ "saker_slackning": {
+  "nar": "vid filmslut OCH vid skip/avbrott (server.js stopTrailer)",
+  "cmds": [
+   {
+    "topic": "ecoloco/rigg/out/fx",
+    "payload": {
+     "fx": "none",
+     "speed": 50
+    }
+   },
+   {
+    "topic": "ecoloco/rigg/out/spot/1",
+    "payload": "0"
+   },
+   {
+    "topic": "ecoloco/rigg/out/spot/2",
+    "payload": "0"
+   },
+   {
+    "topic": "ecoloco/rigg/out/spot/3",
+    "payload": "0"
+   },
+   {
+    "topic": "ecoloco/rigg/out/spot/4",
+    "payload": "0"
+   },
+   {
+    "topic": "ecoloco/rigg/out/blandare",
+    "payload": "0"
+   }
+  ]
+ },
+ "cues": [
+  {
+   "id": "c00",
+   "t": 0.0,
+   "ruta": 1,
+   "ankare": {
+    "film": 0.0
+   },
+   "status": "BEHÅLL",
+   "vad": "Masterljudet startar i centralhögtalaren. Servern skickar exakt \"1\" (ingen JSON: hjärnan tolkar allt annat som stopp) i samma ögonblick som skärmarnas start_at.",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/trailer",
+     "payload": "1"
+    }
+   ]
+  },
+  {
+   "id": "c01",
+   "t": 0.0,
+   "ruta": 1,
+   "ankare": {
+    "film": 0.0
+   },
+   "status": "BEHÅLL",
+   "vad": "Kall blå bas, allt annat av: ön, mörker",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 210,
+      "s": 70,
+      "v": 18,
+      "puls": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 210,
+      "s": 70,
+      "v": 18,
+      "puls": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 210,
+      "s": 70,
+      "v": 18,
+      "puls": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 210,
+      "s": 70,
+      "v": 18,
+      "puls": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/fx",
+     "payload": {
+      "fx": "none",
+      "speed": 50
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/blandare",
+     "payload": "0"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "t": 9.468,
+   "ruta": 2,
+   "ankare": {
+    "seg": "v03",
+    "ord": "Invånarna",
+    "forskj": -0.1
+   },
+   "status": "BEHÅLL (flyttad, förlängd)",
+   "vad": "Basen dras ned nästan helt (makten är borta) och chase startar. Chase går ca 28 LED/s från godtycklig startpunkt (rigg_arduino.ino rad 97–113): ett rörligt svep i ca 3,7 s, INTE ett garanterat svep 1→2→3→4.",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 8
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 8
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 8
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 8
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/fx",
+     "payload": {
+      "fx": "chase",
+      "speed": 32
+     }
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "t": 13.412,
+   "ruta": 2,
+   "ankare": {
+    "seg": "v04",
+    "ord": "Nu",
+    "forskj": -0.1
+   },
+   "status": "NY",
+   "vad": "Basen lyfts något under chasen: något tar över",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 28
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 28
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 28
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 210,
+      "s": 60,
+      "v": 28
+     }
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "t": 14.701,
+   "ruta": 2,
+   "ankare": {
+    "seg": "v04",
+    "ord": "företag",
+    "forskj": 0.0
+   },
+   "status": "NY",
+   "vad": "Chase av. Sida 1 tänds i lagfärg på \"företag\" medan k5-emblemväggen (fyra sköldar) syns; 2–4 följer",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/fx",
+     "payload": {
+      "fx": "none",
+      "speed": 50
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 67,
+      "v": 91
+     }
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "t": 15.051,
+   "ruta": 2,
+   "ankare": {
+    "seg": "v04",
+    "ord": "företag",
+    "forskj": 0.35
+   },
+   "status": "NY",
+   "vad": "Bänk 2 tänds",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 128,
+      "s": 56,
+      "v": 56
+     }
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "t": 15.401,
+   "ruta": 2,
+   "ankare": {
+    "seg": "v04",
+    "ord": "företag",
+    "forskj": 0.7
+   },
+   "status": "NY",
+   "vad": "Bänk 3 tänds",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 30,
+      "s": 72,
+      "v": 85
+     }
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "t": 15.751,
+   "ruta": 2,
+   "ankare": {
+    "seg": "v04",
+    "ord": "företag",
+    "forskj": 1.05
+   },
+   "status": "NY",
+   "vad": "Bänk 4 tänds",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 215,
+      "s": 8,
+      "v": 59
+     }
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "t": 18.119,
+   "ruta": 3,
+   "ankare": {
+    "seg": "v05",
+    "ord": "ni",
+    "forskj": 0.0
+   },
+   "status": "NY",
+   "vad": "\"Ett av dem är NI\": alla fyra pilsegment tänds (spot/N = pil-segment N i rigg_arduino)",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "1"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "1"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "1"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "1"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "t": 19.54,
+   "ruta": 3,
+   "ankare": {
+    "seg": "v06",
+    "ord": "Varje",
+    "forskj": -0.1
+   },
+   "status": "NY",
+   "vad": "Pilarna av, alla fyra andas i lagfärg (fri puls, ej synkad med bilden)",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 67,
+      "v": 91,
+      "puls": 30
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 128,
+      "s": 56,
+      "v": 56,
+      "puls": 30
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 30,
+      "s": 72,
+      "v": 85,
+      "puls": 30
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 215,
+      "s": 8,
+      "v": 59,
+      "puls": 30
+     }
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "t": 26.389,
+   "ruta": 4,
+   "ankare": {
+    "seg": "v07",
+    "ord": "Oxen",
+    "forskj": -0.05
+   },
+   "status": "NY",
+   "vad": "Oxen: bara sida 1 lyser (fri puls) + pil 1, övriga dämpade",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 67,
+      "v": 91,
+      "puls": 35
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 128,
+      "s": 56,
+      "v": 12
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 30,
+      "s": 72,
+      "v": 19
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 215,
+      "s": 8,
+      "v": 13
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "1"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "t": 31.655,
+   "ruta": 5,
+   "ankare": {
+    "seg": "v08",
+    "ord": "Björnen",
+    "forskj": -0.05
+   },
+   "status": "NY",
+   "vad": "Björnen: bara sida 2 lyser (fri puls) + pil 2, övriga dämpade",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 67,
+      "v": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 128,
+      "s": 56,
+      "v": 56,
+      "puls": 35
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 30,
+      "s": 72,
+      "v": 19
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 215,
+      "s": 8,
+      "v": 13
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "1"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "t": 37.385,
+   "ruta": 6,
+   "ankare": {
+    "seg": "v09",
+    "ord": "Räven",
+    "forskj": -0.05
+   },
+   "status": "NY",
+   "vad": "Räven: bara sida 3 lyser (fri puls) + pil 3, övriga dämpade",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 67,
+      "v": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 128,
+      "s": 56,
+      "v": 12
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 30,
+      "s": 72,
+      "v": 85,
+      "puls": 35
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 215,
+      "s": 8,
+      "v": 13
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "1"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "t": 43.208,
+   "ruta": 7,
+   "ankare": {
+    "seg": "v10",
+    "ord": "Örnen",
+    "forskj": -0.05
+   },
+   "status": "NY",
+   "vad": "Örnen: bara sida 4 lyser (fri puls) + pil 4, övriga dämpade",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 67,
+      "v": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 128,
+      "s": 56,
+      "v": 12
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 30,
+      "s": 72,
+      "v": 19
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 215,
+      "s": 8,
+      "v": 59,
+      "puls": 35
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "1"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "t": 48.506,
+   "ruta": 8,
+   "ankare": {
+    "seg": "v11",
+    "ord": "Målet",
+    "forskj": -0.1
+   },
+   "status": "NY",
+   "vad": "Alla sidor svagt \"guld\" (h46 blir orange i firmwaren, se bänktest), pilar av",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 22
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 22
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 22
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 22
+     }
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "t": 53.593,
+   "ruta": 8,
+   "ankare": {
+    "seg": "v12",
+    "ord": "som",
+    "forskj": -0.15
+   },
+   "status": "BEHÅLL (flyttad)",
+   "vad": "Skott 21: borgmästaremblemet (guldkronan) – alla sidor guldpuls när bilden byter till emblemet. Pulsen har fri period ca 1,2 s (rigg_arduino.ino rad 63–66); h46 blir orange-guld i FastLED (bänktest).",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 60,
+      "puls": 45
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 60,
+      "puls": 45
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 60,
+      "puls": 45
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 46,
+      "s": 90,
+      "v": 60,
+      "puls": 45
+     }
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "t": 56.53,
+   "ruta": 9,
+   "ankare": {
+    "seg": "v13",
+    "ord": "Men",
+    "forskj": -0.1
+   },
+   "status": "NY",
+   "vad": "Tonen vänder: dov orange/röd",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 20,
+      "s": 95,
+      "v": 30,
+      "puls": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 20,
+      "s": 95,
+      "v": 30,
+      "puls": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 20,
+      "s": 95,
+      "v": 30,
+      "puls": 20
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 20,
+      "s": 95,
+      "v": 30,
+      "puls": 20
+     }
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "t": 62.326,
+   "ruta": 9,
+   "ankare": {
+    "seg": "v15",
+    "ord": "faller",
+    "forskj": 0.0
+   },
+   "status": "BEHÅLL (flyttad)",
+   "vad": "KRIS: rött blink + saftblandaren på \"faller\". Blandaren måste släckas även vid skip (se säker släckning).",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 0,
+      "s": 100,
+      "v": 100,
+      "blink": 80
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 0,
+      "s": 100,
+      "v": 100,
+      "blink": 80
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 0,
+      "s": 100,
+      "v": 100,
+      "blink": 80
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 0,
+      "s": 100,
+      "v": 100,
+      "blink": 80
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/blandare",
+     "payload": "1"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "t": 64.349,
+   "ruta": 10,
+   "ankare": {
+    "ruta": 10
+   },
+   "status": "NY (ersätter vitt klimax)",
+   "vad": "Skott 25 (k8, förra filmens slut) börjar: blackout, blandaren av, pilar och fx av",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/fx",
+     "payload": {
+      "fx": "none",
+      "speed": 50
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/blandare",
+     "payload": "0"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "t": 65.049,
+   "ruta": 10,
+   "ankare": {
+    "ruta": 10,
+    "forskj": 0.7
+   },
+   "status": "NY (flyttad)",
+   "vad": "MAKTSPELET – THE EXPERIENCE börjar tona in (k8 + 0,7 s): de fyra lagen tänds lugnt i sin färg (60 %) och står kvar",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 46,
+      "s": 67,
+      "v": 55
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 128,
+      "s": 56,
+      "v": 34
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 30,
+      "s": 72,
+      "v": 51
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 215,
+      "s": 8,
+      "v": 35
+     }
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "t": 68.807,
+   "ruta": 10,
+   "ankare": {
+    "film": "slut",
+    "forskj": -0.5
+   },
+   "status": "BEHÅLL",
+   "vad": "Släck och lämna över till spelet (nästa scen-cue målar om)",
+   "cmds": [
+    {
+     "topic": "ecoloco/rigg/out/led/1",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/2",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/3",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/led/4",
+     "payload": {
+      "h": 0,
+      "s": 0,
+      "v": 0
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/fx",
+     "payload": {
+      "fx": "none",
+      "speed": 50
+     }
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/1",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/2",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/3",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/spot/4",
+     "payload": "0"
+    },
+    {
+     "topic": "ecoloco/rigg/out/blandare",
+     "payload": "0"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!-- Eco Loco / Maktspelet: trailer som HTML-tidslinje. GENERERAS av bygg-index.py, redigera inte för hand.
+         Tidskälla: manus/ord.json (inlagd röst). Ljud: INGET än (väntar på Josefs master). -->
+    <script src="vendor/gsap.min.js"></script>
+    <script src="vendor/hyperframe.runtime.iife.js"></script>
+    <style>
+      @font-face { font-family: "IBM Plex Mono"; src: url("vendor/fonts/plexmono-700.woff2") format("woff2"); font-weight: 700; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #121009; }
+      #root { position: relative; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="69.307" data-width="1920" data-height="1080">
+      <div id="r01" data-composition-id="r01" data-composition-src="compositions/r01-on.html" data-start="0.0" data-duration="9.268" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r02" data-composition-id="r02" data-composition-src="compositions/r02-makten.html" data-start="9.268" data-duration="7.521" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r03" data-composition-id="r03" data-composition-src="compositions/r03-ni.html" data-start="16.789" data-duration="9.1" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r04" data-composition-id="r04" data-composition-src="compositions/r04-oxen.html" data-start="25.889" data-duration="5.266" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r05" data-composition-id="r05" data-composition-src="compositions/r05-bjornen.html" data-start="31.155" data-duration="5.73" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r06" data-composition-id="r06" data-composition-src="compositions/r06-raven.html" data-start="36.885" data-duration="5.823" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r07" data-composition-id="r07" data-composition-src="compositions/r07-ornen.html" data-start="42.708" data-duration="5.498" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r08" data-composition-id="r08" data-composition-src="compositions/r08-uppdraget.html" data-start="48.206" data-duration="7.574" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r09" data-composition-id="r09" data-composition-src="compositions/r09-granser.html" data-start="55.78" data-duration="8.569" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="r10" data-composition-id="r10" data-composition-src="compositions/r10-ecoloco.html" data-start="64.349" data-duration="4.958" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="undertext" data-composition-id="undertext" data-composition-src="compositions/undertext-sv.html" data-start="0" data-duration="69.307" data-track-index="2" data-track-kind="captions" data-width="1920" data-height="1080" style="z-index: 50" data-hidden></div>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

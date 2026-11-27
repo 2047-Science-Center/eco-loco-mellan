@@ -1912,30 +1912,45 @@ function oppnaNarrativ() {
 }
 
 // ═══════════════ KOPPLING 2 — intro-trailer (servern äger ljuset) ═══════════════
-// Servern broadcastar 'trailer' när alla anslutit (före tutorial) eller via spelledarens
-// kommando. Skärmen spelar BARA videon i #ov-trailer; ljus-cuesen fyras från EN källa
-// (servern), aldrig härifrån. Döljs vid 'trailerDone' ELLER video-'ended' — och senast
-// efter dur (failsafe) så det normala flödet (attract/lobby/tutorial) ALDRIG fastnar.
+// Servern broadcastar 'trailer' {src, dur, start_at} när STARTA trycks (före tutorial) eller via
+// spelledarens kommando. v2 (2026-11-25): src är filmens HTML-spelare (assets/trailer-film/skarm.html);
+// skärmen visar den i en iframe, TYST och synkad mot serverns klocka (?start_at= + /time). Ljudet går
+// centralt via hjärnan, ljus-cuesen fyras från servern (EN källa), aldrig härifrån. Döljs vid
+// 'trailerDone' — och senast efter dur (failsafe) så flödet (tutorial/spel) ALDRIG fastnar.
+// En äldre .mp4-src spelas fortfarande i <video> (bakåtkompatibelt).
 let trailerFailsafe = null;
 function doljTrailer() {
   clearTimeout(trailerFailsafe); trailerFailsafe = null;
   const v = $('trailer-video');
   try { v.pause?.(); } catch {}
+  const ram = $('trailer-ram');
+  if (ram) { ram.removeAttribute('src'); ram.style.display = 'none'; }   // stoppa HTML-filmen helt
   $('ov-trailer').classList.remove('open');
 }
 game.on('trailer', p => {
   trailerVisad = true;   // denna skärm har sett trailern → STARTA ska inte trigga en ny
-  const v = videoEllerFallback('trailer-video', 'trailer-fallback', p?.src);   // saknas klippet → placeholder
-  $('ov-trailer').classList.add('open');
-  if (v) {
-    v.muted = true;   // TYST på skärmen — trailer-ljudet går centralt via hjärnan (navet → centralhögtalaren)
-    v.addEventListener('ended', doljTrailer, { once: true });
-    try { v.currentTime = 0; } catch {}
-    v.play?.().catch(() => {});   // autoplay nekad → ljussekvensen körs ändå, failsafe/trailerDone döljer
-  }
+  const src = p?.src || '';
   const dur = (p && p.dur) ? p.dur : 30;
+  $('ov-trailer').classList.add('open');
+  if (/\.html(\?|$)/.test(src) && $('trailer-ram')) {
+    const ram = $('trailer-ram');
+    $('trailer-video').style.display = 'none'; $('trailer-fallback').style.display = 'none';
+    const startAt = Number(p?.start_at) || (Date.now() + 1500);
+    ram.style.display = '';
+    ram.src = `${src}${src.includes('?') ? '&' : '?'}start_at=${startAt}`;
+  } else {
+    const v = videoEllerFallback('trailer-video', 'trailer-fallback', src);   // saknas klippet → placeholder
+    if (v) {
+      v.muted = true;   // TYST på skärmen — trailer-ljudet går centralt via hjärnan (navet → centralhögtalaren)
+      v.addEventListener('ended', doljTrailer, { once: true });
+      try { v.currentTime = 0; } catch {}
+      v.play?.().catch(() => {});   // autoplay nekad → ljussekvensen körs ändå, failsafe/trailerDone döljer
+    }
+  }
   clearTimeout(trailerFailsafe);
-  trailerFailsafe = setTimeout(doljTrailer, (dur + 1) * 1000);   // dölj senast efter dur även om trailerDone/ended uteblir
+  trailerFailsafe = setTimeout(doljTrailer, (dur + 3) * 1000);   // dölj senast efter filmens längd även om trailerDone uteblir
+  // Flödets failsafe följer filmens längd (STARTA sätter en generös provisorisk; här blir den exakt)
+  if (efterTrailer) { clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = setTimeout(korEfterTrailer, (dur + 5) * 1000); }
 });
 game.on('trailerDone', () => { doljTrailer(); korEfterTrailer(); });
 
@@ -1948,7 +1963,7 @@ function startEfterTrailer(fn) {
   efterTrailer = fn;
   game.playTrailer();                                         // → servern: broadcast 'trailer' + ljussekvens (en källa)
   clearTimeout(efterTrailerFailsafe);
-  efterTrailerFailsafe = setTimeout(korEfterTrailer, 33000);  // failsafe: fastna aldrig om 'trailerDone' uteblir
+  efterTrailerFailsafe = setTimeout(korEfterTrailer, 120000); // provisorisk failsafe; 'trailer'-eventet sätter filmens längd + 5 s
 }
 function korEfterTrailer() {
   clearTimeout(efterTrailerFailsafe); efterTrailerFailsafe = null;

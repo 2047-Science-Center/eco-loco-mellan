@@ -1,3 +1,8 @@
+> **ERSATT 2026-11-25:** trailern är nu **v2** (69 s, HTML-paket `assets/trailer-film/`, Josefs inläsning, tio rutor).
+> Ljuset styrs av `assets/trailer-film/rigg-cues.json`, och uppspelningen beskrivs i `RIGG-KONTRAKT.md` under intro-trailern.
+> Källprojekt med manus, skottlista och cue-tabell: `ecoloco-produktion/trailer-film/` (utanför repot): `manus/VO-MANUS.md`,
+> `analys/SKOTTLISTA.md`, `manus/RIGG-CUES.md`. Texten nedan är den ursprungliga 30-sekundersplanen och gäller som historik.
+
 # Maktspelet / Eco Loco — intro-trailer (30 s)
 
 *Koncept + shot-lista + copy + bildprompts för en 30-sekunders intro som spelas när spelet startar (kan ersätta/kompletera narrativ-klippet `assets/video/narrativ.mp4`, se `spec/assets.json → onboarding`). Workflow: stillbilder genereras i ChatGPT, får liv via en enkel kamerarörelse i Runway, klipps ihop till 30 s. Skrivet utifrån spel.html (attract "MAKTSPELET — THE EXPERIENCE", färg-tokens), GAME-DESIGN.md, SPELINFO.md, INTRODUKTION.md och AUDIO.md.*
