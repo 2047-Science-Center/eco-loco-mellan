@@ -96,12 +96,19 @@ Vegetation/terräng får ha en subtilt stiliserad struktur (som i referensbilder
 moln och väder måste bete sig FYSISKT TROVÄRDIGT** — naturliga vågor, reflektioner, skum. Tidigare
 tester gav vatten/stormmoln en manga-/konceptkonst-känsla — det undviks aktivt nu.
 
-> **Regel: öns fyra områden hänger geografiskt ihop** (bekräftat mot `src/map.js`): **Åker (NV)
-> gränsar till Skog (NÖ) och Tundra (SV); Skog gränsar till Stad (SÖ); Stad gränsar till Tundra.**
-> Åker↔Stad och Skog↔Tundra ligger DIAGONALT, inte intill varandra. En bild från ett område ska i
+> **Regel: öns fyra områden hänger geografiskt ihop. NY GEOGRAFI (Klara 2026-11-25, ersätter den
+> tidigare där tundra och stad låg omvänt).** Kartan visas med norr uppåt, sedd från söder snett
+> ovanifrån (kameran i havet söder om ön). Medurs från övre vänster:
+> **Åker = bak vänster (NV, gyllengula slätter) · Skog = bak höger (NÖ, högsta delen, kuperad) ·
+> Tundra = fram höger (SÖ, orange kusthed) · Stad = fram vänster (SV, lägsta delen, platt kustslätt).**
+> Grannar (gränsar): **Åker↔Skog (bakre raden), Åker↔Stad (vänster sida), Skog↔Tundra (höger sida),
+> Stad↔Tundra (främre raden).** DIAGONALT, inte intill varandra: **Åker↔Tundra och Skog↔Stad.**
+> Flygbilder över hela ön: kamera från söder, norr uppåt, så att åkern syns bak till vänster, skogen
+> bak till höger, staden fram till vänster och tundran fram till höger.
+> En bild från ett område ska i
 > bakgrunden kunna ANA sina grannområden där det är rimligt (t.ex. skog synlig från åkerns kant,
 > eftersom de gränsar till varandra) — inte generiska snöberg i alla bilder oavsett var på ön man
-> är, och inte stadens skyline synlig från åkern (de ligger diagonalt, för långt bort). Snöklädda
+> är, och inte stadens skyline synlig från skogen (de ligger diagonalt, för långt bort). Snöklädda
 > berg i fjärran är OK som en gemensam bakgrundskuliss för hela ön (syns i referensbilderna), men
 > ska inte vara det ENDA som skiljer "plats A" från "plats B".
 
@@ -236,8 +243,10 @@ animation: signalvar 5s ease-in-out infinite; /* opacity 1 → .94 → .88 → .
 - [ ] Är personen SYNLIGT ANNAN än i andra redan genererade händelsebilder (ålder/hår/kön
       varierat, ingen återkommande huvudperson av misstag via stilreferensen)?
 - [ ] Är vatten/moln/väder fysiskt trovärdigt — INTE konceptkonst-stiliserat?
-- [ ] Om bakgrunden visar ett annat område — är det ett GRANNOMRÅDE enligt kartans geografi
-      (åker↔skog, åker↔tundra, skog↔stad, tundra↔stad), inte ett diagonalt/orimligt avstånd?
+- [ ] Om bakgrunden visar ett annat område — är det ett GRANNOMRÅDE enligt kartans (nya) geografi
+      (åker↔skog, åker↔stad, skog↔tundra, tundra↔stad), inte ett diagonalt/orimligt avstånd
+      (åker↔tundra, skog↔stad)? Flygbilder: kamera från söder, åker bak vänster, skog bak höger,
+      stad fram vänster, tundra fram höger.
 - [ ] Är färgläggningen naturlig — INTE en överdriven orange-violett fantasy-solnedgång?
 - [ ] Syns minor/major-skillnaden i SJÄLVA MOTIVET (omfattning av skada), inte bara i färgton?
 - [ ] Ett tydligt huvudmotiv, läsbart inom några sekunder?
