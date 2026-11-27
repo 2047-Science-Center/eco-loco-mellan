@@ -24,6 +24,10 @@ export default {
   // Fas-längder i sek. Beslut 2026-11-19: bygge 60 s, dilemma-röst 30 s (politik → vote i dilemma-läge).
   phases: { bygga: 60, prisutdelning: 20, politik: 30 },
 
+  // ÅR 1 +30 s (Klara 2026-11-25): första byggfasen får extra tid för den lätta coachningen (BYGG → BYT).
+  // Servern (roundFull) lägger på detta BARA på år 1 → år 2–4 kör normala 60 s. UX, ingen balansändring.
+  firstYearBonusSec: 30,
+
   // ── Beslutssystem: Ö-rådet kör DILEMMAN (inte politik) ──
   // POOL (beslut 2026-11-19): EXAKT 8 aktiva beslut. Motorn (_decisionPool) filtrerar den gemensamma
   // dilemma-/rost-banken mot denna id-lista → koncernerbjudande är UTE (överlappade sponsrat), de fyra
@@ -60,7 +64,11 @@ export default {
   },
 
   // ── Onboarding-standard ──
-  mode: 'selfplay',          // självstart, ingen spelledare
+  // tutorial (Klara 2026-11-25): Flash kör samma intro som Mellan (kontrollrum → CENTRALMAKTEN → DU ÄR →
+  // ERT UPPDRAG med 4 år ur rounds) → REDO? → nedräkning → år 1. MEN inget övningsår 0 — runTutorial kör
+  // bara [mission, ceremony] för coach-varianter, sedan tar flashCoach vid på riktiga år 1 (BYGG → BYT).
+  // Fortfarande självfaciliterande (ceremonins timers auto-fortsätter); spelledaren kan ändå ta över.
+  mode: 'tutorial',
 
   // ⚠ ATT STÄMMA AV: exakt fas-tider, om tutorial ersätts av pop-ups, dilemma-urvalsregler,
   //   vilka händelser Flash ska ha, avslutets form. Se design/FLERVERSION-ARKITEKTUR.md §Öppna frågor.

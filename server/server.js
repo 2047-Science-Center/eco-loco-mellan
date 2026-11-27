@@ -175,8 +175,8 @@ let crisisDueRound = 0;        // ÅRSGATADE lokala kriser: senaste runda vi red
 const EVENT_PAUSE_MS = 15000;    // händelse-popupen ligger kvar (och spelet fryst) UPP TILL 15 s — ett klick (eventDismiss) löser den tidigare (Klara 2026-11-23)
 const EVENT_COOLDOWN_MS = 4000;  // normalt (ofryst) spel mellan två köade händelser
 const PROPOSE_SECS = 30, VOTE_SECS = 30;
-const POLITICS_OUTRO_MS = 10000;  // resultat-popup + ÅR-banderoll på skärmen (src/ui.js: ~4 s + ~5,6 s)
-const POLITICS_INTRO_MS = 5000;   // längd på klientens 'X HAR ORDET'-intro (src/ui.js showOrdforande ≈ 4,8 s)
+const POLITICS_OUTRO_MS = 5400;   // tills resultat-popupen (src/ui.js: 0,9 s + 4,2 s) har spelats; politicsDone → ÅR-banderoll (DILEMMA_YEAR_MS)
+const POLITICS_INTRO_MS = 7600;   // längd på klientens 'X HAR ORDET'-intro (src/ui.js showOrdforande ≈ 7,6 s: släckning, tändning, emblem, banderoll)
 const BOT_POWER_WAIT_S = 60;         // en bot med makten väntar så här många sek IN I rundan innan den lägger sitt förslag (människor hinner ringa & påverka)
 const EVENT_DELAY_S = 30;            // årets slumphändelse dyker upp så här många sek IN I året (inte i örådet)
 let proposalCooldownUntil = 0;
@@ -547,7 +547,11 @@ function ceremonyStepMs(steps) {
 }
 function roundFull() {
   const b = phaseT().bygga;                 // variant: byggfasens längd ur config
-  return b != null ? b : timerSecFor(engine.cfg, engine.getState().round);   // legacy: timerSecFor (oförändrat)
+  let full = b != null ? b : timerSecFor(engine.cfg, engine.getState().round);   // legacy: timerSecFor (oförändrat)
+  // Flash: år 1 får extra byggtid för coachningen (config firstYearBonusSec). Bara år 1 → år 2+ oförändrat.
+  const bonus = engine?.cfg?.firstYearBonusSec || 0;
+  if (bonus && engine.getState().round === 1) full += bonus;
+  return full;
 }
 
 function startTimer() {
@@ -922,7 +926,9 @@ function endPolitics() {                                      // inget förslag 
   if (!politics) return;
   clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;
   broadcast({ type: 'event', event: 'politicsDone', payload: {} });
-  if (engine && !engine.getState().over) startTimer();
+  // Skärmarna visar "ÅR N"-banderollen i kontrollrummet (~5 s) → byggtimern startar efter den (som i Flash/dilemma).
+  clearTimeout(yearT);
+  if (engine && !engine.getState().over) yearT = setTimeout(() => { if (engine && !engine.getState().over) startTimer(); }, DILEMMA_YEAR_MS);
 }
 function botOrdforandeLay(power) {                            // bot-ordförande lägger (eller avstår) så självspel har politik
   if (!politics || politics.stage !== 'propose' || claims[power] !== 'bot') return;
