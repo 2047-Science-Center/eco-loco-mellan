@@ -78,7 +78,7 @@ export function attachRigg(engine, opts = {}) {
     lastOh = p.value; P('ecoloco/rigg/ohalsa', p.value);
   });
   engine.on('roundStart', p  => { countdownFired = false; });   // round_start-ljudet spelas av hjärnan vid scen='runda' (rätt tajmat), inte här (kom för tidigt — roundStart fyrar mitt i prisceremonin)
-  engine.on('gameEnd',    p  => { over = true; cue(p.won ? 'win' : 'lose'); });
+  engine.on('gameEnd',    p  => { over = true; if (!engine.cfg?.kroning) cue(p.won ? 'win' : 'lose'); });   // kröningen äger ljudet
   engine.on('award',      p  => { pendingAwards = p; });   // fångas FÖRE roundEnd (motorns emit-ordning)
   // Ceremonin dirigeras numera av SERVERN i BÅDA lägen (beginAwards/showAward/endAwards) så skärm + rigg
   // kliver i exakt takt. Riggen self-pacar INTE längre på roundEnd (runCeremony kvar för ev. testharness).

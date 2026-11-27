@@ -52,6 +52,7 @@ export default {
   // UPPROR m.fl.) och INGA GM-händelser (gm-events; GM aktiveras aldrig i Flash-selfplay). Håll därför
   // companyCrises/companyEvents BORTA ur features och 'foretag'/'gm' borta ur content.events.triggers.
   // (KRIS-mekaniken vid öhälsa ≤20 är en separat motorsak, inte en "händelse", och är opåverkad.)
+  kroning: true,             // sista årets öråd avgör → kröningsceremonin (spec/kroning.js)
   features: { trade: true, ohalsaEvents: true },  // handel + ENBART öhälsohändelser
   modules: [],
 

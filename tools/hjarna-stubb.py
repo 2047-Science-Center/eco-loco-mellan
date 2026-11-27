@@ -251,6 +251,9 @@ def start_round_flourish():
 def apply_scen(payload):
     global cur_mode, amb_manual
     event_stop(); intro_stop()
+    if payload != "slut":
+        kroning_stop()
+        if not crisis_active: set_blandare(False)
     if payload == "attract":
         cur_mode = None; amb_manual = None; set_ambience("musik_attract.mp3")   # attract-MUSIK (ny grupp startar rent)
         if not crisis_active: set_fx("none"); set_all(ATTRACT_LOOK); spots_off()
@@ -362,7 +365,7 @@ def apply_award(payload):
 def reset_to_auto():
     global master, crisis_active, crisis_timer, amb_manual
     master = False
-    event_stop(); intro_stop()
+    event_stop(); intro_stop(); kroning_stop()
     crisis_active = False
     if crisis_timer is not None:
         crisis_timer.cancel(); crisis_timer = None
@@ -502,6 +505,64 @@ def apply_intro(payload):
     elif p == "vanta":
         intro_vantar = True; set_ambience("soundscape_1.mp3")
 
+# ---- KRÖNINGEN (ecoloco/rigg/kroning {steg, lag}) — tidslinjen ägs av spelet (spec/kroning.js) ----
+# Ljus + ljud per steg (specen Blocks sen implementerar). Håller sista looken tills nästa scen-cue.
+LAG_LOOK = {"aker": {"h": 45, "s": 85, "v": 95}, "skog": {"h": 120, "s": 90, "v": 85}, "tundra": {"h": 22, "s": 100, "v": 95}, "stad": {"h": 210, "s": 15, "v": 90}}
+kron_ljud = []          # pågående ceremoni-ljud (stoppas vid scenbyte)
+kron_stop = threading.Event()
+
+def kron_spela(fname):
+    p = resolve(fname); cmd = _oneshot_cmd(p) if p else None
+    if cmd: kron_ljud.append(subprocess.Popen(cmd))
+
+def kroning_stop():
+    kron_stop.set()
+    for p in kron_ljud:
+        if p.poll() is None:
+            try: p.terminate()
+            except Exception: pass
+    kron_ljud.clear()
+
+def _kron_duell(lag, stop):
+    sidor = [LAG_SIDE.get(l) for l in lag]
+    t, d, n = 0.0, 0.55, 0
+    while t < 5.2:                          # samma acceleration som skärmen (spec/kroning.js duellHopp)
+        for i, (l, s) in enumerate(zip(lag, sidor)):
+            if not s or stop.is_set(): continue
+            hit = i == n % 2
+            set_side(s, LAG_LOOK[l] if hit else {"h": 45, "s": 80, "v": 12}); set_spot(s, hit)
+        if stop.wait(d): return
+        t += d; d = max(0.16, d * 0.92); n += 1
+
+def apply_kroning(payload):
+    global crisis_active, round_flourish_active, kron_stop
+    d = json.loads(payload); steg = d.get("steg"); lag = d.get("lag")
+    kron_stop.set(); kron_stop = threading.Event()
+    event_stop(); intro_stop(); stop_ambience()
+    crisis_active = False; round_flourish_active = False
+    side = LAG_SIDE.get(lag) if isinstance(lag, str) else None
+    alla = lambda look: (set_fx("none"), set_all(look))
+    if   steg == "rum":        kroning_stop(); kron_stop = threading.Event(); set_blandare(False); spots_off(); alla(OFF)
+    elif steg == "meddelande": kron_spela("event_ident.mp3")
+    elif steg == "rakna":      alla({"h": 45, "s": 70, "v": 35, "puls": 30}); kron_spela("kron_spanning.mp3")
+    elif steg == "overlevde":  alla({"h": 135, "s": 90, "v": 65}); kron_spela("relief.mp3")
+    elif steg == "foll":       alla({"h": 4, "s": 100, "v": 60, "puls": 40}); kron_spela("lose.mp3")
+    elif steg == "slack":
+        spots_off(); alla(OFF); kron_spela("ding.mp3")
+        if d.get("vunnet"): kron_spela("kron_musik.mp3")      # mörk bädd under uppräkningen (tonar ut vid duellen)
+    elif steg == "tand" and side:  set_side(side, LAG_LOOK[lag]); kron_spela("ding.mp3")
+    elif steg == "ut" and side:    set_spot(side, False); set_side(side, OFF); kron_spela("ding.mp3")
+    elif steg == "duell":          kron_spela("kron_duell.mp3"); threading.Thread(target=_kron_duell, args=(lag, kron_stop), daemon=True).start()
+    elif steg == "kvar" and side:  set_side(side, dict(LAG_LOOK[lag], puls=55)); set_spot(side, True)
+    elif steg == "blixt":          spots_off(); alla({"h": 0, "s": 0, "v": 100}); kron_spela("win.mp3")
+    elif steg == "krona" and side:
+        for n in (1, 2, 3, 4): set_side(n, {"h": 45, "s": 85, "v": 100, "puls": 55} if n == side else {"h": 45, "s": 80, "v": 35}); set_spot(n, n == side)
+        threading.Timer(1.3, lambda: kron_spela("kron_efter.mp3")).start()
+    elif steg == "ingen":          alla({"h": 4, "s": 100, "v": 70, "puls": 50}); kron_spela("kris.mp3")
+    elif steg == "dampa":          alla({"h": 4, "s": 100, "v": 35, "puls": 40})
+    elif steg == "on_dod":         set_blandare(True)
+    elif steg == "lugn":           set_blandare(False); alla({"h": 4, "s": 100, "v": 18, "puls": 30})
+
 def on_semantic(topic, payload):
     print(f"[hjarna] {topic}  {payload}")
     if topic.startswith("ecoloco/rigg/gm/"):
@@ -514,6 +575,8 @@ def on_semantic(topic, payload):
         play_trailer(payload); return
     if topic == "ecoloco/rigg/final":      # vinst/förlust-finale (systemceremoni) — spelar i båda lägena
         apply_final(payload); return
+    if topic == "ecoloco/rigg/kroning":    # kröningsceremonin (systemceremoni, gäller alltid)
+        apply_kroning(payload); return
     if topic == "ecoloco/rigg/intro":      # introts centralljud (systemceremoni, gäller alltid)
         apply_intro(payload); return
     if master:
@@ -536,7 +599,7 @@ def on_semantic(topic, payload):
 def main():
     topics = ["ecoloco/rigg/scen", "ecoloco/rigg/ohalsa", "ecoloco/rigg/award",
               "ecoloco/rigg/wave", "ecoloco/rigg/countdown", "ecoloco/rigg/ceremoni",
-              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/trailer", "ecoloco/rigg/final", "ecoloco/rigg/handelse", "ecoloco/rigg/intro", "ecoloco/rigg/gm/#"]
+              "ecoloco/rigg/kris", "ecoloco/rigg/blandare", "ecoloco/rigg/ljud", "ecoloco/rigg/paus", "ecoloco/rigg/ambience", "ecoloco/rigg/trailer", "ecoloco/rigg/final", "ecoloco/rigg/handelse", "ecoloco/rigg/intro", "ecoloco/rigg/kroning", "ecoloco/rigg/gm/#"]
     args = ["mosquitto_sub", "-h", BROKER, "-p", PORT, "-v"]
     for t in topics: args += ["-t", t]
     print(f"[hjarna] dirigent igång mot {BROKER}:{PORT}  (Ctrl-C för att avsluta)")

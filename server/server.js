@@ -22,6 +22,7 @@ import { attachMqtt, setPublisher as setBenchPublisher, clearBenchResults } from
 import { attachRigg } from '../src/rigg.js';
 import { newSession } from './persist.js';
 import { buildSlutdel } from '../spec/slutdel.js';
+import { kroningData, kroningSteg } from '../spec/kroning.js';
 import { buildEngineConfig, isValidVariant, VARIANT_IDS, phaseTimers } from './variant-config.js';
 import { DILEMMAS } from '../spec/content/dilemmas.js';
 import { GM_EVENTS } from '../spec/content/gm-events.js';
@@ -123,6 +124,7 @@ let session = null;            // persist-session (newEngine → ny session, ny 
 let version = 'A';             // slutdel-version (default 'A' = PODIUM + Newfoundland)
 let slutdel = null;            // { steps, i, answers:{questionId:{lag:option}} } — null utanför slutdelen
 let lastGameEnd = null;        // motorns senaste gameEnd-payload (för summary efter slutdelen)
+let kron = null, kronTimers = [];   // KRÖNINGEN: { data, start } medan den visas + riggens steg-timers
 let finaleSent = false;        // KRÖNING: final-cuen (win/lose) skickas EN gång, efter prisutdelningen
 // GM-flaggan bor i SERVERN (drift), inte i motorn (regler): den styr DRIFT-flödet — om händelser
 // triggas via spelledarens ja/nej (GM PÅ) eller slumpas automatiskt med chansPerRunda (GM AV),
@@ -403,6 +405,7 @@ function beginGame() {
   cancelStartCountdown(true);
   clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
   introSkarmar = new Set(); introSpelat = false;
+  stoppaKroning();
   stopTrailer(); trailerPlayedAuto = false;
   for (const id of TEAMS) if (!claims[id] || claims[id] === 'bot' || claims[id].readyState !== 1) claims[id] = claims[id] && claims[id] !== 'bot' && claims[id].readyState === 1 ? claims[id] : 'bot';
   started = true;
@@ -423,6 +426,7 @@ function resetToLobby() {
   tutReady = new Set();
   clearTimeout(tutReadyFailsafe); tutReadyFailsafe = null;
   introRensa();
+  stoppaKroning();
   stopTrailer();
   broadcast({ type: 'event', event: 'trailerDone' });   // stäng ev. trailer-overlay på skärmarna
   stopTimer();
@@ -533,7 +537,17 @@ function newEngine() {
     resolvingNow = false; klar = new Set(); cer = null; clearTimeout(cerTimer);   // avbryt ev. påbörjad auto-ceremoni (rundan är ogjord)
     startTimer();   // maybeBotProposal triggas av timern (BOT_POWER_WAIT_S in i rundan)
   });
-  engine.on('gameEnd', () => stopTimer());
+  engine.on('gameEnd', () => {
+    stopTimer();
+    // Kröningen: pågår ingen prisceremoni (t.ex. efter sista örådet) startar den nu; annars via fireFinale.
+    if (engine.cfg.kroning && !cer) { clearTimeout(yearT); yearT = setTimeout(startKroning, 1500); }
+  });
+  // Sista året: ingen ny runda — prisutdelningen följs av ett sista öråd (utan pris → örådet direkt).
+  engine.on('finalOrad', p => {
+    resolvingNow = false; klar = new Set(); stopTimer();
+    broadcast({ type: 'event', event: 'finalOrad', payload: p });
+    if (!cer || !cer.steps.length) startOrad();
+  });
   // VINST/FÖRLUST-FINALEN (ecoloco/rigg/final) skickas inte längre direkt här, utan som KRÖNING EFTER
   // prisutdelningen (fireFinale i advanceCeremony) — vinnarsidan tänds en sista gång, 2 s, sedan final.
   engine.on('proposalOpened', () => { checkBotVotes(); });
@@ -559,6 +573,7 @@ function roundFull() {
 }
 
 function startTimer() {
+  if (engine?.getState()?.finalOrad) return;     // sista örådet: inget nytt byggår
   stopTimer();
   const full = roundFull();
   timerLeft = full;
@@ -695,7 +710,26 @@ function advanceCeremony() {
 // KRÖNING (efter SISTA prisutdelningen, när sista steget klickats). Riggen är redan mörk (scen 'slut'
 // från endAwards). Finale-cuen bär utfall + vinnarlag → HJÄRNAN kör sekvensen: mörker → kort paus →
 // ljus + fanfar (vinnarsidan tänds för VINST, dystert rött för FÖRLUST). Final är SYSTEMCEREMONI (ungated).
+// KRÖNINGSCEREMONIN: skärmarna får datan (tidslinjen ligger i spec/kroning.js) och riggen får samma steg
+// på samma klocka (ecoloco/rigg/kroning). Systemceremoni (riggSend, ej gatad). Körs en gång per parti.
+function stoppaKroning() { kronTimers.forEach(clearTimeout); kronTimers = []; kron = null; }
+function startKroning() {
+  if (kron || finaleSent || !lastGameEnd || !engine) return;
+  finaleSent = true;
+  stopTimer();
+  const data = kroningData(engine.getState(), lastGameEnd);
+  kron = { data, start: Date.now() };
+  riggSend('ecoloco/rigg/scen', 'slut');                 // släck ambiens + sidor innan ceremonin
+  kronTimers = kroningSteg(data).map(x => setTimeout(() => riggSend('ecoloco/rigg/kroning', JSON.stringify({ steg: x.steg, lag: x.lag ?? null, vunnet: data.vunnet })), 300 + x.t * 1000));
+  broadcast({ type: 'event', event: 'kroning', payload: { data, forbi: 0 } });
+}
+// Sista årets öråd är klart (förslag/dilemma avgjort eller inget att besluta) → motorn fäller domen.
+function avslutaSistaOradet(vantan = 1200) {
+  clearTimeout(yearT);
+  yearT = setTimeout(() => { if (engine?.getState()?.finalOrad) engine.avslutaSistaOradet(); }, vantan);
+}
 function fireFinale() {
+  if (engine?.cfg?.kroning) { startKroning(); return; }
   if (finaleSent || !lastGameEnd) return;
   finaleSent = true;
   const ge = lastGameEnd;
@@ -737,7 +771,7 @@ function resumeAwards(ws) {
 function awardsKlar(lag) {
   if (!awardsVantar.has(lag)) return;
   awardsVantar.delete(lag);
-  if (awardsVantar.size === 0 && !timerInt && started && !engine.getState().over) startTimer();
+  if (awardsVantar.size === 0 && !timerInt && started && !engine.getState().over) startTimer();   // (no-op i sista örådet)
 }
 
 // Röstlogik: botar röstar när alla (levande) människor röstat; döda/mänskliga eftersläntrare tvingas vid timeout.
@@ -768,7 +802,7 @@ function cancelCompanyEventPopup() {
   }
 }
 function forceResolve() {
-  if (paused || resolvingNow || !started || engine.getState().over) return;
+  if (paused || resolvingNow || !started || engine.getState().over || engine.getState().finalOrad) return;
   resolvingNow = true;
   cancelCompanyEventPopup();   // byggfasen slut → ingen händelse-popup får följa med in i Ö-rådet
   forceOpenVotes();
@@ -825,10 +859,10 @@ function startDilemma() {
   const S = engine?.getState();
   if (!S || S.over) { startTimer(); return; }
   const choice = (S.decisionChoices || [])[0];       // { id, kind:'dilemma'|'event' }
-  if (!choice) { startTimer(); return; }             // inget beslut i år → gå direkt till året
+  if (!choice) { if (S.finalOrad) avslutaSistaOradet(); else startTimer(); return; }   // inget beslut i år → gå direkt vidare
   dilemma = { stage: 'vote', left: voteSec(), kind: choice.kind };
   const res = engine.openOradDecision(choice);       // dilemma → 'dilemmaOpened' (A/B) · event → 'proposalOpened' type:event (ja/nej)
-  if (!res || !res.ok) { dilemma = null; startTimer(); return; }
+  if (!res || !res.ok) { dilemma = null; if (S.finalOrad) avslutaSistaOradet(); else startTimer(); return; }
   // Botar röstar efter en kort delay (skärmarna hinner visa dilemmat); människor röstar via UI (A/B).
   clearTimeout(botDilemmaTimer);
   botDilemmaTimer = setTimeout(() => { if (dilemma) { checkBotVotes(); broadcast({ type: 'voteUpdate' }); } }, 8000);
@@ -861,7 +895,9 @@ function forceDilemmaVotes() {                        // röst-tiden ute → tvi
 function endDilemma() {                               // dilemmat avgjort → året börjar (återanvänder politicsDone-flödet)
   if (!dilemma) return;
   clearTimeout(dilemmaTimer); clearTimeout(botDilemmaTimer); clearTimeout(yearT); dilemma = null;
-  broadcast({ type: 'event', event: 'politicsDone', payload: {} });   // klienten stänger Ö-råd + stegar årssiffran
+  const sista = !!engine?.getState()?.finalOrad;
+  broadcast({ type: 'event', event: 'politicsDone', payload: { slut: sista } });   // klienten stänger Ö-råd + stegar årssiffran
+  if (sista) return avslutaSistaOradet();           // sista året → direkt till kröningen
   // Skärmarna visar "ÅR N"-banderollen i kontrollrummet (~5 s) före ö-vyn → byggtimern startar efter den (Klara 2026-11-23).
   if (engine && !engine.getState().over) { clearTimeout(yearT); yearT = setTimeout(() => { if (engine && !engine.getState().over) startTimer(); }, DILEMMA_YEAR_MS); }
 }
@@ -872,7 +908,7 @@ function endDilemma() {                               // dilemmat avgjort → å
 // spelledaren också pausat manuellt (paus-distinktion). Använder motorns gmOpenDecision → en-gång/spel-
 // gating (gmDecisionsUsed). choice = { id, kind:'dilemma'|'event' }.
 function startGmDecision(choice) {
-  if (!engine || phase !== 'spel' || resolvingNow || engine.getState().over) return false;
+  if (!engine || phase !== 'spel' || resolvingNow || engine.getState().over || engine.getState().finalOrad) return false;
   const cur = engine.getState().proposal;
   if (cur && !cur.resolved) return false;            // ett beslut i taget
   const res = engine.gmOpenDecision(choice);         // dilemma → 'dilemmaOpened' (A/B) · event → 'proposalOpened' (ja/nej)
@@ -929,7 +965,9 @@ function politicsToVote() {                                   // ordföranden la
 function endPolitics() {                                      // inget förslag / skip / förslag avgjort → året börjar
   if (!politics) return;
   clearTimeout(politicsTimer); clearTimeout(botOrdforandeTimer); politics = null;
-  broadcast({ type: 'event', event: 'politicsDone', payload: {} });
+  const sista = !!engine?.getState()?.finalOrad;
+  broadcast({ type: 'event', event: 'politicsDone', payload: { slut: sista } });
+  if (sista) return avslutaSistaOradet();           // sista året → direkt till kröningen
   // Skärmarna visar "ÅR N"-banderollen i kontrollrummet (~5 s) → byggtimern startar efter den (som i Flash/dilemma).
   clearTimeout(yearT);
   if (engine && !engine.getState().over) yearT = setTimeout(() => { if (engine && !engine.getState().over) startTimer(); }, DILEMMA_YEAR_MS);
@@ -1038,6 +1076,8 @@ wss.on('connection', ws => {
         if (phase === 'slutdel' && slutdel && slutdel.i >= 0 && slutdel.i < slutdel.steps.length) sendSlutdelStep(ws);
         // Sent ansluten / omladdad sida mitt i prisutdelningen → landa på det pris rummet visar nu.
         if (started && cer) resumeAwards(ws);
+        // Sent ansluten under/efter kröningen → samma ceremoni (efter några sekunder direkt till slutrutan).
+        if (kron && phase !== 'slutdel') send(ws, { type: 'event', event: 'kroning', payload: { data: kron.data, forbi: (Date.now() - kron.start) / 1000 } });
         // (trailern triggas nu av STARTA-knappen/fönstret, inte av anslutning — se playTrailer + klientens startEfterTrailer)
         break;
       }
@@ -1336,6 +1376,7 @@ function handleGmCmd(m) {
     // ——— SLUTDEL: spelledarstegad slutdel (podium + reveal). Fas-gardat + idempotent, som award_next. ———
     case 'slutdel_start': {   // guard: partiet måste vara SLUT. Bygg ordnad steglista [q1..q6, nf1..nf3] (version A).
       if (!engine || engine.getState().over !== true) break;
+      stoppaKroning();
       slutdel = { steps: buildSlutdel(version), i: -1, answers: {} };
       phase = 'slutdel';
       rigg?.beginSlutdel?.();

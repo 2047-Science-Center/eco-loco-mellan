@@ -37,6 +37,7 @@ export default {
   },
 
   // ── Valfria mekaniker / toggles (3b) ──
+  kroning: true,             // sista årets öråd avgör → kröningsceremonin (spec/kroning.js)
   features: { trade: true, companyCrises: true, companyEvents: true, ohalsaEvents: true },
   modules: [],
 

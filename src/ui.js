@@ -22,6 +22,8 @@ import { logoSVG } from './logos.js';
 import { GameAudio } from './audio.js';
 import { ServerNet } from './net.js';
 import { ico, moodIco, curIco, ICON_IDS } from './icons.js';
+import { visaKroning, stangKroning, forladdaKroning } from './kroning.js';
+import { kroningData } from '../spec/kroning.js';
 
 const $ = id => document.getElementById(id);
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -172,7 +174,7 @@ function makeProxy() {
                'politicsStart', 'politicsDone', 'politicsTimer',
                'trailer', 'trailerDone',
                'startWindow', 'startGo', 'startWindowCancel', 'tilllobby',
-               'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone'];
+               'slutdelStart', 'slutdelQuestion', 'slutdelReveal', 'slutdelDist', 'slutdelDone', 'kroning', 'finalOrad'];
   return {
     attach(b) {
       cur = b;
@@ -746,6 +748,7 @@ game.on('start', () => run(async () => {
   // Bänk utan lag (åskådare): behåll lobbyn öppen så man kan ta över en dator när som helst.
   if (!(ONLINE && !game.me)) $('ov-start').classList.remove('open');
   $('ov-slut').classList.remove('open');
+  stangKroning();
   pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null; cerNastaRunda = null;   // nytt parti → nollställ ev. väntande slutskärm/banner
   map.clearBuildings();
   loggClear();        // nytt parti → töm händelseloggen
@@ -784,11 +787,33 @@ game.on('gameEnd', p => run(async () => {
   // Lokalt (mock): 'award' stegade redan klart via kön → visa slut direkt.
   // Online: servern driver prisceremonin och avslutar med awardDone{over:true}; gameEnd kan komma
   // FÖRE awardCeremony (auto-läge) → vänta in awardDone. Säkerhetsnät om awardDone aldrig kommer.
+  if (E().cfg.kroning) {                           // KRÖNINGEN: online skickar servern 'kroning'; lokalt startar den här
+    if (!ONLINE) startaKroning(kroningData(E().getState(), p));
+    return;
+  }
   if (!ONLINE) { showSlut(p); return; }
   pendingSlut = p;
   clearTimeout(slutFailsafe);
   slutFailsafe = setTimeout(() => run(async () => showPendingSlut()), 15000);
 }));
+
+// ── KRÖNINGSCEREMONIN (spec/kroning.js + src/kroning.js) — ersätter slutskärmen i Mellan och Flash ──
+function startaKroning(data, forbi = 0) {
+  // Allt annat stängs: ceremonin börjar i det släckta kontrollrummet.
+  ['ov-award', 'ov-power', 'ov-choose', 'ov-vote', 'ov-dilemma', 'ov-result', 'ov-year', 'ov-event', 'ov-trade', 'ov-tradein', 'ov-register', 'ov-bot', 'ov-slut']
+    .forEach(id => $(id)?.classList.remove('open'));
+  pendingSlut = null; clearTimeout(slutFailsafe); slutFailsafe = null;
+  slutForlust = !data.vunnet;
+  const gmNu = !!E()?.getState()?.gmMode;          // spelledarläge: spelledaren leder avslutningen (ingen knapp)
+  visaKroning(data, {
+    forbi,
+    knapp: gmNu ? null : (data.vunnet ? 'STARTA NYTT SPEL' : 'TILLBAKA TILL LOBBYN'),
+    onKort: () => { oradAktivt = false; rivRummet(); },
+    onKnapp: () => { stangKroning(); $('btn-again').click(); },
+  });
+}
+game.on('kroning', p => run(async () => startaKroning(p.data, p.forbi || 0)));
+game.on('finalOrad', () => run(async () => { forladdaKroning(); }));
 
 game.on('proposalOpened', p => run(async () => {
   // proposal_open-ljud spelas centralt (rigg); 'vote' stannar som torr feedback när DU trycker JA/NEJ.
@@ -1394,8 +1419,9 @@ game.on('politicsTimer', p => {
     dt.textContent = `⏱ ${p.left}s`; dt.classList.toggle('hot', p.left <= 10);
   }
 });
-game.on('politicsDone', () => run(async () => {
+game.on('politicsDone', p => run(async () => {
   $('ov-choose').classList.remove('open'); $('ov-vote').classList.remove('open'); voteOpenFor = null; dilemmaVote = null;
+  if (p?.slut) return;                             // sista örådet: stanna i kontrollrummet — kröningen tar över
   const rumPa = $('room-bg')?.classList.contains('on');   // politik: kontrollrummet ligger kvar → ÅR-banderoll där, sedan mjuk övergång till ön
   oradAktivt = false;
   if (!rumPa) rivRummet();
@@ -2064,6 +2090,7 @@ function renderWaitDots(m) {
 }
 
 function resetToLobbyUI() {
+  stangKroning();
   fireTutAbort();                               // avbryt ev. pågående solo-tutorial rent
   tutRunning = false; tutInCeremony = false;
   vantarLag = false; lastTutReady = null;       // nollställ väntläget/lag-räknaren
@@ -2885,6 +2912,7 @@ function renderSdDist(p) {
 }
 
 game.on('slutdelStart', () => run(async () => {
+  stangKroning();
   $('ov-slut').classList.remove('open');     // slutdelen tar över slutskärmen
   sdQuestion = null;
   sdShow('question');
@@ -2928,6 +2956,17 @@ game.on('slutdelDone', () => run(async () => {
   sdQuestion = null;
   $('ov-slut').classList.add('open');   // tillbaka till slutskärmen
 }));
+
+// ═══ TEST: visa kröningsceremonin direkt — spel.html?local=1&kroningtest=vinst (eller =forlust) ═══
+if (params.has('kroningtest')) {
+  const vinst = params.get('kroningtest') !== 'forlust';
+  $('ov-start').classList.remove('open');
+  setTimeout(() => visaKroning({
+    vunnet: vinst, vinnare: 'aker', oh: vinst ? 67 : 41, mal: 60, ar: 8,
+    placering: [{ teamId: 'stad', namn: 'Örnen', kapital: 88 }, { teamId: 'tundra', namn: 'Räven', kapital: 104 }, { teamId: 'skog', namn: 'Björnen', kapital: 131 }, { teamId: 'aker', namn: 'Oxen', kapital: 142 }],
+    bov: { teamId: 'stad', namn: 'Örnen', skada: -31 },
+  }, { knapp: vinst ? 'STARTA NYTT SPEL' : 'TILLBAKA TILL LOBBYN', onKnapp: () => location.reload() }), 300);
+}
 
 // ═══ TEST: öppna slutdelen direkt för genomklickning — spel.html?slutdeltest=1 ═══
 // Kräver inget parti och ingen server: stegar hela podiet + Newfoundland lokalt med en NÄSTA-knapp.

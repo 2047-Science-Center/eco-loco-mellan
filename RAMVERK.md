@@ -122,6 +122,9 @@ parallellt `engine event → src/rigg.js → ecoloco/rigg/* → hjärnan → eco
   alltid centralt. Gäller händelsen ett lag lyser lagets sida och pilen pekar mot den bänken. Rött/blandare = endast öhälsokrisen (områdeskriser går i orange).
 - **Introts ljud:** bänken spelar `relief` ("DU ÄR"), `ui_tick` per uppdragssteg och `round_start` in i övningsåret; centralt (`ecoloco/rigg/intro` 1/0/vanta):
   `intro_badd.mp3` + `event_ident` vid kronan, `soundscape_1` medan man väntar på de andra. Nedräkningen är oförändrad.
+- **Kröningsceremonin** (Mellan + Flash, `cfg.kroning`): sista året har ett ÖRÅD; när det beslutet är verkställt kör motorn `avslutaSistaOradet()` och
+  ceremonin startar (`spec/kroning.js` = tidslinje för både skärm och rigg · `src/kroning.js` = vyn · `ecoloco/rigg/kroning`). Skärmen är tyst, ljudet spelas centralt.
+  Test utan server: `spel.html?local=1&kroningtest=vinst|forlust`. Skola har kvar den gamla slutskärmen.
 - Händelse-/dilemma-bilder: `assets/event_<id>.png` (16:9) + `assets/dilemma/<id>.png`; stilguide `design/HANDELSE-VISUELL-STILGUIDE.md`.
 
 ### Karta/seating

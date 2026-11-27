@@ -227,6 +227,7 @@ export class EcoLoco {
     const t = this.team(teamId);
     const card = handFor(teamId).find(c => c.tier === tier);
     if (!card) return { ok: false, reason: 'okänt kort' };
+    if (this.S.finalOrad) return { ok: false, reason: 'sista året är slut' };
     if (this.S.banAllThisRound) return { ok: false, reason: 'byggstopp denna runda (naturreservat)' };
     if (this.S.banDirtyThisRound && tier === 'smutsig') return { ok: false, reason: 'smutsig förbjuden denna runda' };
     if (this.S.banDirtySektorThisRound === t.sektor && tier === 'smutsig') return { ok: false, reason: 'smutsig förbjuden för din sektor denna runda' };
@@ -259,6 +260,7 @@ export class EcoLoco {
 
   // ACTION: byt valutor mellan två lag (atomiskt). I mock avgör mock-opponents om en bot accepterar.
   transfer(fromId, toId, give, giveCur, get, getCur) {
+    if (this.S.finalOrad) return { ok: false, reason: 'sista året är slut' };
     if (this.cfg.features && this.cfg.features.trade === false) return { ok: false, reason: 'handel av i denna version' };   // version-gate (Flash). Legacy: features saknas → handel på.
     const a = this.team(fromId), b = this.team(toId);
     if (giveCur === getCur) return { ok: false, reason: 'samma valuta' };
@@ -496,7 +498,7 @@ export class EcoLoco {
 
   // ACTION: bokslut. Anropas när alla lag som ska agera har valt kort (i mock: efter mock-opponents).
   endRound() {
-    if (this.S.over) return;
+    if (this.S.over || this.S.finalOrad) return;
     const c = this.cfg;
     let delta = 0;
     this.S.teams.forEach(t => {
@@ -553,6 +555,17 @@ export class EcoLoco {
     if (this.S.oh <= 0) return this._end(false, 'Ön kollapsade totalt.');
     // (2) sista rundan: vinstvillkoret (öh ≥ threshold → rikaste vinner) är ORÖRT. Kris-grinden gäller
     //     bara MITT i spelet (runda < rounds) → ingen omspelning av själva slutrundan.
+    // KRÖNING (cfg.kroning, Klara 2026-11-27): sista året får också ett ÖRÅD. Domen faller först när det
+    // beslutet är verkställt → avslutaSistaOradet(). Utan flaggan (skola/test/lokalt) oförändrat.
+    if (this.S.round >= c.rounds && c.kroning) {
+      this.S.finalOrad = true;
+      this.S.powerTeam = this._powerTeamForRound(this.S.round + 1);   // turordningen fortsätter ett steg
+      this._rollRoundProposals();
+      // Ingen som kör ett öråd (simulatorer, test, lokalt läge) → avgör direkt, som förr.
+      if (!this._h.finalOrad?.length) return this.avslutaSistaOradet();
+      this._emit('finalOrad', { round: this.S.round, powerTeam: this.S.powerTeam });
+      return;
+    }
     if (this.S.round >= c.rounds) {
       return this.S.oh >= c.threshold ? this._end(true) : this._end(false, `Ön nådde bara ${this.S.oh} — under tröskeln ${c.threshold}.`);
     }
@@ -580,6 +593,15 @@ export class EcoLoco {
     // (_rollProposalChoices) + GM:s manuella slump (gmRandomDecision) är ORÖRDA.
     this._emit('roundStart', { round: this.S.round, powerTeam: this.S.powerTeam });
     this._captureRound();                            // snapshot EFTER rundsetup = replay-punkt
+  }
+
+  // Sista örådet klart (eller inget att besluta) → spelet avgörs med öns hälsa och kapitalet EFTER beslutet.
+  avslutaSistaOradet() {
+    if (!this.S || this.S.over || !this.S.finalOrad) return;
+    const c = this.cfg;
+    this.S.finalOrad = false;
+    if (this.S.oh <= 0) return this._end(false, 'Ön kollapsade totalt.');
+    return this.S.oh >= c.threshold ? this._end(true) : this._end(false, `Ön nådde bara ${this.S.oh} — under tröskeln ${c.threshold}.`);
   }
 
   // ═══════════════ Kris-grind (design/VINST-FORLUST-FORSLAG.md, Alternativ B) ═══════════════

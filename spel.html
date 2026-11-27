@@ -890,6 +890,92 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   }
+  /* ═══ KRÖNINGSCEREMONIN (Klara 2026-11-27; design/kroning-forslag.html) — logik i src/kroning.js ═══ */
+  #ov-kroning { position: absolute; inset: calc(-1 * var(--ey, 0px)) calc(-1 * var(--ex, 0px)); background: #000; z-index: 19; display: none; overflow: hidden; color: var(--text); }
+  #ov-kroning.open { display: block; }
+  #ov-kroning svg { display: block; }
+  #ov-kroning .L { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; transition: opacity 1.4s ease; }
+  #ov-kroning .L.on { opacity: 1; }
+  #ov-kroning .dip { animation: krdip 1.1s ease-in forwards; }
+  @keyframes krdip { 0% { filter: brightness(1); } 10% { filter: brightness(.3); } 20% { filter: brightness(.95); } 32% { filter: brightness(.25); } 42% { filter: brightness(.65); } 100% { filter: brightness(0); } }
+  #kr-vagg { position: absolute; left: var(--ex, 0px); top: var(--ey, 0px); width: 1920px; height: 1080px; transform-origin: center; transition: opacity .5s ease; }
+  #kr-vagg.bort { opacity: 0; }
+  #ov-kroning #kr-mork { transition: opacity 2.2s ease-in-out; }
+  #kr-vagg .lys { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; transition: opacity .6s ease, filter .4s;
+    -webkit-mask-image: radial-gradient(ellipse 180px 440px at var(--x) 22%, #000 60%, transparent 100%); mask-image: radial-gradient(ellipse 180px 440px at var(--x) 22%, #000 60%, transparent 100%); }
+  #kr-vagg .lys.on { opacity: 1; }
+  #kr-vagg .lys.lead { filter: brightness(1.55); }
+  #kr-vagg .emb { position: absolute; top: 515px; width: 260px; margin-left: -130px; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0; transition: opacity .5s; text-shadow: 0 3px 12px #000; }
+  #kr-vagg .emb.on { opacity: 1; }
+  #kr-vagg .kap { font-family: var(--font-num); font-weight: 700; font-size: 62px; line-height: 1; color: #E8C96A; }
+  #kr-vagg .plats { font-size: 30px; font-weight: 800; color: #B8AF9A; }
+  #kr-vagg .etta .plats { color: #E8C96A; }
+  #ov-kroning #kr-win { transform: scale(1); transition: opacity 2.5s ease, transform 12s ease-out, filter .8s; }
+  #ov-kroning #kr-win.snabb { transition: opacity .25s ease, transform 9s ease-out, filter .8s; }
+  #ov-kroning #kr-win.on { transform: scale(1.07); }
+  #ov-kroning #kr-win.dov { filter: brightness(.35); }
+  #kr-st { position: absolute; left: var(--ex, 0px); top: var(--ey, 0px); width: 1920px; height: 1080px; }
+  #kr-flash { position: absolute; inset: 0; background: #FFE9A8; opacity: 0; pointer-events: none; }
+  #kr-flash.go { animation: krflash 1.1s ease-out; }
+  @keyframes krflash { 0% { opacity: .95; } 100% { opacity: 0; } }
+  /* Centralmaktens meddelande (samma stil som introt) */
+  #kr-cm { position: absolute; left: 50%; top: 400px; width: 1240px; transform: translate(-50%, 40px); opacity: 0; transition: opacity .7s, transform .7s cubic-bezier(.2,.9,.25,1); display: flex; flex-direction: column; gap: 14px; padding: 26px 48px 34px; border: 3px solid var(--gold); border-radius: 28px; background: linear-gradient(90deg, rgba(14,12,8,.97), rgba(24,21,15,.96) 60%, rgba(14,12,8,.97)); box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 50px rgba(201,169,79,.26); }
+  #kr-cm.on { opacity: 1; transform: translate(-50%, 0); }
+  #ov-kroning .cbar { position: absolute; left: 24px; right: 24px; top: -3px; height: 6px; border-radius: 0 0 6px 6px; background: var(--gold); box-shadow: 0 0 20px var(--gold); }
+  #kr-cm .mhead { display: flex; align-items: center; gap: 26px; padding-bottom: 16px; border-bottom: 2px solid rgba(201,169,79,.45); }
+  #kr-cm .seal { flex: none; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; border: 3px solid var(--gold); border-radius: 50%; background: rgba(201,169,79,.12); }
+  #kr-cm .m1 { font-size: 46px; font-weight: 800; letter-spacing: 8px; color: var(--gold); line-height: 1; }
+  #kr-cm .m2 { font-size: 22px; letter-spacing: 6px; color: var(--dim); margin-top: 6px; }
+  #kr-cm .prio { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 24px; letter-spacing: 4px; font-weight: 700; color: #F0564B; border: 2px solid #F0564B; border-radius: 12px; padding: 8px 18px; }
+  #kr-cm .prio i { width: 14px; height: 14px; border-radius: 50%; background: #F0564B; animation: inblink 1.3s ease-in-out infinite; }
+  #kr-cm .rh { font-size: 70px; font-weight: 600; line-height: 1.05; padding-top: 8px; }
+  #kr-cm .rs { font-size: 46px; font-weight: 400; line-height: 1.25; }
+  /* Öns hälsa */
+  #kr-oh { position: absolute; left: 460px; top: 350px; width: 1000px; padding: 34px 40px 70px; background: rgba(29,26,19,.94); border: 4px solid var(--gold); border-radius: 18px; opacity: 0; transition: opacity .6s; }
+  #kr-oh.on { opacity: 1; }
+  #kr-ohq { font-size: 62px; font-weight: 800; letter-spacing: 5px; color: var(--gold); text-align: center; padding-bottom: 20px; margin-bottom: 22px; border-bottom: 2px solid rgba(201,169,79,.45); }
+  #kr-oh .h { display: flex; justify-content: space-between; align-items: baseline; font-size: 34px; font-weight: 800; letter-spacing: 4px; }
+  #kr-ohn { font-family: var(--font-num); font-size: 110px; line-height: 1; }
+  #kr-oh .bar { height: 46px; background: #14120c; border-radius: 10px; margin-top: 20px; position: relative; }
+  #kr-ohf { height: 100%; width: 0; border-radius: 10px; }
+  #kr-oh .mal { position: absolute; top: -12px; bottom: -12px; width: 5px; background: var(--text); }
+  #kr-oh .mal span { position: absolute; top: 76px; left: -52px; white-space: nowrap; font-size: 24px; font-weight: 800; }
+  /* INGEN BLIR BORGMÄSTARE (samma stil som årets sabotör) */
+  #kr-ingen { position: absolute; left: 50%; bottom: 120px; width: 1248px; display: flex; align-items: center; justify-content: center; gap: 56px; padding: 36px 54px 40px; border: 5px solid #F0564B; border-radius: 26px; background: linear-gradient(90deg, rgba(14,12,8,.97), rgba(40,12,9,.97) 60%, rgba(14,12,8,.97)); box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 60px rgba(240,86,75,.45); opacity: 0; transform: translate(-50%, 46px); transition: opacity .7s, transform .7s cubic-bezier(.2,.9,.25,1); }
+  #kr-ingen.on { opacity: 1; transform: translate(-50%, 0); }
+  #kr-ingen .cbar { top: -5px; height: 9px; background: #F0564B; box-shadow: 0 0 20px #F0564B; }
+  #kr-ingen .ik { position: relative; display: flex; }
+  #kr-ingen .ik::before { content: ""; position: absolute; inset: -28%; border-radius: 50%; background: radial-gradient(circle, rgba(240,86,75,.45), transparent 66%); }
+  #kr-ingen .ik svg { position: relative; }
+  #kr-ingen .tx { font-size: 84px; font-weight: 800; line-height: 1.08; letter-spacing: 2px; color: #F0564B; }
+  /* Namnet över kröningsbilden */
+  #kr-namn { position: absolute; left: 0; right: 0; bottom: 62px; text-align: center; opacity: 0; transform: translateY(14px); transition: opacity .8s, transform .8s; text-shadow: 0 4px 22px #000, 0 0 8px #000; }
+  #kr-namn.on { opacity: 1; transform: none; }
+  #kr-namn .n { font-size: 128px; font-weight: 800; line-height: 1; letter-spacing: 6px; }
+  #kr-namn .n.foll { color: #F0564B; }
+  #kr-namn .s { display: flex; justify-content: center; gap: 18px; align-items: center; font-size: 52px; font-weight: 800; color: #E8C96A; letter-spacing: 8px; }
+  #ov-kroning .gnist { position: absolute; top: -30px; width: 12px; height: 22px; background: #E8C96A; border-radius: 3px; animation: krfall linear forwards; pointer-events: none; }
+  @keyframes krfall { to { transform: translateY(calc(100vh + 1200px)) rotate(620deg); } }
+  /* Slutkorten */
+  #kr-kort { position: absolute; left: 110px; top: 70px; width: 1700px; opacity: 0; pointer-events: none; transition: opacity .8s; }
+  #kr-kort.on { opacity: 1; pointer-events: auto; }
+  #kr-kort .rad { display: flex; gap: 34px; justify-content: center; align-items: stretch; height: 700px; }
+  #kr-kort .kort { position: relative; width: 480px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 34px 24px 36px; border: 4px solid var(--acc); border-radius: 30px; background: linear-gradient(180deg, rgba(32,28,18,.97), rgba(12,10,7,.97)); box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 60px color-mix(in srgb, var(--acc) 38%, transparent); opacity: 0; animation: krkort .7s cubic-bezier(.2,1.3,.4,1) forwards; }
+  @keyframes krkort { from { opacity: 0; transform: translateY(60px) scale(.9); } to { opacity: 1; transform: none; } }
+  #kr-kort .kort.stor { width: 600px; }
+  #kr-kort .top { height: 120px; display: flex; align-items: center; justify-content: center; }
+  #kr-kort .mitt { height: 280px; display: flex; align-items: center; justify-content: center; position: relative; }
+  #kr-kort .mitt .halo { position: absolute; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--acc) 45%, transparent), transparent 65%); }
+  #kr-kort .mitt > svg { position: relative; width: 270px; height: auto; }
+  #kr-kort .namn { font-size: 52px; font-weight: 800; letter-spacing: 3px; line-height: 1; height: 56px; position: relative; }
+  #kr-kort .v { display: flex; align-items: center; gap: 16px; font-family: var(--font-num); font-weight: 700; font-size: 160px; line-height: 1; color: var(--acc); text-shadow: 0 0 34px color-mix(in srgb, var(--acc) 55%, transparent); }
+  #kr-kort .v .ik { display: flex; flex-direction: column; gap: 8px; }
+  #kr-kort .hbar { width: 380px; height: 30px; border-radius: 15px; background: #14120c; position: relative; }
+  #kr-kort .hbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 15px; background: var(--acc); }
+  #kr-kort .hbar b { position: absolute; top: -10px; bottom: -10px; width: 6px; background: var(--text); }
+  #kr-kort .fraga { display: flex; align-items: center; justify-content: center; gap: 24px; margin: 30px auto 0; width: max-content; font-size: 48px; font-weight: 800; padding: 16px 48px; border: 3px solid var(--gold); border-radius: 999px; background: rgba(14,12,8,.97); }
+  #kr-kort .bigbtn { display: block; width: max-content; margin: 24px auto 0; padding: 20px 64px; font-size: 38px; line-height: 1.1; opacity: 0; pointer-events: none; transition: opacity .8s; }
+  #kr-kort .bigbtn.on { opacity: 1; pointer-events: auto; }
 </style>
 </head>
 <body>
@@ -987,6 +1073,7 @@
   </div>
   <!-- Makt-rotation: vilket lag som styr politiken denna runda (visas vid rundstart fr.o.m. runda 2) -->
   <div class="overlay" id="ov-power" style="z-index:16"></div>
+  <div id="ov-kroning"></div>
   <!-- Politik: resultat-popup (GICK IGENOM / FÖLL) + ÅR-banderoll i kontrollrummet (Klara 2026-11-23) -->
   <div class="overlay" id="ov-result" style="z-index:15"></div>
   <div class="overlay" id="ov-year" style="z-index:15"></div>
