@@ -290,6 +290,7 @@ let lastTutReady = null;      // senaste tutReadyUpdate {klara, humans} från se
 const _tutAborters = [];      // väntare som väcks när tutorialen ska avbrytas
 let tutFick = 0;              // tutorial: belopp spelaren FICK i sitt senaste byte (→ "Du fick +N" i övningen)
 let tutOhShown = null;        // tutorial: öhälso-värdet som konsekvens-rutan redan animerat baren till (så bokslutet inte dubbel-animerar)
+let tutOhReset = false;       // tutorial: har öhälsobaren återställts till full bakom prisceremonin (en gång) inför riktiga spelet
 // Obemannad skärm i tutorialen: mäts PÅ skärmen (ingen beröring alls på 90 s) eftersom servern knappt får
 // meddelanden under tutorialen. Når gränsen → berätta för servern, som gör laget till bot så gruppens
 // nedräkning inte blockeras. Bara i drift (ONLINE); solo/lokalt behöver det inte.
@@ -674,6 +675,12 @@ game.on('award', p => run(async () => {
     await tonaUtOrad();
     renderAwardCard(typ, w);                // ingen "tryck för att fortsätta": priset går alltid på timer (spelledarläge: styrs av spelledaren via awardStep)
     $('ov-award').classList.add('open');
+    // TUTORIAL-ONLY: övningsåret nollas inför riktiga spelet. Återställ öhälsobaren till full NU —
+    // bakom prisceremonins overlay — så man aldrig ser den "läka upp" (Klara 2026-11-27).
+    if (tutRunning && !tutOhReset) {
+      tutOhReset = true; const oh0 = E()?.cfg?.ohStart ?? 50;
+      updateOh({ value: oh0, mode: ohMode(oh0), delta: 0 });
+    }
     await delay(5000);                      // samma takt som online (awardStep): varje pris hålls kvar 5 s
     if (!sista) return;                     // overlayn hålls ÖPPEN mellan priserna → ingen släckt skärm
     $('ov-award').classList.remove('open');
@@ -2776,7 +2783,7 @@ async function runTutStep(step, myLag) {
 
 async function runTutorial() {
   if (tutRunning) return;                      // redan igång (late-join/claim kan trigga dubbelt)
-  tutRunning = true; tutAbort = false; tutInCeremony = false; _tutAborters.length = 0; tutOhShown = null;
+  tutRunning = true; tutAbort = false; tutInCeremony = false; _tutAborters.length = 0; tutOhShown = null; tutOhReset = false;
   startTutIdleWatch();                          // obemannad skärm (90 s utan beröring) → bot, så gruppen inte fastnar
   game.enterTutorial?.();                       // RUMS-FLÖDE: markera tutorial-fasen för sent anslutna
   const myLag = ONLINE ? realGame.me : (manifest.config?.humanTeam || 'aker');
